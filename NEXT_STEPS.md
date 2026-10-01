@@ -31,5 +31,5 @@
 - 新增或重写章节：按 `AUTHORING.md`；改完跑上面四个工具。
 - 新增题目后不需要改 `train/data/index.js`（22 章都已注册）。
 - 本机预览：`python3 -m http.server 8770`（8765～8767 常被其他预览占用）。
-- 部署：见 README.md；需要新仓库的 `DEPLOY_SSH_KEY` Secret，以及服务器上 `/var/www/tutorials/aposd/` 可写（rrsync 限定在 /var/www/tutorials）。
-  `project/` 的目录浏览是否开启取决于 Nginx 配置（OSTEP 站的 labs/ 开了 autoindex）。
+- 部署：推送到 main 即自动部署。部署架构、密钥、Nginx、新增教程的步骤都在 `~/tutorials-deploy/README.md`；
+  线上检查用 `~/tutorials-deploy/scripts/check-site.sh aposd index.html project/m06.html project/minikv/src/store.cpp`。
