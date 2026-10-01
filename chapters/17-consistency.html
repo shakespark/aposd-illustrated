@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 17 章 · 一致性</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch17.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.levels td:first-child { white-space: nowrap; font-weight: 600; }
+</style>
+</head>
+<body data-chapter="17">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>当"我的写法更好"和"大家都这么写"冲突时，该听谁的？一致性又在什么时候会变成削足适履？</strong></p>
+</div>
+<p>第 2 章把模糊性（obscurity）列为复杂性的两大来源之一，并点名"不一致"是造成模糊的原因。第 12～16 章从注释、命名、修改代码的角度对付模糊性；这一章换一个角度：<strong>让相似的东西长得相似，让不同的东西长得不同</strong>，读者就能靠已有的经验读懂新代码，不必每处从头学。</p>
+<p>这是全书最短的章节之一，观点也最容易被点头放过。但它有一个相当保守、甚至有点反直觉的立场：<strong>局部更好的写法，通常不值得用一处不一致去换</strong>。读的时候要特别留意作者给"打破约定"设的门槛有多高。下一章（代码应该一目了然）会把一致性和命名并列为让代码变明显的两大手段。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>17.1 节</strong>列了五个层次的一致性。注意最后一个"不变式"（invariant）：它乍看和"风格统一"没什么关系，想想作者为什么把它归到一致性里，又和第 10 章"消除特殊情况"有什么关系。</li>
+    <li><strong>17.2 节</strong>"不要改已有约定"那一段：作者给出了两个问题，并且要求答案都是"是"之后还要做一件事。数一数，打破一个约定需要满足几个条件？</li>
+    <li><strong>17.3 节</strong>只有一段，但它划出了一致性的边界：一致性的价值来自一个承诺。读完用一句话说出这个承诺是什么。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>认知杠杆</h4><p>在一个地方学会的做法，可以直接用来读懂所有用同样做法的地方。学一次，用很多次。</p></div>
+  <div class="card"><h4>一致性减少错误</h4><p>系统不一致时，两处代码看起来一样、实际却不同，读者按经验推断就会出错。一致的系统里，"看着眼熟"的推断是安全的。</p></div>
+  <div class="card"><h4>五个层次</h4><p>名字、代码风格、同一接口的多个实现、设计模式、不变式。都是"相似的事用相似的方式做"。</p></div>
+  <div class="card"><h4>不变式也是一致性</h4><p>一个永远成立的性质，让代码里少掉一整类特殊情况，推理也更容易。</p></div>
+  <div class="card"><h4>写下来，再用工具卡住</h4><p>约定不写下来就没人遵守；写下来也会忘，所以最好用提交前的自动检查拦住违规，再加上较真的代码评审。</p></div>
+  <div class="card"><h4>入乡随俗</h4><p>进一个新文件、做一个设计决定之前，先看周围是怎么做的，照着做。作者说这是所有约定里最重要的一条。</p></div>
+  <div class="card"><h4>不要"改进"已有约定</h4><p>有一个更好的主意，不足以成为制造不一致的理由。要换，就得全部换完。</p></div>
+  <div class="card"><h4>别把不同的东西硬凑成一样</h4><p>一致性只有在"看起来是 x 的东西真的是 x"时才有价值；强行统一不同的东西，只会制造混乱。</p></div>
+</div>
+
+<h2>心智模型：看起来一样 × 实际一样</h2>
+<p>作者对一致性的定义有两半：相似的事用相似的方式做，<strong>不同的事用不同的方式做</strong>。很多人只记住了前一半。把"实际上是不是同一类事"和"代码里的做法是不是一样"交叉一下，就得到四种情况：</p>
+<figure class="fig">
+<svg viewBox="0 0 640 330" width="640" role="img" aria-label="一致性的四象限：实际相同且做法相同、实际不同且做法不同都是一致；实际相同做法不同是不一致；实际不同做法相同是假一致">
+  <text x="390" y="20" text-anchor="middle" font-weight="700">两件事实际上……</text>
+  <text x="265" y="44" text-anchor="middle" font-size="13" class="t-muted">是同一类事</text>
+  <text x="515" y="44" text-anchor="middle" font-size="13" class="t-muted">是不同的事</text>
+  <text x="34" y="190" text-anchor="middle" font-weight="700" transform="rotate(-90 34 190)">代码里的做法……</text>
+  <text x="86" y="124" text-anchor="middle" font-size="13" class="t-muted">一样</text>
+  <text x="86" y="254" text-anchor="middle" font-size="13" class="t-muted">不一样</text>
+
+  <rect x="140" y="56" width="245" height="126" rx="8" class="ok-soft" stroke-width="1.5"/>
+  <text x="262" y="84" text-anchor="middle" font-weight="700">一致</text>
+  <text x="262" y="110" text-anchor="middle" font-size="12.5">学会一处，其他处直接看懂</text>
+  <text x="262" y="132" text-anchor="middle" font-size="12" class="t-muted">所有存储函数都返回 -errno</text>
+  <text x="262" y="160" text-anchor="middle" font-size="12" class="t-muted">认知杠杆</text>
+
+  <rect x="393" y="56" width="245" height="126" rx="8" class="bad-soft" stroke-width="1.5"/>
+  <text x="515" y="84" text-anchor="middle" font-weight="700">假一致（17.3）</text>
+  <text x="515" y="110" text-anchor="middle" font-size="12.5">读者按经验推断，推错了</text>
+  <text x="515" y="132" text-anchor="middle" font-size="12" class="t-muted">只读快照也叫 XxxCache、</text>
+  <text x="515" y="150" text-anchor="middle" font-size="12" class="t-muted">也有 invalidate()</text>
+  <text x="515" y="170" text-anchor="middle" font-size="12" class="t-muted">最危险：错得理直气壮</text>
+
+  <rect x="140" y="190" width="245" height="126" rx="8" class="warn-soft" stroke-width="1.5"/>
+  <text x="262" y="218" text-anchor="middle" font-weight="700">不一致</text>
+  <text x="262" y="244" text-anchor="middle" font-size="12.5">每一处都得单独学</text>
+  <text x="262" y="266" text-anchor="middle" font-size="12" class="t-muted">有的返回 -1，有的返回 false，</text>
+  <text x="262" y="284" text-anchor="middle" font-size="12" class="t-muted">有的返回 -ENOSPC</text>
+  <text x="262" y="304" text-anchor="middle" font-size="12" class="t-muted">慢，而且容易套错经验</text>
+
+  <rect x="393" y="190" width="245" height="126" rx="8" class="ok-soft" stroke-width="1.5"/>
+  <text x="515" y="218" text-anchor="middle" font-weight="700">一致</text>
+  <text x="515" y="244" text-anchor="middle" font-size="12.5">差异本身就是在提醒读者</text>
+  <text x="515" y="266" text-anchor="middle" font-size="12" class="t-muted">会失败的函数返回错误码，</text>
+  <text x="515" y="284" text-anchor="middle" font-size="12" class="t-muted">不会失败的直接返回值</text>
+  <text x="515" y="304" text-anchor="middle" font-size="12" class="t-muted">"长得不一样 → 小心"</text>
+</svg>
+<figcaption>一致性要占住两个绿格。右上角的"假一致"是 17.3 节警告的情况。本站自绘示意。</figcaption>
+</figure>
+<p>左下角的"不一致"拖慢阅读；右上角的"假一致"更糟，因为读者根本不会意识到自己需要停下来查。这就是为什么作者在 17.3 节强调：一致性的全部价值，建立在读者可以相信"看着一样的就真的一样"之上。</p>
+
+<h2>五个层次，各举一个 C/C++ 的例子</h2>
+<div class="table-wrap">
+<table class="levels">
+  <thead><tr><th>层次</th><th>一致的样子</th><th>不一致的代价</th></tr></thead>
+  <tbody>
+    <tr><td>名字</td><td><code>len</code> 在全项目都表示字节数，元素个数一律叫 <code>count</code></td><td>有人把 <code>batch.size()</code>（条数）传给 <code>reserve</code>（要字节数），缓冲区小了几百倍</td></tr>
+    <tr><td>代码风格</td><td>统一的 <code>.clang-format</code>；头文件里先 public 后 private；禁用 <code>strcpy</code> 等危险函数</td><td>评审时一半注意力花在格式上；diff 里混着无意义的改动</td></tr>
+    <tr><td>接口</td><td><code>Compressor</code> 有 zstd、lz4 两种实现，读懂一种就知道另一种必须提供什么</td><td>每种实现各有一套方法名和错误约定，换实现等于重学</td></tr>
+    <tr><td>设计模式</td><td>所有网络组件都用同一种"注册回调 + 事件循环"结构</td><td>同样的问题在三个模块里有三种自创解法，读者无法复用经验</td></tr>
+    <tr><td>不变式</td><td>"段列表永远非空，最后一段总是可写的"</td><td>每个函数开头都要先判断一遍空列表和已封存，漏一处就是崩溃</td></tr>
+  </tbody>
+</table>
+</div>
+<p>书中关于不变式举的是一个文本行数据结构的例子（每一行都以换行符结尾）。它和第 10 章的"把错误定义为不存在"、第 6 章的"消除特殊情况"是同一类思路：<strong>与其在每个使用点处理例外，不如让例外不存在</strong>。下面的第二个例子会展开这一点。</p>
+
+<h2>原创例子一：同一个代码库里的三种错误约定</h2>
+<p>一个日志结构的键值存储，几个模块由不同的人在不同时期写成。每个人的约定单独看都说得过去：</p>
+<div class="ba">
+  <div data-label="改之前：三种约定并存">
+<pre class="numbered" data-mark="2,4,6,13"><code class="lang-cpp">// segment.h：成功返回 0，失败返回 -1 并设置 errno
+int Segment::append(const Record&amp; r);
+// index.h：成功返回 true
+bool Index::insert(const Key&amp; k, Offset off);
+// compactor.h：成功返回 0，失败返回负的 errno（如 -ENOSPC）
+int Compactor::run();
+
+int Store::put(const Key&amp; k, const Value&amp; v) {
+    Record rec = makeRecord(k, v);
+    if (seg_-&gt;append(rec) != 0) return -errno;
+    if (!index_.insert(k, seg_-&gt;lastOffset())) return -EEXIST;
+    // 新同事照着上面 append 的写法写了下面这行：
+    if (needCompact() &amp;&amp; compactor_.run() == -1) return -errno;
+    return 0;
+}</code></pre>
+    <p>第 13 行是一个真实会出现的 bug：<code>run()</code> 失败时返回 <code>-ENOSPC</code>（-28），永远不等于 -1，磁盘满了也被当成成功。写这行的人没有犯傻，只是相信了"看起来一样的东西真的一样"。这正是作者说的：<strong>不一致的系统里，眼熟的模式会诱导错误的假设</strong>。</p>
+  </div>
+  <div data-label="改之后：全库只有一种约定">
+<pre class="numbered" data-mark="1,2"><code class="lang-cpp">// 存储层约定（见 docs/conventions.md）：会失败的函数返回 int，
+// 0 表示成功，负数是 -errno。不使用全局 errno，不返回 bool。
+[[nodiscard]] int Segment::append(const Record&amp; r);
+[[nodiscard]] int Index::insert(const Key&amp; k, Offset off);   // 键已存在：-EEXIST
+[[nodiscard]] int Compactor::run();
+
+int Store::put(const Key&amp; k, const Value&amp; v) {
+    Record rec = makeRecord(k, v);
+    if (int rc = seg_-&gt;append(rec); rc &lt; 0) return rc;
+    if (int rc = index_.insert(k, seg_-&gt;lastOffset()); rc &lt; 0) return rc;
+    if (needCompact()) {
+        if (int rc = compactor_.run(); rc &lt; 0) return rc;
+    }
+    return 0;
+}</code></pre>
+    <p>三个调用长得一模一样，读者看懂一个就看懂了全部；<code>Index::insert</code> 现在能告诉调用者<strong>为什么</strong>失败，不用再猜 <code>-EEXIST</code>。<code>[[nodiscard]]</code> 让"忘了检查返回值"变成编译警告，约定写在一处文档里。</p>
+  </div>
+</div>
+<p><strong>为什么选 <code>-errno</code>，而不是更"现代"的 <code>std::expected</code>？</strong>因为 <code>Store</code> 这一层和它的大部分调用者已经在用 <code>-errno</code>，统一到它改动最少。如果你想换成别的约定，就要先过作者在 17.2 节设的那两道关（见下文），并且一次换完。<strong>代价</strong>：这次统一要改所有调用点，<code>Index::insert</code> 的每个调用者都要从 <code>if (!…)</code> 改成 <code>if (… &lt; 0)</code>，漏改一处就是新的 bug；所以它要配合编译器警告和评审来做，不能顺手做一半。</p>
+
+<h2>原创例子二：用不变式消掉一类特殊情况</h2>
+<p>同一个存储引擎里，"当前可写的段"有时不存在：刚启动时还没有段，某段写满封存后新段还没建。于是每个用到它的地方都要先检查一遍：</p>
+<div class="ba">
+  <div data-label="改之前：每处都要判断">
+<pre><code class="lang-cpp">int Store::append(const Record&amp; r) {
+    if (segments_.empty() || segments_.back().sealed())
+        if (int rc = rollSegment(); rc &lt; 0) return rc;
+    return segments_.back().append(r);
+}
+size_t Store::activeBytes() const {
+    if (segments_.empty() || segments_.back().sealed()) return 0;
+    return segments_.back().bytes();
+}
+int Store::sync() {
+    if (segments_.empty()) return 0;     // 这里忘了判断 sealed，但恰好没事
+    return segments_.back().sync();
+}</code></pre>
+    <p>三个函数各自处理"没有可写段"，写法还各不相同；下一个加进来的函数很可能漏掉。</p>
+  </div>
+  <div data-label="改之后：一条不变式">
+<pre><code class="lang-cpp">// 不变式：segments_ 永远非空，且最后一段总是未封存的可写段。
+// 由构造函数建立；sealActive() 封存当前段后立即打开新段来维持。
+std::vector&lt;Segment&gt; segments_;
+
+int Store::append(const Record&amp; r) {
+    if (active().full())
+        if (int rc = sealActive(); rc &lt; 0) return rc;
+    return active().append(r);
+}
+size_t Store::activeBytes() const { return active().bytes(); }
+int Store::sync() { return active().sync(); }</code></pre>
+    <p>特殊情况只在建立和维持不变式的两个地方处理，其他函数可以放心假设"一定有可写段"。不变式写在成员声明处，这正是 17.2 节说的：局部约定要写在代码里合适的位置。</p>
+  </div>
+</div>
+<p>这算一致性吗？算：所有代码对 <code>segments_</code> 做<strong>同一个假设</strong>，读者只需记住一条规则。代价是建立不变式的那几处（构造、封存、恢复）要格外小心，因为整个类都依赖它。</p>
+
+<h2>怎样维持一致性</h2>
+<p>作者的建议有四条，按"由软到硬"排列大致是：</p>
+<ol>
+  <li><strong>写下来</strong>：全局约定（风格、错误约定、命名）放在显眼的地方，如项目 Wiki，并让新人入职时读；局部约定（如上面的不变式）写在代码里。</li>
+  <li><strong>强制执行</strong>：最可靠的是写一个检查工具，不通过就提不了代码。书里讲了作者项目里换行符（Unix 的 LF 和 Windows 的 CRLF）混用、导致整文件 diff 的故事，最后靠一个提交前脚本根治。C/C++ 项目里对应的做法有 <code>clang-format --dry-run --Werror</code>、<code>clang-tidy</code> 的命名检查、禁止某些函数的 lint 规则。代码评审是第二道关，作者认为评审者越较真，团队学会约定越快。</li>
+  <li><strong>入乡随俗</strong>（When in Rome…）：进一个新文件，先看它的声明顺序、命名风格；做一个设计决定，先找项目里有没有做过类似的决定，照着做。</li>
+  <li><strong>不要改已有约定</strong>：见下面的判断框。</li>
+</ol>
+<div class="key">
+  <p><strong>打破约定之前问两个问题</strong>（17.2 节）：</p>
+  <ol>
+    <li>我有没有<strong>当初定这个约定时还没有的重要新信息</strong>？</li>
+    <li>新做法是不是<strong>好到值得花时间把所有旧用法都改掉</strong>？</li>
+  </ol>
+  <p>只有组织（不是你一个人）认同两个答案都是"是"，才去升级，而且升级完不能留下旧约定的痕迹。即使这样，别人以后还可能把旧写法带回来。所以作者的总体判断是：重新讨论已经确立的约定，很少是值得花的时间。</p>
+</div>
+<blockquote class="quote">The value of consistency over inconsistency is almost always greater than the value of one approach over another.<cite>— 第 17.2 节</cite></blockquote>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="过犹不及：硬凑出来的一致（17.3 节）">
+  <p>一致性是双向的：不同的东西也该看起来不同。用同一个变量名指代实际不同的东西、把不合适的设计模式套到问题上，都会制造"假一致"。例如为了和 <code>UserCache</code> 保持一致，把一个只读的配置快照也命名为 <code>ConfigCache</code> 并给它加上从不该被调用的 <code>invalidate()</code>：读者会以为它会过期、需要失效，实际并不会。判断标准就是作者那句话：<strong>看起来是 x 的东西，必须真的是 x</strong>。</p>
+</div>
+<div class="counter" data-title="和第 16 章&quot;保持战略&quot;矛盾吗？">
+  <p>第 16 章说每次修改都要让设计变得更好，不要做最小改动；这一章却说不要"改进"已有约定。本站补充一个区分：第 16 章说的是<strong>改善结构</strong>（把一段代码改得像是一开始就为新需求设计的），本章反对的是<strong>在局部引入第二种约定</strong>。你可以在修改时把一个透传方法合并掉，但不该在一个满是 <code>-errno</code> 的模块里，单独给你的新函数用 <code>std::expected</code>。前者让系统更简单，后者让读者多学一种东西。</p>
+</div>
+<div class="counter" data-title="&quot;较真的评审&quot;的代价">
+  <p>作者认为评审者越挑剔，团队学得越快、代码越干净。本站补充：能用工具自动检查的约定（格式、命名、禁用函数），最好交给工具，评审者把精力留给工具查不出来的约定（错误约定、不变式、设计模式的用法）。工具不会累，也不会让人觉得是在针对自己；书里换行符的故事本身就说明了工具的效果：问题当即消失，还顺带教会了新人。</p>
+</div>
+<div class="counter" data-title="&quot;旧约定明明很差&quot;怎么办？">
+  <p>作者没有说约定永远不能改，只是把门槛设得很高：要有新信息、要值得全部改完、要组织同意、改完不留痕迹。现实中常见的反面做法是"新代码用新写法，旧代码慢慢改"，结果是两种约定长期并存，比只有那个旧约定更糟。如果没有资源一次改完，作者的立场意味着：<strong>继续用旧约定</strong>。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。先自己判断再看解析。</p>
+<div class="drill-embed" data-ids="ch17-flag-01 ch17-ab-01 ch17-judge-01"></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="3"><div class="q">按作者的定义，下面哪一种情况<strong>违反</strong>了一致性？</div>
+  <div class="opts"><button>A. 所有成员变量都以下划线结尾</button><button>B. 两个压缩器实现同一个 <code>Compressor</code> 接口</button><button>C. 会失败的函数返回 <code>int</code> 错误码，不会失败的函数直接返回值</button><button>D. 两种实际含义不同的计数（字节数和条数），在不同模块里都叫 <code>size</code></button></div>
+  <div class="explain">一致性不只要求"相似的事做法相似"，还要求"不同的事做法不同"。字节数和条数是不同的东西，却用了同一个名字，读者会按一种含义去推断另一种。C 恰恰是"不同的事长得不同"。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">为什么作者把"不变式"也算作一致性的一个层次？</div>
+  <div class="opts"><button>A. 因为不变式能提高性能</button><button>B. 因为不变式通常写在风格指南里</button><button>C. 因为所有代码都可以对同一个结构做同一个假设，从而少处理很多特殊情况</button><button>D. 因为不变式可以由编译器检查</button></div>
+  <div class="explain">不变式让每处代码对某个结构的假设都一样，读者记住一条规则就够了，代码里也少了一类特殊情况。它通常不能由编译器检查，所以要在代码里合适的位置写下来。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">你接手的模块用 <code>snake_case</code> 命名，而你个人和公司新规范都偏好 <code>camelCase</code>。你要在这个模块里加一个函数，按本章的建议应该：</div>
+  <div class="opts"><button>A. 两种风格都可以，命名风格不影响复杂度</button><button>B. 继续用 <code>snake_case</code>；如果要换，应在团队同意后把整个模块一次改完</button><button>C. 新函数用 <code>camelCase</code>，并在注释里说明原因</button><button>D. 新函数用 <code>camelCase</code>，旧代码以后慢慢改</button></div>
+  <div class="explain">"入乡随俗"是作者说的最重要的约定。"新代码用新写法，旧代码慢慢改"会让两种约定长期并存。如果真要换，得满足两个问题、得到组织认可，并且改完不留旧约定的痕迹。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">作者认为维持约定最可靠的手段是什么？</div>
+  <div class="opts"><button>A. 由架构师定期审查全部代码</button><button>B. 写一个检查违规的工具，不通过就不能提交代码</button><button>C. 在项目 Wiki 上写一份详细的风格指南</button><button>D. 新人入职培训</button></div>
+  <div class="explain">文档很必要，但人总会忘。作者说强制执行约定的最好办法是写工具检查，并让不通过检查的代码提交不了。自动检查对低层的语法类约定尤其有效；评审则用来补充工具查不到的东西，同时教育新人。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">下面哪一项最能说明 17.3 节"过犹不及"的意思？</div>
+  <div class="opts"><button>A. 为了和其他服务类保持一致，给一个纯函数式的校验和工具也套上 <code>init/start/stop</code> 生命周期</button><button>B. 风格指南的条目太多，没人记得住</button><button>C. 新约定推行后，有人又把旧写法带了回来</button><button>D. 两个模块用了不同的缩进风格</button></div>
+  <div class="explain">校验和计算没有生命周期，硬套上去就是"把不同的东西强行用同一种方式做"，读者会以为调用前必须 init、用完必须 stop。D 是普通的不一致；C 是 17.2 节提到的换约定的风险。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">打破一个已有约定之前，作者要求问的两个问题是哪两个？</div>
+  <div class="opts"><button>A. 是否有当初定约定时没有的重要新信息？新做法是否好到值得把所有旧用法都改掉？</button><button>B. 新做法是否更短？新做法是否更快？</button><button>C. 新做法是否符合业界最新潮流？是否有知名项目在用？</button><button>D. 团队里有多少人支持？上级是否批准？</button></div>
+  <div class="explain">两个问题一个看"理由"（有没有新信息），一个看"代价"（值不值得全部改完）。两个都是"是"而且组织认同，才动手，并且要改到看不出旧约定。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>一致性提供认知杠杆：学会一处，就能读懂所有同样做法的地方；它也减少"看着眼熟其实不同"带来的错误。</li>
+  <li>一致性有多个层次：名字、风格、同一接口的多种实现、设计模式、不变式。不变式能消掉一类特殊情况。</li>
+  <li>维持一致性：写下来、用工具和评审强制、入乡随俗、不要轻易改约定。</li>
+  <li>改约定前问两个问题；真要改，组织同意、一次改完、不留痕迹。</li>
+  <li>一致性是双向的：不同的东西要看起来不同，硬凑的一致比不一致更危险。</li>
+</ul>
+<p>下一章（代码应该一目了然）会把命名和一致性作为让代码变明显的两大手段，并讨论哪些写法会让代码变得不明显，给出本书的最后一个红旗。</p>
+<p><strong>读后一句话</strong>：想一想你的项目里有没有"同一件事有两三种做法"的地方，写下来，并判断它值不值得统一。</p>
+<textarea class="note" data-key="ch17-oneline" placeholder="例如：我们的服务里错误处理有异常、错误码、optional 三种写法，统一到……的代价是……"></textarea>
+
+</main>
+</body>
+</html>

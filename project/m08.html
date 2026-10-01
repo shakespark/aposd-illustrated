@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务 m08 · 先测量，再改关键路径</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.mission-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.checklist li { list-style: none; margin-left: -1.2em; }
+.checklist li::before { content: "☐ "; color: var(--muted); }
+td.hot { color: var(--bad); font-weight: 650; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part5)"></span>minikv 重构项目 · 任务 8 / 8</div>
+  <h1>m08：先测量，再改关键路径</h1>
+  <p class="en">对应第 18 章（代码应该一目了然）、第 20 章（为性能而设计）</p>
+  <div class="mission-meta"><span data-flag="nonobvious"></span><span data-principle="14"></span></div>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">背景与对应章节</a></li>
+  <li><a href="#find">你要找的问题</a></li>
+  <li><a href="#task">任务与约束</a></li>
+  <li><a href="#check">自查清单</a></li>
+  <li><a href="#hints">提示</a></li>
+  <li><a href="#answer">参考答案与讨论</a></li>
+</ol></nav>
+
+<h2 id="bg">背景与对应章节</h2>
+<div class="crux"><p><strong>一次纯内存的 GET 要 1.2 微秒。时间花在哪了？你的第一个猜测对吗？</strong></p></div>
+<p>minikv 的 GET 路径看上去没什么复杂的：切分命令、查哈希表、把值加上引号返回。但 <code>make bench</code> 说一次命中要 1.2 µs 左右——对一次哈希查找来说太多了。同一条路径上还有几处读起来"不对劲"的代码：返回 <code>std::pair</code> 的查询、两个 bool 参数的格式化函数、一个会偷偷改统计的 <code>exists()</code>。</p>
+<p>这个任务把第 18 章和第 20 章放在一起练：<strong>让代码一目了然</strong>和<strong>让关键路径变快</strong>往往是同一件事，但前提是你先<strong>量出</strong>时间真正花在哪。做之前请读 <a href="../chapters/18-obvious.html">第 18 章 · 代码应该一目了然</a>（尤其 18.2 节关于通用容器和违背预期的代码）和 <a href="../chapters/20-performance.html">第 20 章 · 为性能而设计</a>（20.2 先测量、20.3 围绕关键路径设计、20.4 的完整例子）。</p>
+
+<h2 id="find">你要找的问题</h2>
+<p>分两部分。先读代码，找出"读的人第一眼会猜错"的地方：</p>
+<div class="table-wrap"><table>
+  <tr><th>位置</th><th>读的时候问自己</th></tr>
+  <tr><td><code>Store::get()</code>、<code>Database::get()</code></td><td>调用处写 <code>r.first</code>、<code>r.second</code>，不看声明你知道哪个是什么吗？这次调用一共拷贝了几次值？</td></tr>
+  <tr><td><code>Server::bulk()</code> 的所有调用</td><td><code>bulk(x, true, true)</code> 和 <code>bulk(x, false, false)</code> 分别做了什么？后者有必要存在吗？</td></tr>
+  <tr><td><code>Store::exists()</code></td><td>一个叫 exists 的函数会修改什么？执行 <code>SET a 1</code>、<code>GET a</code>、<code>STATS</code>，看 <code>keyspace_hits</code> 是几。</td></tr>
+  <tr><td><code>Server::handleGet()</code></td><td>一次 GET 查了几次哈希表？</td></tr>
+  <tr><td><code>src/stats.h</code></td><td>每条命令都会用字符串名字去 <code>std::map</code> 里找计数器。如果有人把名字拼错，会发生什么？</td></tr>
+</table></div>
+<p>然后是性能。<strong>在读完代码、动手测量之前</strong>，先把你的猜测写下来：GET 命中的 1.2 µs 里，下面几项各占多少？按从大到小排个序。</p>
+<ul>
+  <li>命令切分、转大写、查处理函数表</li>
+  <li><code>exists()</code> + <code>get()</code> 两次哈希查找</li>
+  <li>值在 <code>optional</code> 和 <code>pair</code> 之间的两次拷贝</li>
+  <li>用字符串名字更新 <code>std::map</code> 计数器</li>
+  <li>格式化回复（<code>bulk</code>）</li>
+  <li><code>Server → Database → Store → Index</code> 这几层透传调用本身</li>
+</ul>
+<textarea class="note" data-key="m08-guess" placeholder="我的猜测（从大到小）：1. …… 2. …… 测完后回来对照，写下哪一项猜得最离谱。"></textarea>
+
+<div class="lab"><p>先跑基准、复现统计的问题：</p>
+<pre><code>cd project/minikv
+make bench
+make &amp;&amp; printf 'SET a 1\nGET a\nSTATS\n' | ./minikv /tmp/m08-demo.log; rm -f /tmp/m08-demo.log</code></pre></div>
+
+<h2 id="task">任务与约束</h2>
+<ol>
+  <li><strong>先测量。</strong>把 GET 命中路径拆成几段，分别计时，得到一张"每段多少纳秒"的表，再和你的猜测对照。</li>
+  <li><strong>改掉不明显的代码</strong>：<code>pair</code> 返回值、bool 参数、<code>exists()</code> 的副作用。改完后每次 GET 只记一次命中或未命中。</li>
+  <li><strong>围绕关键路径重新设计 GET</strong>：先想清楚"一次 GET 最少必须做什么"，再让代码尽量接近它。</li>
+  <li><strong>每改一处就重新测一次</strong>。没有可测量收益、也没让代码更简单的改动，撤回。</li>
+  <li>在笔记里记下改前改后的 <code>make bench</code> 数字（多跑几次取中位数）。</li>
+</ol>
+<p>约束：</p>
+<ul>
+  <li><code>make test</code> 全绿，<strong>不许修改 <code>tests/</code></strong>。STATS 的计数会因为第 2 条而变化，测试不检查具体的计数值。</li>
+  <li>透传的 <code>Database</code> 层（m03）和命令切分（m05）是别的任务的题目。如果测量说它们不是瓶颈，就别为了性能动它们。</li>
+  <li>不要换掉 <code>std::unordered_map</code>，除非你的测量给出了充分理由，并且你愿意为它多写一大块代码（见第 20.3 节对"根本性改动"的讨论）。</li>
+</ul>
+
+<h2 id="check">自查清单</h2>
+<ul class="checklist">
+  <li>你有一张"改之前每段耗时"的表，而且是先测再改的。</li>
+  <li>GET 路径上只有一次哈希查找，值不被拷贝到中间对象里。</li>
+  <li>调用处不再出现 <code>.first</code>/<code>.second</code> 和裸的 <code>true, false</code> 参数。</li>
+  <li>新的查询接口如果返回指针或引用，接口注释写明了它在什么时候失效。</li>
+  <li><code>SET a 1</code>、<code>GET a</code>、<code>STATS</code> 之后 <code>keyspace_hits=1</code>；<code>EXISTS</code> 不改变命中统计。</li>
+  <li>每一处保留的改动，你都能说出它带来了多少纳秒，或者它让哪段代码更好懂。</li>
+  <li><code>make test</code> 全绿，编译零警告；<code>make bench</code> 的 GET 命中明显下降。</li>
+</ul>
+
+<h2 id="hints">提示</h2>
+<details class="reveal"><summary>提示 1：没有 perf 怎么测</summary><div>
+  <p>WSL 和很多容器里没有 <code>perf</code>。最朴素的办法往往就够用：把项目复制到临时目录，写一个小程序，用 <code>std::chrono::steady_clock</code> 把每一段单独跑 100 万次计时（多跑几轮取最好或中位数）。要调用私有成员，可以在这个<strong>一次性</strong>的测量程序里先 <code>#define private public</code> 再 include 头文件——它只是测量脚手架，不要进代码库。也可以反过来做：在副本里临时把某一段换成最简单的实现，看总时间掉了多少。</p>
+</div></details>
+<details class="reveal"><summary>提示 2：微基准也会骗人</summary><div>
+  <p>单独测"查哈希表"可能只有 100 ns 左右，放进完整路径里却贵得多。原因是缓存：10 万个键加上值，数据量超过了 L3，随机查找要沿着"桶 → 节点 → 值"连续跳几次内存。单独循环查找时，CPU 能把相邻几次查找的内存访问重叠起来，所以看起来便宜。所以最后一定要用完整路径（<code>make bench</code>）验证，各段加起来对不上总时间时，别急着下结论。</p>
+</div></details>
+<details class="reveal"><summary>提示 3：理想的 GET 长什么样</summary><div>
+  <p>第 20.3 节的做法是先想象"最少需要做什么"：找到键、找不到就回 <code>(nil)</code>、找到就把值加上引号拼进回复里——一次查找、零次拷贝、一次分配。把它和现在的代码逐行对比，多出来的每一步都要有理由。格式化那一步，大多数值根本不含需要转义的字符，常见情况能不能一次 <code>append</code> 整段？</p>
+</div></details>
+
+<h2 id="answer">参考答案与讨论</h2>
+<div class="aside" data-title="先自己做"><p>先自己测、自己改、测试全绿，再打开下面的内容。你的数字一定和这里不同（机器不同），要比的是<strong>相对变化</strong>和<strong>你找到的瓶颈是不是同一个</strong>。</p></div>
+
+<details class="reveal"><summary>打开参考答案</summary><div>
+
+<h3>测量：时间到底去哪了</h3>
+<p>在基线的副本里单独计时关键路径的每一段（每段 100 万次，5 轮取最好）：</p>
+<div class="table-wrap"><table>
+  <tr><th>环节</th><th class="num">ns / 次</th></tr>
+  <tr><td>完整的 <code>Server::handle("GET key:N")</code></td><td class="num">1130</td></tr>
+  <tr><td>切分命令 + 转大写 + 查处理函数表</td><td class="num">70</td></tr>
+  <tr><td><code>db_.exists(key)</code>：一次查找 + 一次字符串名字的计数</td><td class="num">132</td></tr>
+  <tr><td><code>db_.get(key)</code>：查找 + optional 拷贝 + pair 拷贝</td><td class="num">311</td></tr>
+  <tr><td>　其中只查不拷（<code>Index::find</code>）</td><td class="num">87</td></tr>
+  <tr><td>　<code>Stats::add("keyspace_hits")</code> 一次</td><td class="num">11</td></tr>
+  <tr><td><code>bulk(value, true, true)</code>：<code>ostringstream</code> 逐字符输出 100 字节</td><td class="num hot">665</td></tr>
+  <tr><td>　同样的转义，手写拼接（不调用 <code>isprint</code>）</td><td class="num">77</td></tr>
+  <tr><td><code>Database::get()</code> 与 <code>Store::get()</code> 对比（透传层开销）</td><td class="num">311 vs 318</td></tr>
+</table></div>
+<p>一半以上的时间在<strong>格式化回复</strong>上，比最可疑的"两次查找、两次拷贝"加起来还多。透传层在 <code>-O2</code> 下被内联，测不出任何开销：它们是 m03 的<strong>设计</strong>问题，不是性能问题，所以 m08 不动它们。</p>
+
+<h3>改动，以及每一步的收益</h3>
+<div class="ba">
+  <div data-label="改之前：handleGet 与 Store::get">
+<pre><code class="lang-cpp">std::string Server::handleGet() {
+    ...
+        if (!db_.exists(key)) return "(nil)";   // lookup #1, counts a hit
+        auto r = db_.get(key);                  // lookup #2, counts again
+        return bulk(r.second, true, true);      // what do true, true mean?
+    ...
+}
+
+std::pair&lt;bool, std::string&gt; Store::get(const std::string&amp; key) const {
+    std::optional&lt;std::string&gt; v = index_.get(key);       // copy #1
+    stats_.add(v ? "keyspace_hits" : "keyspace_misses");
+    if (!v) return {false, ""};
+    return {true, *v};                                      // copy #2
+}</code></pre>
+  </div>
+  <div data-label="改之后：一次查找，零拷贝">
+<pre><code class="lang-cpp">std::string Server::handleGet() {
+    ...
+        const std::string* value = db_.find(key);
+        return value ? quoted(*value) : "(nil)";
+    ...
+}
+
+// Returns a pointer to the value stored under `key`, or nullptr if there
+// is none. The pointer is valid only until the next write to this Store
+// (set, del, incr, append, compact); copy the value to keep it longer.
+// Each call counts as one keyspace hit or miss in STATS.
+const std::string* Store::find(const std::string&amp; key) const;
+
+// Whether `key` has a value. Unlike find(), not counted in STATS.
+bool Store::exists(const std::string&amp; key) const;</code></pre>
+  </div>
+</div>
+<div class="ba">
+  <div data-label="改之前：bool 参数 + ostringstream">
+<pre><code class="lang-cpp">// Formats s for a reply.
+std::string Server::bulk(const std::string&amp; s, bool quote, bool escape) const {
+    std::ostringstream out;
+    if (quote) out &lt;&lt; '"';
+    for (char c : s) {
+        unsigned char u = static_cast&lt;unsigned char&gt;(c);
+        if (escape &amp;&amp; (c == '"' || c == '\\')) {
+            out &lt;&lt; '\\' &lt;&lt; c;
+        } else if (escape &amp;&amp; !std::isprint(u)) {
+            out &lt;&lt; "\\x" &lt;&lt; std::hex &lt;&lt; std::setw(2) ...;
+        } else {
+            out &lt;&lt; c;
+        }
+    }
+    ...
+}
+return bulk(db_.stats(), false, false);   // just a copy, in disguise</code></pre>
+  </div>
+  <div data-label="改之后：有名字的函数，常见情况整段拷贝">
+<pre><code class="lang-cpp">// True for bytes that cannot appear as-is inside a quoted reply. Printable
+// ASCII is 0x20..0x7E; we test the range directly instead of calling
+// std::isprint() per byte, which showed up in the GET benchmark.
+bool needsEscape(unsigned char c);
+
+// Appends `s` to `out` as a double-quoted reply string ... Runs of bytes
+// that need no escaping (normally the whole value) are copied in one go.
+void appendQuoted(std::string&amp; out, const std::string&amp; s);
+std::string quoted(const std::string&amp; s);
+
+return db_.stats();</code></pre>
+  </div>
+</div>
+<p>另外，<code>Stats</code> 从 <code>std::map&lt;std::string, uint64_t&gt;</code> 换成了 4 个普通字段的结构体：拼错名字从"运行时悄悄多出一个空计数器"变成编译错误。</p>
+<p>逐步测量的结果（<code>make bench</code>，绑定同一个 CPU 核，与基线交替运行）：</p>
+<ul>
+  <li><strong>只改格式化</strong>：1216 → 约 540 ns。手写版本一开始逐字符调 <code>std::isprint()</code> 再 <code>out += c</code>，单独测要 230 ns；改成直接判断字节范围、不需要转义的整段一次 <code>append</code>，降到约 75 ns（都含一次内存分配）。</li>
+  <li><strong>再改一次查找、去掉拷贝、普通字段计数器</strong>：约 535 → 约 490 ns，大约 8%，和噪声同一量级。按第 20.2 节，这样的改动本该撤回；我们保留，是因为它们同时修掉了第 18 章的问题，代码更简单了。<strong>这一点要老实说</strong>：它们是为了可读性，不是为了速度。</li>
+</ul>
+
+<h3>结果</h3>
+<p>机器：AMD Ryzen 7 8745H（16 个逻辑核），WSL2（Linux 6.6），g++ 14.2，<code>-O2</code>。基线和 m08 各跑 5 次、交替进行，取中位数；测量时机器上还有别的编译任务，单次波动约 ±5%。<strong>你的数字会不同。</strong></p>
+<div class="table-wrap"><table>
+  <tr><th>ns / 命令</th><th class="num">基线</th><th class="num">m08</th><th>变化</th></tr>
+  <tr><td>GET（命中）</td><td class="num">1216</td><td class="num">503</td><td>快 2.4 倍</td></tr>
+  <tr><td>GET（未命中）</td><td class="num">305</td><td class="num">314</td><td>无变化：未命中本来就不格式化值</td></tr>
+  <tr><td>SET</td><td class="num">3242</td><td class="num">3307</td><td>无变化：主要是 write(2) 和摊下来的压缩</td></tr>
+</table></div>
+<p>剩下的约 490 ns 主要是哈希表的访存：数据超过 L3，每次随机查找要连跳几次内存。再往下就是第 20.3 节说的根本性改动（换成开放寻址、把短值内联进表里），要多写一大块代码。我们停在这里，理由来自另一次测量：用管道给 <code>./minikv</code> 喂 100 万条 GET，每条从约 1.77 µs 降到约 1.07 µs，而后者里大约 0.6 µs 是 <code>getline</code> 和 <code>cout</code>。<strong>终端 I/O 已经和命令本身一样贵了</strong>，继续压 GET 的收益越来越小。</p>
+
+<h3>代价与取舍</h3>
+<div class="counter" data-title="指针换来了一条新的非正式接口">
+  <p>返回 <code>const std::string*</code> 省掉了拷贝，但调用者必须知道"下一次写之后它可能失效"。这正是第 18 章说的需要用注释补偿的不明显之处，所以写进了接口注释。替代方案各有代价：<code>std::optional&lt;std::string&gt;</code> 安全但每次多一次拷贝；<code>std::string_view</code> 有同样的生命周期问题，还表达不了"不存在"；<code>withValue(key, callback)</code> 最安全，但调用处最别扭。对一个单线程、只有一个调用者的接口，指针 + 注释是合理的折中。</p>
+</div>
+<div class="counter" data-title="统计还在 find() 里">
+  <p>把计数挪到 <code>handleGet()</code>，<code>find()</code> 就成了纯查询；但"命中率"的定义会散到命令层。参考答案留在 <code>find()</code> 里并写进注释。副作用本身不是罪过，<strong>出人意料</strong>的副作用才是：叫 exists 的函数改统计会让人猜错，叫 find 且注释写明会计数的函数不会。</p>
+</div>
+<div class="counter" data-title="&quot;浅层会拖慢速度&quot;要测了才算">
+  <p>第 20.1 节说浅层的多次调用有开销。这在跨模块、虚函数、跨进程时是真的；但在这里，<code>-O2</code> 把透传层内联掉了，测不出差别。如果你在 m08 里顺手删掉 <code>Database</code> 层并把提速归功于它，那就是没有测量支撑的结论。</p>
+</div>
+
+<h3>行为变化（测试未改动，全部通过）</h3>
+<ul>
+  <li>STATS 的 <code>keyspace_hits</code>/<code>keyspace_misses</code> 每次 GET 只记一次，<code>EXISTS</code> 不再计入。</li>
+  <li>STATS 总是输出全部 4 个计数器（值为 0 也输出），顺序不变。</li>
+</ul>
+
+<h3>审稿人仍会指出的问题</h3>
+<ul>
+  <li><code>Database::find()</code> 仍是纯透传，<code>exists()</code> 和 <code>find()</code> 两个查询接口并存：见 <a href="m03.html">m03</a>。</li>
+  <li>命令切分、<code>toUpper</code> 拷贝、<code>std::map</code> 处理函数表还有几十纳秒可省，但 <a href="m05.html">m05</a> 会重写这部分。</li>
+  <li>SET 的成本几乎全在每条命令一次 <code>write(2)</code> 上。根本办法是批量提交（group commit），但它改变持久性语义，得先想清楚。</li>
+</ul>
+
+<p>完整的讨论（包括测量方法）在 <code>solutions/m08/DISCUSSION.md</code>。对照自己的改动：</p>
+<pre><code>cd project            # 仓库里 minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m08 clean
+diff -ru minikv solutions/m08
+make -C solutions/m08 test bench</code></pre>
+
+</div></details>
+
+<nav class="chapter-nav">
+  <a class="prev" href="m07.html"><small>← 上一个任务</small>m07：命名、注释、先写注释</a>
+  <a class="next" href="index.html"><small>回到 →</small>minikv 项目总览</a>
+</nav>
+
+</main>
+</body>
+</html>

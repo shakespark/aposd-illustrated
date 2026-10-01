@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务 m07 · 名字与注释</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.mission-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.checklist li { list-style: none; margin-left: -1.2em; }
+.checklist li::before { content: "☐ "; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part3)"></span>minikv 重构项目 · 任务 7 / 8</div>
+  <h1>m07：名字、注释，以及先写注释</h1>
+  <p class="en">对应第 12～15 章（为什么写注释、写什么注释、起名字、先写注释）</p>
+  <div class="mission-meta"><span data-flag="vague-name"></span><span data-flag="comment-repeats"></span><span data-flag="impl-contaminates"></span><span data-flag="hard-describe"></span></div>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">背景与对应章节</a></li>
+  <li><a href="#find">你要找的问题</a></li>
+  <li><a href="#task">任务与约束</a></li>
+  <li><a href="#check">自查清单</a></li>
+  <li><a href="#hints">提示</a></li>
+  <li><a href="#answer">参考答案与讨论</a></li>
+</ol></nav>
+
+<h2 id="bg">背景与对应章节</h2>
+<div class="crux"><p><strong>只看 <code>store.h</code>，不读 <code>store.cpp</code>，你能正确使用 <code>Store</code> 吗？</strong></p></div>
+<p>前面几个任务都在改结构。这一个只改"文字"：名字和注释。但别小看它。<code>Store</code> 是 minikv 最核心的类，它的头文件现在几乎没有接口注释，两个最重要的成员叫 <code>total_</code> 和 <code>dead_</code>，而唯一一段较长的注释描述的是实现步骤。结果是：任何想用 <code>Store</code> 的人都得去读实现。</p>
+<p>这个任务分两半。前一半是修：对照 <a href="../chapters/14-names.html">第 14 章 · 起名字</a> 和 <a href="../chapters/13-comments.html">第 13 章 · 注释应描述代码里看不出来的东西</a> 改名字、删废话、补接口注释。后一半是练 <a href="../chapters/15-comments-first.html">第 15 章 · 先写注释</a>：给 minikv 加一个 <code>RENAME</code> 命令，<strong>先写接口注释，再写实现</strong>。为什么值得花这个力气，<a href="../chapters/12-why-comments.html">第 12 章</a>已经讲过了。</p>
+
+<h2 id="find">你要找的问题</h2>
+<div class="table-wrap"><table>
+  <tr><th>位置</th><th>读的时候问自己</th></tr>
+  <tr><td><code>src/store.h</code> 的私有成员和取值方法</td><td>只看名字，你能说出 <code>total_</code>、<code>dead_</code>、<code>count()</code> 的单位和含义吗？同一个概念，在 README、STATS 输出、<code>Database::maybeCompact()</code> 里分别叫什么？</td></tr>
+  <tr><td><code>Store::handle</code></td><td>不看实现，这个名字能告诉你它在什么时候被调用、做什么吗？</td></tr>
+  <tr><td><code>Store::compact()</code> 的注释</td><td>这段注释是写给调用者的，还是写给实现者的？调用者最想知道的三件事（之后会怎样、失败了数据还在不在、中途崩溃会怎样）它回答了吗？</td></tr>
+  <tr><td><code>Store</code> 的其他公有方法</td><td>只看声明，回答：<code>get</code> 找不到时返回什么？<code>getRange</code> 的 end 包含吗？<code>del</code> 删不存在的 key 会怎样？出错时内存和日志是否一致？</td></tr>
+  <tr><td><code>src/index.h</code>、<code>src/store.cpp</code> 里的注释</td><td>用书里的检验：只看旁边那一行代码，一个没读过实现的人能不能写出这条注释？反过来，<code>Index::find()</code> 返回的指针什么时候失效，写在哪里了？</td></tr>
+</table></div>
+<textarea class="note" data-key="m07-findings" placeholder="例如：total_ 其实是 ……；dead_ 和 …… 是同一个东西；compact 的注释缺了 ……；Index::find 有一条没写下来的约束 ……"></textarea>
+
+<div class="lab"><p>先感受一下现状：只读头文件，看看你能回答多少问题。</p>
+<pre><code>cd project/minikv
+make test
+grep -n "total\|dead\|count()\|handle" src/store.h src/database.cpp
+grep -n "//" src/index.h src/store.cpp</code></pre></div>
+
+<h2 id="task">任务与约束</h2>
+<h3>前一半：修名字和注释</h3>
+<ol>
+  <li>给 <code>Store</code> 里含糊的名字换成精确的名字，并和项目里其他地方对同一概念的叫法保持一致。</li>
+  <li>删掉复述代码的注释；在真正有"看不出来的信息"的地方补注释（包括 <code>index.h</code>）。</li>
+  <li>重写 <code>Store::compact()</code> 的注释，让它只说调用者需要知道的东西。</li>
+  <li>给 <code>Store</code> 的类和每个公有方法写接口注释：返回值、不存在时的行为、边界是否包含、抛什么异常、失败后数据处于什么状态。</li>
+</ol>
+<h3>后一半：先写注释，再加 RENAME</h3>
+<p>要加的命令是 <code>RENAME src dst</code>：把 src 的值交给 dst，并删掉 src。</p>
+<div class="aside" data-title="规则：注释先于代码"><p>在写任何实现之前，先在下面的笔记框里写出 <code>Store::rename</code> 的<strong>完整</strong>接口注释。写不下去的地方，就是你还没做的设计决定，先把它们想清楚。写完了再去实现，实现时如果发现注释不对，先改注释。</p></div>
+<textarea class="note" data-key="m07-rename-comment" placeholder="// Gives the value of `from` to `to` ...
+void rename(const std::string&amp; from, const std::string&amp; to, const WriteOptions&amp; wo);"></textarea>
+<p>你的注释至少要回答这几个问题：</p>
+<ul>
+  <li>src 不存在时怎么办？数据会被改动吗？</li>
+  <li>dst 已经存在时怎么办？</li>
+  <li>src 和 dst 是同一个 key 时会发生什么？（试着按"先写 dst 再删 src"在脑子里执行一遍。）</li>
+  <li>RENAME 在日志里会写几条记录？如果进程在两条记录之间崩溃，重启后看到的是什么？这个结果可以接受吗？</li>
+</ul>
+<p>约束：</p>
+<ul>
+  <li>原有测试一个都不许改，必须全绿；为 RENAME 新建 <code>tests/test_rename.cpp</code>。</li>
+  <li>代码里的名字和注释保持英文（和项目一致）。</li>
+  <li>只做名字和注释（以及 RENAME）。注释写出来以后你可能会发现一些设计问题，如实写进注释即可，结构性的修改留给对应任务。</li>
+  <li>README 的命令表加上 RENAME。</li>
+</ul>
+
+<h2 id="check">自查清单</h2>
+<ul class="checklist">
+  <li>任何一个成员名，单独拿出来看，都能猜出它的含义和单位；同一概念全项目只有一个名字。</li>
+  <li>每条注释都通过"不是代码的复述"检验：它用的词和它旁边的名字不一样，提供的信息在代码里看不出来。</li>
+  <li><code>store.h</code> 的接口注释里没有出现任何私有成员名、系统调用名或临时文件名。</li>
+  <li>把 <code>store.cpp</code> 藏起来，只给同事 <code>store.h</code>：对方能正确地调用每个方法，并说出每个方法失败时的后果。</li>
+  <li>RENAME 的注释是你在写实现<strong>之前</strong>写的；实现后对照一下，注释有没有需要改的地方？如果有，为什么当时没想到？</li>
+  <li><code>make test</code> 全绿，编译零警告。</li>
+</ul>
+
+<h2 id="hints">提示</h2>
+<details class="reveal"><summary>提示 1：名字从哪里找</summary><div>
+  <p>先列出几个候选词，再挑最精确的那个。<code>total_</code> 记录的是日志文件的字节数；<code>dead_</code> 记录的东西，在 STATS 输出里已经有一个更好的名字了。第 14 章说的一致性有三条：同一用途总用同一个名字、这个名字不用于别的用途、用途要窄到所有同名变量行为一致。</p>
+</div></details>
+<details class="reveal"><summary>提示 2：接口注释写什么</summary><div>
+  <p>站在调用者的角度：一两句话说清它做什么；每个参数和返回值的精确含义（单位、范围、包含与否、"不存在"时是什么）；副作用；会抛什么异常、抛了之后数据处于什么状态。写到"失败后会怎样"时，回头仔细读一遍实现，<strong>注释必须是真的</strong>。<code>compact()</code> 在这里藏着一个惊喜。</p>
+</div></details>
+<details class="reveal"><summary>提示 3：注释写不顺的时候</summary><div>
+  <p>写 <code>exists()</code> 的注释时，如果要写全，你会被迫写下一个奇怪的副作用；写 <code>compact()</code> 的失败语义时，你会写出一句很别扭的话。第 15 章说过：一个简单而完整的注释写不出来，往往说明设计本身有问题。这个任务里，把问题如实写下来就够了，别在这里修结构。</p>
+</div></details>
+<details class="reveal"><summary>提示 4：RENAME 和崩溃</summary><div>
+  <p>RENAME 可以用现有的 <code>set</code> 和 <code>del</code> 组合出来，日志里就是两条记录。两条记录的顺序决定了"在中间崩溃"时的结果：先删 src 再写 dst，崩溃后值就丢了；先写 dst 再删 src，崩溃后两个 key 都有值。真正原子的做法需要新的记录类型，要改日志格式。选哪种都行，但必须写进注释。</p>
+</div></details>
+
+<h2 id="answer">参考答案与讨论</h2>
+<div class="aside" data-title="先自己做"><p>先自己做完、测试全绿，<strong>尤其要先写出 RENAME 的注释</strong>，再打开下面的内容对照。</p></div>
+
+<details class="reveal"><summary>打开参考答案</summary><div>
+
+<h3>名字</h3>
+<div class="table-wrap"><table>
+  <tr><th>改之前</th><th>改之后</th><th>为什么</th></tr>
+  <tr><td><code>total_</code> / <code>total()</code></td><td><code>logBytes_</code> / <code>logBytes()</code></td><td>"总"什么不清楚；它是日志文件的字节数，STATS 里本来就叫 <code>log_bytes</code></td></tr>
+  <tr><td><code>dead_</code> / <code>dead()</code></td><td><code>garbageBytes_</code> / <code>garbageBytes()</code></td><td>README、STATS、<code>Database</code> 都叫 garbage，只有这里叫 dead</td></tr>
+  <tr><td><code>count()</code></td><td><code>keyCount()</code></td><td>count of what</td></tr>
+  <tr><td><code>handle(const Record&amp;)</code></td><td><code>replayRecord(const Record&amp;)</code></td><td>说出它在什么时候、对什么起作用</td></tr>
+</table></div>
+
+<h3>接口注释</h3>
+<div class="ba">
+  <div data-label="改之前：实现步骤清单">
+<pre><code class="lang-cpp">// Loops over index_ and writes each entry with a second LogWriter opened
+// with O_TRUNC on path_ + ".compact", fsyncs it, closes writer_,
+// rename(2)s the new file over path_, reopens writer_ with O_APPEND,
+// then sets total_ to the new size and dead_ to 0.
+void compact();
+
+std::pair&lt;bool, std::string&gt; get(const std::string&amp; key) const;
+bool exists(const std::string&amp; key) const;
+void del(const std::string&amp; key, const WriteOptions&amp; wo);
+std::string getRange(const std::string&amp; key, int64_t start, int64_t end) const;</code></pre>
+  </div>
+  <div data-label="改之后：调用者需要知道的">
+<pre><code class="lang-cpp">// Rewrites the log so that it holds only the current value of each key,
+// which brings garbageBytes() to 0. Takes time proportional to the size
+// of the live data. If the process dies during compaction, the old log
+// is still complete. Throws std::runtime_error on I/O errors; the log on
+// disk then still holds all the data, but if the failure happened while
+// switching to the new file, every later write fails too until the Store
+// is reopened.
+void compact();
+
+// Returns {true, value} if `key` is present and {false, ""} otherwise.
+// Counts one keyspace hit or miss in stats().
+std::pair&lt;bool, std::string&gt; get(const std::string&amp; key) const;
+
+// Returns whether `key` is present. Like get(), counts one keyspace hit
+// or miss in stats().
+bool exists(const std::string&amp; key) const;
+
+// Removes `key`. Throws KeyNotFound if it is absent.
+void del(const std::string&amp; key, const WriteOptions&amp; wo);
+
+// Returns bytes start..end of the value of `key`, both ends inclusive,
+// counting from 0. Throws KeyNotFound if `key` is absent and
+// std::out_of_range unless 0 &lt;= start &lt;= end &lt; length of the value.
+std::string getRange(const std::string&amp; key, int64_t start, int64_t end) const;</code></pre>
+  </div>
+</div>
+<p>类注释也补上了：<code>Store</code> 是什么、修改何时写入日志、写日志失败时内存和日志各处于什么状态、不是线程安全的。<code>Database</code> 不重复这些注释，只说一句"语义同 store.h 中的同名方法，另外每次写都可能触发压缩"。</p>
+
+<h3>注释暴露出来的设计问题</h3>
+<ul>
+  <li><strong><code>compact()</code> 的失败语义写不简单。</strong>本想写"失败时数据不变"，回头核对实现才发现：基线先关写端再 <code>rename</code>，rename 失败后所有写都会失败。注释只能写成那句别扭的话。这就是第 15 章说的金丝雀：注释难写，设计有问题。（<a href="m01.html">m01</a> 的 <code>LogFile::rewrite</code> 顺带修掉了它。）</li>
+  <li><strong><code>exists()</code> 会改统计数据。</strong>写全了注释，这个副作用就摆到了明面上，GET 先 exists 再 get，一次命中计两次。<a href="m08.html">m08</a> 会处理它。</li>
+  <li><strong><code>Index::find()</code> 的指针有效期</strong>原来只存在于作者脑子里，现在写进了 <code>index.h</code>。</li>
+</ul>
+
+<h3>实现注释：只写"为什么"</h3>
+<div class="ba">
+  <div data-label="改之前：复述代码">
+<pre><code class="lang-cpp">// write the record
+writer_.append(rec, wo);
+
+uint64_t size = kRecordHeaderSize + key.size() + value.size();
+// update dead
+const IndexEntry* old = index_.find(key);
+if (old) dead_ += old-&gt;recordSize;
+// update total
+total_ += size;
+// update index
+index_.put(key, value, size);</code></pre>
+  </div>
+  <div data-label="改之后：说出看不出来的">
+<pre><code class="lang-cpp">// Log first: if the write throws, memory still matches the log.
+writer_.append(rec, wo);
+
+uint64_t size = kRecordHeaderSize + key.size() + value.size();
+const IndexEntry* old = index_.find(key);
+if (old) garbageBytes_ += old-&gt;recordSize;
+logBytes_ += size;
+index_.put(key, value, size);</code></pre>
+    <p>改名以后，后面三行已经不需要注释了。剩下的一条说的是顺序为什么重要，这是代码本身表达不出来的。</p>
+  </div>
+</div>
+
+<h3>RENAME：注释先行</h3>
+<pre><code class="lang-cpp">// Gives the value of `from` to `to` and removes `from`, as if by
+// set(to, value) followed by del(from). An existing value of `to` is
+// replaced. Renaming a key to itself does nothing. Throws KeyNotFound if
+// `from` is absent; nothing changes then.
+// Not atomic across crashes: the change is logged as two records, so a
+// crash between them leaves both keys holding the value after a restart
+// (never neither).
+void rename(const std::string&amp; from, const std::string&amp; to, const WriteOptions&amp; wo);</code></pre>
+<div class="table-wrap"><table>
+  <tr><th>注释逼出来的问题</th><th>决定</th></tr>
+  <tr><td>src 不存在</td><td>抛 <code>KeyNotFound</code>，不改任何东西，回复 <code>ERR no such key</code></td></tr>
+  <tr><td>dst 已存在</td><td>覆盖，和 SET 一致</td></tr>
+  <tr><td>src == dst</td><td>什么都不做。机械地"先写 dst 再删 src"会把值删掉：这是写注释时才会认真去想的边界</td></tr>
+  <tr><td>两条记录之间崩溃</td><td>先写 dst 再删 src，重启后两个 key 都有值，而不是都没了</td></tr>
+</table></div>
+<p>真正原子的 RENAME 需要新的记录类型，要改日志格式和重放。参考答案没有做，而是把"不原子，但只多不少"写进接口。如果你写注释时觉得这句话无法接受，那正说明应该去改格式：注释在这里起了设计评审的作用。决定都做完了，实现只有几行：</p>
+<pre><code class="lang-cpp">void Store::rename(const std::string&amp; from, const std::string&amp; to, const WriteOptions&amp; wo) {
+    const IndexEntry* source = index_.find(from);
+    if (!source) throw KeyNotFound(from);
+    if (from == to) return;
+    // Copy: set() may rehash the index and invalidate `source`.
+    std::string value = source-&gt;value;
+    // Write `to` before deleting `from`, so that a crash in between leaves
+    // the value under both keys rather than under neither.
+    set(to, value, wo);
+    del(from, wo);
+}</code></pre>
+<p>数字：<code>store.h</code> 从 62 行变成 116 行，其中注释从 6 行变成 49 行。</p>
+
+<h3>代价与取舍</h3>
+<div class="counter" data-title="注释是不是太多了？">
+  <p>头文件长了一倍。第 13.1 节的立场是每个类、每个成员、每个方法都该有注释，例外极少；参考答案只省略了 <code>contains()</code>、<code>keyCount()</code> 这类名字已经说完一切的声明。衡量标准不是行数，而是每一行有没有提供代码里看不出来的信息。和 Clean Code 关于"注释是失败"的分歧，见<a href="../topics/clean-code.html">专题</a>。</p>
+</div>
+<div class="counter" data-title="接口注释放 .h 还是 .cpp？">
+  <p>书中第 16.2 节主张把接口注释放在实现旁边，改代码时更容易顺手更新；C/C++ 的普遍习惯是放在头文件，方便调用者阅读。参考答案遵循项目已有的约定（头文件）。第 17 章会讲：遵守已有约定的价值，通常大于一个"更好的想法"。</p>
+</div>
+<div class="counter" data-title="改名的成本">
+  <p>名字是接口的一部分，改名要改所有使用者：<code>total_</code> 改成 <code>logBytes_</code> 让 <code>database.cpp</code> 也进了 diff。越早改越便宜，这也是第 14 章说名字值得一开始就花时间的原因。</p>
+</div>
+
+<h3>审稿人仍会指出的问题</h3>
+<ul>
+  <li><code>get()</code> 仍然返回 <code>std::pair</code>，<code>exists()</code> 的副作用只是被写明了、没有被去掉，<code>Server::bulk(s, true, true)</code> 的两个 bool 仍然看不出含义：<a href="m08.html">m08</a>。</li>
+  <li><code>del</code>、<code>getRange</code> 的错误情况本可以定义掉（<a href="m06.html">m06</a>）。注释越写越长的地方，往往就是设计可以更简单的地方。</li>
+  <li>RENAME 的处理函数又复制了一遍参数检查和 try/catch：重复的问题见 <a href="m05.html">m05</a>。</li>
+</ul>
+
+<p>完整讨论见 <code>solutions/m07/DISCUSSION.md</code>。对照自己的改动：</p>
+<pre><code>cd project            # 仓库里 minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m07 clean
+diff -ru minikv solutions/m07
+make -C solutions/m07 test</code></pre>
+
+</div></details>
+
+<nav class="chapter-nav">
+  <a class="prev" href="m06.html"><small>← 上一个任务</small>m06：少一些需要处理的错误</a>
+  <a class="next" href="m08.html"><small>下一个任务 →</small>m08：一目了然的代码与关键路径</a>
+</nav>
+
+</main>
+</body>
+</html>

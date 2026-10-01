@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 5 章 · 信息隐藏（与泄漏）</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch05.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.km { width: auto; min-width: 100%; font-size: 13.5px; }
+.km th, .km td { padding: 6px 8px; white-space: nowrap; }
+.km th.mod { font: 12px var(--mono); text-align: center; }
+.km td.dec { white-space: normal; min-width: 120px; max-width: 220px; cursor: pointer; }
+.km tr.sel td { background: var(--accent-soft); }
+.km tr:hover td.dec { color: var(--accent); }
+.km td.c { text-align: center; }
+.km .k { display: inline-block; font-size: 11.5px; border-radius: 4px; padding: 1px 6px; border: 1px solid; }
+.km .k.own { background: var(--ok-soft); border-color: var(--ok); }
+.km .k.bd { background: var(--bad-soft); border-color: var(--bad); }
+.km .k.if { background: var(--warn-soft); border-color: var(--warn); }
+.km .k.cfg { background: var(--surface-2); border-color: var(--border); color: var(--muted); }
+.km .k.ghost { visibility: hidden; }
+.km-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.km-legend .k { font-size: 11.5px; border-radius: 4px; padding: 1px 6px; border: 1px solid; color: var(--fg); }
+.km-legend .own { background: var(--ok-soft); border-color: var(--ok); }
+.km-legend .bd { background: var(--bad-soft); border-color: var(--bad); }
+.km-legend .if { background: var(--warn-soft); border-color: var(--warn); }
+.km-legend .cfg { background: var(--surface-2); border-color: var(--border); }
+.km-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.km-modes button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+</style>
+</head>
+<body data-chapter="5">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>一个设计决定应该"住"在哪个模块里？怎样发现它已经悄悄住进了好几个模块？</strong></p>
+</div>
+<p>第 4 章给出了目标：模块要深，接口要比实现简单得多。但它没有说<strong>怎么</strong>做到。从这一章开始，书用连续几章讲"造深模块的技术"，第一个、也是最基础的一个，就是<strong>信息隐藏（information hiding）</strong>：让每个模块把少数几个设计决定关在自己的实现里，接口不透露它们。</p>
+<p>它的反面叫<strong>信息泄漏（information leakage）</strong>：同一个设计决定出现在好几个模块里。回想第 2 章，复杂性的根源之一是依赖，症状之一是"改一处要动很多地方"。信息泄漏正是制造这种依赖最常见的方式，而泄漏最常见的成因，是一种几乎人人都会的切分方式：<strong>按时间顺序分解（temporal decomposition）</strong>。</p>
+<p>这一章篇幅不长，书中的主要例子是学生实现的 HTTP 服务器，但它给出的三个红旗（泄漏、按时间分解、过度暴露 overexposure）会贯穿全书。本站的训练题也以这一章为重点。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>5.1 节末尾那段 "Note"</strong>：把变量声明成 <code>private</code> 不等于信息隐藏。读完想一想你最近写的一组 getter/setter：它们藏住了什么，又暴露了什么？</li>
+    <li><strong>5.3 节的最后一段</strong>：作者并没有说"执行顺序不重要"。注意作者允许按阶段切分模块的那个条件，本页"边界与反方"一节会用到它。</li>
+    <li><strong>5.5 节</strong>：作者说把类"稍微变大"常常能改善信息隐藏，并给了两个理由。读的时候把它和第 4 章的类炎对照起来看，再留意作者马上补充的那句"也可能做过头"。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>信息隐藏 = 把设计决定关起来</h4><p>数据结构、算法、页大小这样的底层常量，乃至"大多数文件都很小"这样的高层假设，都可以只存在于一个模块的实现里。好处有两个：接口更简单（使用者要记的少），改这个决定只动一个模块（系统好演进）。</p></div>
+  <div class="card"><h4>private ≠ 隐藏</h4><p>私有变量配上一对 getter/setter，它是什么、怎么用，照样暴露给了所有调用者，和公开变量差不多。访问控制只是工具，隐藏的是<strong>知识</strong>。</p></div>
+  <div class="card"><h4>泄漏 = 同一个决定出现在多处</h4><p>改这个决定，所有知道它的模块都得一起改。写进接口的信息，按定义就已经泄漏了；所以接口越简单，往往信息藏得越好。<span data-flag="leakage"></span></p></div>
+  <div class="card"><h4>后门泄漏更阴险</h4><p>后门泄漏（back-door leakage）：两个类都懂同一种文件格式，但谁的接口里都没写。改格式时编译器不会提醒你，读头文件也看不出来，这正是第 2 章说的"未知的未知"。</p></div>
+  <div class="card"><h4>按时间顺序分解</h4><p>按"先读、再改、后写"切模块。可大多数设计决定会在程序生命中的好几个时刻用到，于是同一份知识被复制进好几个阶段。<span data-flag="temporal"></span></p></div>
+  <div class="card"><h4>把接口的层次提高</h4><p>与其提供三个"步骤方法"让调用者按顺序调用，不如提供一个方法把整件事做完。类会稍微变大，但更深。</p></div>
+  <div class="card"><h4>默认就做对的事</h4><p>几乎人人都要的行为应该自动发生；罕见需求另走单独的入口。逼着所有人先了解罕用功能，就是过度暴露（overexposure）。<span data-flag="overexposure"></span> <span data-principle="5"></span></p></div>
+</div>
+
+<h2>心智模型：知识住在哪里</h2>
+<p>判断一个切分好不好，先别看类图上的方框，而是把系统里的<strong>设计决定</strong>一条条列出来，问每一条：<strong>有几个模块必须知道它？</strong>理想答案是一个。下图是同一个"读段文件、处理、写回"程序的两种切法。</p>
+<figure class="fig">
+<svg viewBox="0 0 660 280" width="660" role="img" aria-label="左：按时间顺序切成读、改、写三个类，文件格式知识在读、写、校验工具里各有一份；右：一个段存储类独占格式知识，读阶段和写阶段都调用它">
+  <text x="160" y="22" text-anchor="middle" font-weight="700">按时间顺序切</text>
+  <line x1="20" y1="232" x2="300" y2="232" class="arrow" marker-end="url(#ah5)"/>
+  <defs><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <text x="300" y="252" text-anchor="end" font-size="12" class="t-muted">执行时间 →</text>
+  <rect x="20" y="120" width="80" height="80" rx="6" class="box"/><text x="60" y="166" text-anchor="middle" font-size="13">读</text>
+  <rect x="120" y="120" width="80" height="80" rx="6" class="box"/><text x="160" y="166" text-anchor="middle" font-size="13">改</text>
+  <rect x="220" y="120" width="80" height="80" rx="6" class="box"/><text x="260" y="166" text-anchor="middle" font-size="13">写</text>
+  <rect x="28" y="88" width="64" height="24" rx="12" class="bad-soft"/><text x="60" y="105" text-anchor="middle" font-size="12">格式</text>
+  <rect x="228" y="88" width="64" height="24" rx="12" class="bad-soft"/><text x="260" y="105" text-anchor="middle" font-size="12">格式</text>
+  <rect x="128" y="88" width="64" height="24" rx="12" class="ok-soft"/><text x="160" y="105" text-anchor="middle" font-size="12">脱敏规则</text>
+  <rect x="120" y="36" width="80" height="34" rx="6" class="box"/><text x="160" y="58" text-anchor="middle" font-size="12.5">校验工具</text>
+  <rect x="206" y="40" width="64" height="24" rx="12" class="bad-soft"/><text x="238" y="57" text-anchor="middle" font-size="12">格式</text>
+  <text x="160" y="270" text-anchor="middle" font-size="12" class="t-muted">一个决定，三个家：改格式要改三处</text>
+
+  <line x1="340" y1="20" x2="340" y2="260" style="stroke:var(--border)"/>
+
+  <text x="500" y="22" text-anchor="middle" font-weight="700">按知识切</text>
+  <line x1="370" y1="232" x2="640" y2="232" class="arrow" marker-end="url(#ah5)"/>
+  <circle cx="400" cy="232" r="5" class="accent"/><text x="400" y="252" text-anchor="middle" font-size="12" class="t-muted">读阶段</text>
+  <circle cx="510" cy="232" r="5" class="accent"/><text x="510" y="252" text-anchor="middle" font-size="12" class="t-muted">脱敏</text>
+  <circle cx="620" cy="232" r="5" class="accent"/><text x="620" y="252" text-anchor="middle" font-size="12" class="t-muted">写阶段</text>
+  <text x="380" y="46" font-size="12" class="t-muted">校验工具 → store.verify()</text>
+  <rect x="380" y="56" width="260" height="62" rx="8" class="box-strong"/>
+  <text x="440" y="92" text-anchor="middle" font-size="12.5" class="mono">SegmentStore</text>
+  <rect x="520" y="75" width="64" height="24" rx="12" class="ok-soft"/><text x="552" y="92" text-anchor="middle" font-size="12">格式</text>
+  <rect x="465" y="140" width="90" height="48" rx="8" class="box"/>
+  <text x="510" y="160" text-anchor="middle" font-size="12.5" class="mono">Redactor</text>
+  <text x="510" y="178" text-anchor="middle" font-size="11.5" class="t-muted">脱敏规则</text>
+  <line x1="400" y1="224" x2="415" y2="122" class="arrow"/>
+  <line x1="620" y1="224" x2="605" y2="122" class="arrow"/>
+  <line x1="510" y1="224" x2="510" y2="192" class="arrow"/>
+  <text x="510" y="270" text-anchor="middle" font-size="12" class="t-muted">同一个类在不同时刻被用到，格式只有一个家</text>
+</svg>
+<figcaption>横轴是执行时间。左边每个阶段一个类，格式知识跟着阶段被复制；右边按知识划分，"读"和"写"这两个时刻都去用同一个类。本站自绘示意。</figcaption>
+</figure>
+
+<blockquote class="quote">When designing modules, focus on the knowledge that's needed to perform each task, not the order in which tasks occur.<cite>— 第 5.3 节</cite></blockquote>
+
+<p>下面这个小工具把上图展开成一张"知识归属表"：行是设计决定，列是模块，格子表示"这个模块必须知道这个决定"。<strong>点击某一行</strong>，假装你要改这个决定，看看要动几个模块；再勾上"只看头文件"，体会后门泄漏为什么难以发现。</p>
+
+<section class="sim" id="sim-km">
+  <div class="sim-head"><span class="tag">交互</span><h3>谁知道这个决定？</h3>
+    <div class="desc">场景（本站原创）：一个访问日志归档工具，读入一批段文件（segment），把其中的个人信息脱敏，再写成新的段文件；另有一个 fsck 工具检查段文件是否损坏。表头的 Reader / Writer 即下文代码里的 <code>SegmentReader</code> / <code>SegmentWriter</code>。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <div class="km-modes" id="km-modes"></div>
+      <label><input type="checkbox" id="km-iface"> 只看头文件（隐藏接口上看不见的依赖）</label>
+    </div>
+    <div class="stage"><table class="km" id="km-table"></table></div>
+    <div class="km-legend">
+      <span><span class="k own">主人</span> 唯一该知道它的模块</span>
+      <span><span class="k bd">后门</span> 知道它，但接口上看不出来</span>
+      <span><span class="k if">接口</span> 接口里就写着它</span>
+      <span><span class="k cfg">配置</span> 有意暴露的可调参数</span>
+    </div>
+    <div class="narrate" id="km-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="km-touch">0</div><div class="l">改这个决定要动的模块</div></div>
+      <div class="stat"><div class="v" id="km-bd">0</div><div class="l">全表后门泄漏处数</div></div>
+      <div class="stat"><div class="v" id="km-owned">0</div><div class="l">只有一个家的决定</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">表里的归属是按下文"改之前 / 改之后"两段代码逐条标出来的。真实项目里没人给你画这张表，这正是本章要训练的能力：看到一段代码，能说出它依赖哪些别处也在用的知识。</p>
+
+<h2>一个原创例子：先读、再改、后写</h2>
+<p>把上面的场景写成代码。很多人第一次写这类工具，会顺着脑子里的流程图写出左边的结构，书里叫它按时间顺序分解。</p>
+<div class="ba">
+  <div data-label="改之前：一个阶段一个类">
+<pre class="numbered" data-mark="12,13,18,19,20,21"><code class="lang-cpp">class SegmentReader {            // 第一步：读
+public:
+    explicit SegmentReader(const std::string&amp; dir);   // 按文件名顺序打开 seg-*.log
+    std::optional&lt;LogRecord&gt; next();
+};
+class Redactor {                 // 第二步：改
+public:
+    void apply(LogRecord&amp; r) const;
+};
+class SegmentWriter {            // 第三步：写
+public:
+    SegmentWriter(const std::string&amp; dir, const char* namePattern, size_t rotateBytes);
+    void append(const LogRecord&amp; r);   // 实现：writeLE32(len); writeLE32(crc32(payload)); ...
+};
+
+// segment_reader.cpp
+std::optional&lt;LogRecord&gt; SegmentReader::next() {
+    uint32_t len = readLE32(in_);
+    uint32_t crc = readLE32(in_);
+    std::string payload = readBytes(in_, len);
+    if (crc32(payload) != crc) throw CorruptSegment(path_);
+    return decodeRecord(payload);    // 和 writer 里的 encodeRecord 必须严格互逆
+}
+// tools/fsck.cpp 里还有第三份：同样的 readLE32、同样的 crc32 比较……</code></pre>
+    <p>第 13 行（写）、第 18～21 行（读）以及 fsck 里的第三份，各自"知道"帧格式和校验算法，但三个类的接口里都没有提到它们，这是<strong>后门泄漏</strong>。第 12 行更直接：文件命名模式和轮转阈值写进了构造函数签名，调用者被迫知道段文件怎么命名，这是<strong>接口泄漏</strong>。</p>
+  </div>
+  <div data-label="改之后：一个类管段文件">
+<pre class="numbered" data-mark="1,2,5"><code class="lang-cpp">// 一个目录下按顺序排列的一组段文件。帧格式、校验算法、记录编码、
+// 文件命名与轮转规则，只在这个类的实现里出现。
+class SegmentStore {
+public:
+    struct Options { size_t segmentBytes = 64 &lt;&lt; 20; };  // 不同部署可能要调
+    explicit SegmentStore(std::string dir, Options opt = {});
+
+    class Scanner { public: std::optional&lt;LogRecord&gt; next(); /* … */ };
+    Scanner scan() const;            // 按写入顺序遍历；损坏时抛 CorruptSegment（带文件名和偏移）
+    void append(const LogRecord&amp; r); // 满了自动换新段
+    VerifyReport verify() const;     // 给 fsck 用
+};
+
+// main：顺序仍然在这里，但只剩顺序
+SegmentStore in(srcDir), out(dstDir);
+Redactor redact(rules);
+for (auto it = in.scan(); auto rec = it.next(); ) {
+    redact.apply(*rec);
+    out.append(*rec);
+}</code></pre>
+    <p>读和写发生在不同的时刻，但它们依赖同一份知识，所以放进同一个类。fsck 工具变成一行 <code>store.verify()</code>。<code>Redactor</code> 仍然是单独的"一个阶段"，这没问题，因为脱敏规则和段文件格式毫无关系。</p>
+  </div>
+</div>
+<p><strong>好在哪里</strong>：把长度字段改成 varint、把 CRC32 换成 CRC32C、给文件头加版本号，现在都只改一个类；编码和解码挨在一起，一个往返测试（写进去、读出来、比较）就能锁住它们互逆。<strong>代价</strong>：<code>SegmentStore</code> 比原来任何一个类都大，读和写两条路径挤在一个文件里；如果哪天它大到难以理解，就需要第 9 章的判断标准来决定怎么再拆，但拆的依据仍然是知识，不是时间顺序。</p>
+
+<div class="aside" data-title="对照 OSTEP">
+  <p>书中 5.1 节列举的"可以藏在模块里的信息"，有几条你在 OSTEP 里亲手见过：文件的逻辑块怎么映射到磁盘物理块（<a href="https://t.miaowuao.cn/ostep/chapters/40-fs-impl.html">OSTEP 第 40 章</a>的 inode 与间接块），线程在多核上怎么调度（<a href="https://t.miaowuao.cn/ostep/chapters/10-multicpu.html">第 10 章</a>）。文件系统从直接指针改成 extent、调度器从 O(1) 换成 CFS，上层程序一行都不用改，这就是"改设计只动一个模块"的大规模实例。</p>
+</div>
+
+<h3>private 不等于隐藏</h3>
+<p>第二个例子更隐蔽，因为它"看起来封装得很好"：成员变量是私有的，访问都走方法。</p>
+<div class="ba">
+  <div data-label="改之前：私有变量 + getter/setter">
+<pre class="numbered" data-mark="3,5"><code class="lang-cpp">class RouteTable {
+public:
+    // 按前缀长度从长到短排好序；调用者可以从头扫描，第一个匹配的就是最长前缀
+    const std::vector&lt;Route&gt;&amp; routes() const { return routes_; }
+    void setRoutes(std::vector&lt;Route&gt; r) { routes_ = std::move(r); }  // 调用者负责先排好序
+private:
+    std::vector&lt;Route&gt; routes_;
+};</code></pre>
+    <p><code>routes_</code> 是私有的，但"它是一个按前缀长度排序的 vector"这件事，以及"最长前缀匹配怎么做"，全都写在了接口注释里，每个调用者都依赖它。哪天为了性能换成前缀树（trie），所有调用者都得改。</p>
+  </div>
+  <div data-label="改之后：只暴露操作">
+<pre><code class="lang-cpp">class RouteTable {
+public:
+    // 最长前缀匹配；没有匹配的路由时返回 nullptr。
+    const Route* lookup(IpAddr dst) const;
+    void add(const Route&amp; r);          // 前缀已存在时替换
+    bool remove(const Prefix&amp; p);      // 不存在时返回 false
+private:
+    std::vector&lt;Route&gt; routes_;        // 现在：排序数组；以后：随便换
+};</code></pre>
+    <p>表示方式和匹配算法都缩回了类里。顺带，<code>lookup</code> 让调用者少写一个循环，接口更深了。书中 5.6 节 HTTP 请求的 <code>getParams()</code> 返回内部 Map 是同一个问题，作者还指出了另一层风险：调用者可能改动返回的 Map，从而破坏对象的内部状态。</p>
+  </div>
+</div>
+
+<h3>默认值：部分隐藏</h3>
+<p>不是所有信息都能完全藏住。书中把"只有少数调用者需要、而且走单独方法访问"的信息称为<strong>部分隐藏</strong>（partial information hiding）：常见路径上看不见它，所以依赖少得多。默认值就是典型。书中 5.7 节举的反例是：HTTP 响应的协议版本本来可以从请求里推出来，却要求调用者显式传入。作者说，调用者多半不知道该填什么；就算填了，也很可能造成库和调用者之间的信息泄漏。</p>
+<blockquote class="quote">The best features are the ones you get without even knowing they exist.<cite>— 第 5.7 节</cite></blockquote>
+<p>放到 C++ 里，常见的例子是：一个日志库默认就带缓冲和按天轮转，想关掉的人去调 <code>setRotation()</code>；一个 RPC 框架回复时从请求对象里自动带上相关 id 和编码方式，而不是让每个处理函数自己抄一遍。训练题里有这样的对比。</p>
+
+<h3>类的内部也一样</h3>
+<p>信息隐藏不只用在类的公开接口上。作者建议：每个私有方法也各自封装一点知识；并且<strong>尽量减少每个成员变量被用到的地方</strong>。一个成员变量被二十个方法直接读写，就是类内部的一次"泄漏"：改它的含义，二十处都得重新检查。</p>
+
+<h3>评审时怎么嗅出泄漏</h3>
+<div class="tip">
+  <p>本站补充几条经验线索（不是书里的清单，只是帮你把"对泄漏敏感"落到具体动作上）：</p>
+  <ul>
+    <li><strong>成对出现、却分住两处的代码</strong>：<code>Encoder</code>/<code>Decoder</code>、<code>Exporter</code>/<code>Importer</code>、写缓存/删缓存。它们几乎必然共享一份格式知识。</li>
+    <li><strong>同一个"魔法值"出现在多个文件</strong>：<code>30min</code>、<code>"v2"</code>、<code>64 &lt;&lt; 20</code>、<code>0xA55A</code>。全文搜索一下，搜到几处就是几个依赖方。</li>
+    <li><strong>调用者必须按固定顺序调好几个方法</strong>，或者必须把上一个方法的某个返回字段原样传给下一个：时间顺序分解的典型痕迹。</li>
+    <li><strong>getter 返回容器或内部结构的引用</strong>：表示方式已经成了接口的一部分。</li>
+    <li><strong>改一个需求时，你下意识地问"还有哪里也要改？"</strong>：这个问题本身就说明知识不只住在一处。</li>
+  </ul>
+</div>
+
+<h2>边界与反方：什么时候别生搬硬套</h2>
+<div class="counter" data-title="做过头：该暴露的必须暴露（5.9 节）">
+  <p>信息隐藏只对<strong>模块外不需要的信息</strong>有意义。作者的例子是性能配置参数：如果不同的使用场景确实需要不同的取值，就必须放进接口让人去调。书中给出的优先顺序是：最好是模块自己调好；做不到，就老老实实暴露出来。上面 <code>SegmentStore::Options::segmentBytes</code> 就属于这一类。把需要的信息藏起来，得到的是第 4 章说的<strong>虚假的抽象</strong>。</p>
+</div>
+<div class="counter" data-title="按阶段切分并不总是错的">
+  <p>执行顺序总要在某处体现（例子里是 <code>main</code>）。作者反对的是让顺序<strong>决定模块结构</strong>，同时也留了一个口子：如果各个阶段用到的信息完全不同，按阶段切分是可以的。下载图片、生成缩略图、上传对象存储，三步各管各的知识（HTTP 重试、图像解码、分片上传），分成三个模块并不泄漏。判断标准始终是"知识在哪"，不是"像不像流水线"。</p>
+</div>
+<div class="counter" data-title="抽一个新类来装泄漏的知识？有前提">
+  <p>修泄漏的办法，书里给了两种：几个类都小、又和泄漏的知识紧密相关时，把它们合并；或者把那份知识抽出来，单独放进一个新类。第二种有个前提：新类要能提供<strong>远比知识本身简单</strong>的接口。如果你抽出一个 <code>FrameCodec</code>，接口里却列着 <code>headerSize()</code>、<code>lengthOffset()</code>、<code>checksumOffset()</code>，调用者还是得懂格式，只是把后门泄漏换成了接口泄漏。</p>
+</div>
+<div class="counter" data-title="&quot;类要小&quot;与&quot;类稍微变大&quot;">
+  <p>作者在 5.5 节明确说，把类稍微变大常常能改善信息隐藏，这和"类越小越好"的流行建议直接冲突。但作者紧接着承认这也能做过头，比如整个应用只有一个类。合并的理由应该是"这些代码共享同一份知识"，而不是"合在一起更省事"。什么时候该拆，第 9 章会给出更系统的判断（本站<a href="../topics/clean-code.html">专题：APOSD 与 Clean Code</a> 有完整对照）。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道按时间顺序分解，一道"看起来像但其实没问题"，一道默认值设计。本章题库共 20 题，<a href="../train/index.html#ch=5">去训练场做完整一组</a>。</p>
+<div class="drill-embed" data-ids="ch05-flag-01 ch05-flag-05 ch05-ab-01"></div>
+
+<h2>动手：项目任务</h2>
+<p>本站的 <a href="../project/index.html">minikv</a> 是一个能跑、有测试、但按"战术式"风格写成的 C++ 键值存储。它的日志代码恰好按"写、读、解析"的时间顺序切成了 <code>LogWriter</code>、<code>LogReader</code>、<code>RecordParser</code> 三个类，记录格式这一个设计决定三个类各知道一份，还漏进了 <code>store.cpp</code>。去找这些痕迹：<code>LogReader::next</code> 里那个没有解释的 <code>skip</code>，<code>store.cpp</code> 里反复出现的"记录头大小 + 键长 + 值长"，以及 <code>Store::load()</code> 里把几个类串起来的胶水代码。然后把格式收进一个深模块，测试保持全绿。这个任务和第 4 章共用（第 4 章那一半是浅类和参数过多的 <code>open</code>）。</p>
+<div class="lab"><p>任务 m01：把浅类合成深模块，把泄漏的记录格式收进一个地方。详见 <a href="../project/m01.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="2"><div class="q">一个类的所有成员变量都是 <code>private</code>，每个变量都有对应的 getter 和 setter。按本章的观点：</div>
+  <div class="opts"><button>A. 只要 setter 里做了参数检查，就算信息隐藏</button><button>B. 这就是信息隐藏的标准做法</button><button>C. 访问控制做到了，但变量是什么、怎么用仍然暴露给了所有调用者，信息并没有被隐藏</button><button>D. 只有改成 <code>protected</code> 才算信息隐藏</button></div>
+  <div class="explain"><code>private</code> 能防止外部直接访问，是信息隐藏的工具，但不是信息隐藏本身。getter/setter 把变量的本质原样摆在接口上，改它的表示方式时调用者照样要改。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">为什么书中认为"后门泄漏"比"通过接口泄漏"更糟？</div>
+  <div class="opts"><button>A. 后门泄漏会降低性能</button><button>B. 它在接口上看不出来，改设计时很容易漏掉某个依赖方</button><button>C. 后门泄漏一定会导致编译错误</button><button>D. 后门泄漏只发生在继承关系里</button></div>
+  <div class="explain">接口上的泄漏至少看得见，编译器和代码评审能帮你找到所有依赖方。后门泄漏（比如两个类各自懂同一种文件格式）只能靠记忆或全文搜索，是第 2 章"未知的未知"的典型来源。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">一个配置热更新功能被拆成 <code>Fetcher</code>（下载）、<code>Parser</code>（解析）、<code>Applier</code>（生效）三个类。以下哪种情况最能说明它犯了"按时间顺序分解"的毛病？</div>
+  <div class="opts"><button>A. 三个类各有一个公开方法</button><button>B. <code>Applier</code> 需要知道哪些配置项可以不重启生效</button><button>C. 三个类按固定顺序被调用</button><button>D. <code>Fetcher</code> 为了判断下载是否完整，自己解析了文件头里的长度和版本号，<code>Parser</code> 里又解析了一遍</button></div>
+  <div class="explain">按顺序调用本身不是问题，顺序总得在某处体现。问题在于同一份知识（文件头格式）因为在两个时刻都要用，被复制进了两个阶段。B 是 <code>Applier</code> 自己该有的知识，不算泄漏。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">一个缓存模块的性能高度依赖容量，而不同服务的最佳容量相差百倍，模块也没法自动判断。按 5.9 节，应该：</div>
+  <div class="opts"><button>A. 把容量放进接口（可以带合理的默认值），让使用者去调</button><button>B. 从环境变量里偷偷读，接口里不提</button><button>C. 把容量写死成一个折中值，保持接口简单</button><button>D. 让每个调用者自己实现缓存</button></div>
+  <div class="explain">信息隐藏只适用于模块外不需要的信息。这里不同使用场景确实需要不同的值，就必须暴露。作者更推荐的是模块能自动调整；做不到时，老实暴露。B 是一种后门泄漏：依赖仍然存在，只是看不见了。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">发现两个类都知道同一种二进制格式。你抽出一个 <code>FormatCodec</code> 类，接口是 <code>headerSize()</code>、<code>lengthFieldOffset()</code>、<code>checksumFieldOffset()</code>。这次重构：</div>
+  <div class="opts"><button>A. 很成功：格式知识现在集中在一个类里</button><button>B. 价值不大：调用者仍然得懂格式，只是把后门泄漏换成了接口泄漏</button><button>C. 引入了按时间顺序分解</button><button>D. 属于过度暴露，因为方法太多</button></div>
+  <div class="explain">抽新类只有在新类能给出一个远比知识本身简单的接口时才有效，例如 <code>encode(record)</code> / <code>decode(bytes)</code>。这个接口只是把格式的细节换了个地方公开，两个类照样依赖它。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">关于"把类稍微变大"，下列哪项符合书中 5.5 节的意思？</div>
+  <div class="opts"><button>A. 把和某项能力相关的代码集中起来、把几步操作合成一个方法，常常能让类更深；但也能做过头</button><button>B. 只要类的代码行数超过 500 就应该合并</button><button>C. 类的大小和信息隐藏无关</button><button>D. 类越大越好，最好整个应用一个类</button></div>
+  <div class="explain">作者给的两个理由：把某项能力的所有代码聚到一起，以及提高接口层次（一个方法完成整个计算）。作者同时提醒，整个应用一个类显然过头了，第 9 章讨论什么时候该拆。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>信息隐藏：每个模块把少数几个设计决定关在实现里。接口变简单，改设计只动一处。</li>
+  <li><code>private</code> 不等于隐藏；getter/setter 常常把表示方式原样暴露出去。</li>
+  <li>信息泄漏：同一个决定出现在多个模块里。后门泄漏看不见，比接口泄漏更危险。</li>
+  <li>按时间顺序分解是泄漏最常见的成因：按"知识"切模块，而不是按"先后"。</li>
+  <li>默认就做对的事；罕用功能走单独入口，别让常见用法被迫了解它们。</li>
+  <li>但模块外需要的信息必须暴露，藏起来就成了虚假的抽象。</li>
+</ul>
+<p>第 6 章换一个角度看同一件事：模块该为今天的具体需求量身定制，还是做得"有点通用"？作者的答案会让很多信奉"先满足需求再说"的人意外，而给出的主要理由正是：<strong>通用的接口能藏住更多信息</strong>。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段代码。</p>
+<textarea class="note" data-key="ch05-oneline" placeholder="例如：我们的导入/导出两个类其实都在解析同一种 CSV 方言，这是后门泄漏……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h } = APOSD;
+  // 设计决定（行）。归属按页面上"改之前 / 改之后"的代码逐条标注。
+  const DEC = [
+    { k: "frame", t: "帧格式：4 字节长度 + 4 字节校验 + 负载" },
+    { k: "crc", t: "校验算法：CRC32" },
+    { k: "enc", t: "记录编码：时间戳 varint，字符串带长度前缀" },
+    { k: "name", t: "段文件命名 seg-%06d.log 与轮转规则" },
+    { k: "pii", t: "哪些字段算个人信息（脱敏规则）" },
+    { k: "order", t: "处理顺序：先读、再脱敏、后写" },
+  ];
+  // 每种模式：模块（列）+ 每个决定在哪些模块里出现。own 主人 / bd 后门 / if 接口 / cfg 有意暴露的配置
+  const MODES = [
+    { name: "改之前：按时间顺序切", mods: ["Reader", "Redactor", "Writer", "fsck", "main"],
+      cells: { frame: { 0: "bd", 2: "bd", 3: "bd" }, crc: { 0: "bd", 2: "bd", 3: "bd" }, enc: { 0: "bd", 2: "bd" },
+               name: { 0: "bd", 2: "bd", 3: "bd", 4: "if" }, pii: { 1: "own" }, order: { 4: "own" } },
+      say: {
+        frame: "SegmentReader、SegmentWriter 和 fsck 各自手写了一遍\"先 4 字节长度、再 4 字节校验\"。把长度字段改成 varint 时三处都要改；漏改 fsck，它会把所有新文件报告为损坏。三个类的头文件里都看不到这件事：这就是后门泄漏。",
+        crc: "想换成 CRC32C（为了用硬件指令加速），读、写、校验三处必须同时改、同一次发布，否则新写的段读不出来。没有哪个模块是这份知识的\"主人\"。",
+        enc: "Reader 把负载解码成 LogRecord，Writer 再编码回去：编码规则在两个文件里各有一份，必须严格互逆，却没有任何东西把它们绑在一起。",
+        name: "Reader 按模式列目录，Writer 按它生成新文件，fsck 按它扫描（三处后门）；main 还要把模式串和阈值传给 SegmentWriter 的构造函数（一处接口泄漏）。改命名规则要动四个模块。",
+        pii: "脱敏规则一直只有 Redactor 知道。按时间顺序切出来的这一段并没有问题：它用的知识和段文件格式完全不同（5.3 节允许的情况）。",
+        order: "顺序总得在某处体现，这里是 main。顺序本身不是泄漏，问题在于让顺序决定了模块边界。",
+      } },
+    { name: "改之后：按知识切", mods: ["SegmentStore", "Redactor", "fsck", "main"],
+      cells: { frame: { 0: "own" }, crc: { 0: "own" }, enc: { 0: "own" }, name: { 0: "own", 3: "cfg" }, pii: { 1: "own" }, order: { 3: "own" } },
+      say: {
+        frame: "帧格式只出现在 SegmentStore 里。fsck 调用 store.verify()，main 只看到 LogRecord，都不知道帧长什么样。",
+        crc: "只改 SegmentStore。如果要兼容旧文件，\"按文件头版本号选校验算法\"这件事也只出现在这里。",
+        enc: "编码和解码挨在同一个类里，互逆关系一眼可见，一个往返测试就能锁住。",
+        name: "命名规则只有 SegmentStore 知道。main 仍可以通过 Options 设段大小，因为不同部署要调这个值，属于必须暴露的信息（5.9 节）；但改命名规则时 main 不受影响，所以它不计入\"要动的模块\"。",
+        pii: "没变：脱敏规则本来就只有一个家。",
+        order: "顺序仍然在 main 里，而且 main 现在只剩下顺序。",
+      } },
+  ];
+  const KIND = { own: "主人", bd: "后门", if: "接口", cfg: "配置" };
+  const modesEl = document.getElementById("km-modes"), table = document.getElementById("km-table"), narr = document.getElementById("km-narrate"), iface = document.getElementById("km-iface");
+  let mode = 0, sel = 0;
+  const btns = MODES.map((m, i) => h("button", { onclick: () => { mode = i; draw(); } }, m.name));
+  modesEl.append(...btns);
+  iface.onchange = draw;
+  const touches = (m, k) => Object.values(m.cells[k] || {}).filter((v) => v !== "cfg").length;
+  function draw() {
+    const m = MODES[mode], hideBd = iface.checked;
+    btns.forEach((b, i) => b.classList.toggle("on", i === mode));
+    const head = h("tr", {}, h("th", {}, "设计决定 ＼ 模块"), m.mods.map((x) => h("th", { class: "mod" }, x)));
+    const rows = DEC.map((d, r) => h("tr", { class: r === sel ? "sel" : "", onclick: () => { sel = r; draw(); } },
+      h("td", { class: "dec", title: "点击：假装要改这个决定" }, d.t),
+      m.mods.map((_, c) => {
+        const k = (m.cells[d.k] || {})[c];
+        if (!k) return h("td", { class: "c" });
+        return h("td", { class: "c" }, h("span", { class: "k " + k + (hideBd && k === "bd" ? " ghost" : "") }, KIND[k]));
+      })));
+    table.replaceChildren(h("thead", {}, head), h("tbody", {}, rows));
+    const d = DEC[sel], cells = m.cells[d.k] || {};
+    const n = touches(m, d.k);
+    const bdTotal = DEC.reduce((a, x) => a + Object.values(m.cells[x.k] || {}).filter((v) => v === "bd").length, 0);
+    const owned = DEC.filter((x) => touches(m, x.k) === 1).length;
+    const visible = Object.values(cells).filter((v) => v !== "cfg" && v !== "bd").length;
+    document.getElementById("km-touch").textContent = hideBd ? `${visible}（实际 ${n}）` : n;
+    document.getElementById("km-bd").textContent = bdTotal;
+    document.getElementById("km-owned").textContent = `${owned} / ${DEC.length}`;
+    let text = `改\"${d.t}\"：${m.say[d.k]}`;
+    if (hideBd && bdTotal) text += ` 现在你只看得见头文件：这一行能看到 ${visible} 个依赖方，实际有 ${n} 个。评审接口时发现不了另外那些，改的时候只能靠记忆和全文搜索。`;
+    else if (hideBd) text += " 这个设计没有后门泄漏：只看头文件得到的结论，和实际情况一致。";
+    narr.textContent = text;
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

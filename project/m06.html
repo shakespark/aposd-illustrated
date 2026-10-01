@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务 m06 · 少一些错误</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.mission-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.checklist li { list-style: none; margin-left: -1.2em; }
+.checklist li::before { content: "☐ "; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part2)"></span>minikv 重构项目 · 任务 6 / 8</div>
+  <h1>m06：少一些需要处理的错误</h1>
+  <p class="en">对应第 10 章（把错误定义为不存在）</p>
+  <div class="mission-meta"><span data-principle="11"></span><span data-principle="10"></span><span data-flag="repetition"></span></div>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">背景与对应章节</a></li>
+  <li><a href="#find">你要找的问题</a></li>
+  <li><a href="#task">任务与约束</a></li>
+  <li><a href="#check">自查清单</a></li>
+  <li><a href="#hints">提示</a></li>
+  <li><a href="#answer">参考答案与讨论</a></li>
+</ol></nav>
+
+<h2 id="bg">背景与对应章节</h2>
+<div class="crux"><p><strong>minikv 里每一种错误，是真的需要有人处理，还是只是因为接口这样定义了，才变成了错误？</strong></p></div>
+<p>minikv 的错误处理是"能报的都报"风格写成的：请求稍有不合常规就回 <code>ERR</code>，每个命令处理函数都包着一层 try/catch，日志文件末尾少了几个字节就拒绝启动。看上去很严谨，实际上把大量处理工作推给了调用者和运维。</p>
+<p>这个任务对应 <a href="../chapters/10-define-errors-out.html">第 10 章 · 把错误定义为不存在</a>。书里给了四种减少异常处理点的办法：把错误定义掉、在低层屏蔽、在高层聚合、直接崩溃。minikv 里四种都用得上，而且每一种都有"用错地方"的风险。做之前请读完原书第 10 章，特别是 10.3、10.5～10.8 节，以及 10.9 节"做过头"。</p>
+
+<h2 id="find">你要找的问题</h2>
+<p>先只读代码、做实验，把找到的每一个错误分到下面四类之一。需要看的地方：</p>
+<div class="table-wrap"><table>
+  <tr><th>位置</th><th>读的时候问自己</th></tr>
+  <tr><td><code>Store::del</code>、<code>Store::getRange</code><br>（<code>src/store.cpp</code>）</td><td>调用者发 <code>DEL k</code> 时，想达成的目标是什么？k 本来就不存在时，这个目标达成了吗？想取"前 100 个字符"的调用者，现在要写多少额外代码？</td></tr>
+  <tr><td><code>src/server.cpp</code> 的各个 <code>handleXxx</code></td><td>一共有多少个 <code>catch</code>？它们做的事有什么不同？写日志失败（磁盘满）时，服务器回什么、之后还会接受写入吗？那时日志文件末尾可能是什么样子？</td></tr>
+  <tr><td><code>Store::load()</code>、<code>LogReader::next()</code></td><td>进程在 <code>append</code> 写到一半时被杀，下次启动会发生什么？用户该怎么办？这种情况在追加写日志里有多常见？</td></tr>
+  <tr><td>同上</td><td>如果坏的是日志<strong>中间</strong>的某条记录呢？程序的反应和上一种有区别吗？给用户的信息够不够用来做决定？</td></tr>
+</table></div>
+<textarea class="note" data-key="m06-findings" placeholder="例如：可以定义掉的 ……；应该在低层屏蔽的 ……；应该聚合到一处的 ……；应该直接崩溃的 ……"></textarea>
+
+<div class="lab"><p>先亲手制造一次"写到一半就崩溃"，看看基线怎么反应：</p>
+<pre><code>cd project/minikv
+make
+printf 'SET a apple\nSET b banana\nDEL nothing\nGETRANGE b 0 100\n' | ./minikv /tmp/m06.log
+truncate -s -3 /tmp/m06.log      # 模拟最后一次写只写了一部分
+echo 'GET a' | ./minikv /tmp/m06.log
+grep -c catch src/server.cpp</code></pre></div>
+
+<h2 id="task">任务与约束</h2>
+<ol>
+  <li><strong>定义掉</strong>：重新定义 <code>DEL</code> 和 <code>GETRANGE</code> 的语义，使它们对任何合法格式的请求都不会失败。GETRANGE 建议采用和 Python 切片、Redis 一致的约定：负数从末尾数、越界截断、空范围返回空串（注意 minikv 的 end 是<strong>包含</strong>的）。</li>
+  <li><strong>聚合</strong>：去掉各处理函数里重复的 try/catch，让"一个请求失败 → 回 ERR"只在一个地方发生；同时把"请求做不了"和"minikv 自己出了故障"区分开，后者不该被当成普通请求错误吞掉。</li>
+  <li><strong>屏蔽</strong>：最后一条记录不完整时，丢掉它、在 stderr 留一行警告、正常启动。</li>
+  <li><strong>崩溃</strong>：日志中间的记录损坏时，打印清楚的诊断信息（哪个文件、哪个偏移、为什么判定为损坏、用户可以怎么做）后终止进程。</li>
+</ol>
+<p>约束：</p>
+<ul>
+  <li><strong>这个任务会改变外部行为。</strong><code>tests/test_commands.cpp</code> 和 <code>tests/test_persistence.cpp</code> 不许改，必须保持全绿；<code>tests/test_errors.cpp</code> 和 <code>tests/test_recovery.cpp</code> 描述的正是要改的行为，你需要按新语义重写它们。</li>
+  <li>"会崩溃"的测试不能把测试进程本身带走：在 <code>fork()</code> 出来的子进程里打开日志，父进程用 <code>waitpid</code> 检查它是否因 <code>SIGABRT</code> 终止，并检查 stderr 里的信息。</li>
+  <li>日志文件格式不变。整数参数的重复解析（m05）、日志格式散落各处（m01）都先别管。</li>
+  <li>更新 <code>README.md</code> 中 DEL、GETRANGE 的说明，并写明日志损坏时的行为。</li>
+</ul>
+
+<h2 id="check">自查清单</h2>
+<ul class="checklist">
+  <li><code>DEL</code> 不存在的 key 回 <code>(integer) 0</code>，而且不往日志里写任何东西。</li>
+  <li><code>GETRANGE s -3 -1</code>、<code>GETRANGE s 0 100</code>、<code>GETRANGE s 5 2</code>、<code>GETRANGE nosuchkey 0 1</code> 都有确定的、不报错的结果。</li>
+  <li>原来专为这些错误存在的异常类型，现在还有人用吗？没人用就删掉。</li>
+  <li><code>server.cpp</code> 里"把异常变成 ERR"的代码只有一处；你能一句话说清哪些异常会被它接住、哪些不会、为什么。</li>
+  <li>截断尾部的逻辑只出现在重放代码里，<code>Server</code>、<code>Database</code>、<code>main</code> 都不知道它的存在。</li>
+  <li>你的程序能区分"写到一半"和"中间损坏"，并且你能说出依据（提示：<code>append</code> 是怎么写一条记录的？）。</li>
+  <li>崩溃时的信息足够让一个没读过源码的运维决定下一步。</li>
+  <li>测试运行后没有留下 core 文件。</li>
+</ul>
+
+<h2 id="hints">提示</h2>
+<details class="reveal"><summary>提示 1：先问"调用者想达成什么"</summary><div>
+  <p>把 DEL 的语义从"删除这个 key"改成"确保这个 key 不存在"，错误就没了。GETRANGE 同理："返回值中落在 [start, end] 里的那些字符（如果有的话）"。语义改了，返回值仍然可以保留有用的信息：DEL 返回原来在不在，少数关心的人照样能知道。</p>
+</div></details>
+<details class="reveal"><summary>提示 2：哪些错误该回 ERR，哪些不该</summary><div>
+  <p>INCR 一个非数字值：只影响这一个请求，回 ERR 后服务可以照常继续。写日志失败：日志末尾可能已经有半条记录，继续接受写入会把它压到文件中间，下次启动就从"可以屏蔽"变成"必须崩溃"。给请求级错误一个专门的异常类型，<code>Server::handle</code> 只接这一种；其余的让它们传出去。</p>
+</div></details>
+<details class="reveal"><summary>提示 3：怎么判断"写到一半"</summary><div>
+  <p>基线的 <code>LogWriter::append</code> 用一次 <code>write(2)</code> 写出整条记录。所以崩溃留下的只能是<strong>最后一条</strong>记录的前缀：读到文件末尾时记录还没读完，就是写到一半。还有一种情况值得想一想：掉电后文件长度已经更新、数据却没落盘，最后一条记录长度完整但 checksum 不对。其余任何位置出错，都不可能是写到一半。</p>
+  <p>要让重放代码区分"读到一半到了文件尾"和其他读错误，可以让 <code>LogReader</code> 抛一个专门的异常类型。</p>
+</div></details>
+<details class="reveal"><summary>提示 4：在子进程里测试崩溃</summary><div>
+  <p>子进程里先用 <code>setrlimit(RLIMIT_CORE, …)</code> 关掉 core 文件，把 stderr <code>dup2</code> 到一个管道，再构造 <code>Server</code>；如果构造成功就 <code>_exit(0)</code>。父进程读管道、<code>waitpid</code>，检查 <code>WIFSIGNALED</code> 和 <code>WTERMSIG == SIGABRT</code>。</p>
+</div></details>
+
+<h2 id="answer">参考答案与讨论</h2>
+<div class="aside" data-title="先自己做"><p>先自己做完、测试全绿，再打开下面的内容。尤其是"什么算写到一半"，值得自己先想清楚再对照。</p></div>
+
+<details class="reveal"><summary>打开参考答案</summary><div>
+
+<h3>行为变化一览</h3>
+<div class="table-wrap"><table>
+  <tr><th></th><th>改之前</th><th>改之后</th></tr>
+  <tr><td><code>DEL</code> 不存在的 key</td><td><code>ERR no such key</code></td><td><code>(integer) 0</code>，不写日志</td></tr>
+  <tr><td><code>GETRANGE</code> 越界、反向、负数</td><td><code>ERR index out of range</code></td><td>截断；负数从末尾数；空范围返回 <code>""</code></td></tr>
+  <tr><td><code>GETRANGE</code> 不存在的 key</td><td><code>ERR no such key</code></td><td><code>""</code></td></tr>
+  <tr><td>请求级错误（INCR 非整数）</td><td>各 handler 自己 catch</td><td>抛 <code>RequestError</code>，<code>Server::handle</code> 统一转成 ERR</td></tr>
+  <tr><td>写日志失败</td><td>回 ERR，继续服务</td><td>传出 <code>Server::handle</code>，<code>main</code> 打印后退出</td></tr>
+  <tr><td>最后一条记录残缺</td><td>拒绝启动</td><td>截掉它，警告，正常启动</td></tr>
+  <tr><td>中间记录损坏</td><td>抛异常，信息含糊</td><td>打印位置、原因、处理办法后 <code>abort()</code></td></tr>
+</table></div>
+<p>参考答案因此替换了 <code>tests/test_errors.cpp</code> 和 <code>tests/test_recovery.cpp</code>，其余测试一字未改。</p>
+
+<h3>定义掉</h3>
+<div class="ba">
+  <div data-label="改之前：两个错误，两层代码">
+<pre><code class="lang-cpp">void Store::del(const std::string&amp; key, const WriteOptions&amp; wo) {
+    const IndexEntry* old = index_.find(key);
+    if (!old) throw KeyNotFound(key);
+    ...
+std::string Store::getRange(const std::string&amp; key, int64_t start, int64_t end) const {
+    const IndexEntry* e = index_.find(key);
+    if (!e) throw KeyNotFound(key);
+    int64_t len = static_cast&lt;int64_t&gt;(e-&gt;value.size());
+    if (start &lt; 0 || end &lt; start || end &gt;= len) {
+        throw std::out_of_range("index out of range");
+    }
+    ...
+// server.cpp
+} catch (const KeyNotFound&amp;) {
+    return "ERR no such key";
+} catch (const std::out_of_range&amp;) {
+    return "ERR index out of range";
+}</code></pre>
+  </div>
+  <div data-label="改之后：没有失败路径">
+<pre><code class="lang-cpp">// Makes sure `key` is absent. Returns true if it was present.
+bool Store::del(const std::string&amp; key, const WriteOptions&amp; wo) {
+    const IndexEntry* old = index_.find(key);
+    if (!old) return false;  // already absent: nothing to do, nothing to log
+    ...
+// Characters start..end of the value, both inclusive. Negative positions
+// count from the end (-1 is the last character). Positions outside the
+// value are clamped to it, so this never fails: an empty range or a
+// missing key gives "".
+std::string Store::getRange(...) const {
+    const IndexEntry* e = index_.find(key);
+    if (!e) return "";
+    int64_t len = static_cast&lt;int64_t&gt;(e-&gt;value.size());
+    if (start &lt; 0) start += len;
+    if (end &lt; 0) end += len;
+    start = std::max&lt;int64_t&gt;(start, 0);
+    end = std::min&lt;int64_t&gt;(end, len - 1);
+    if (start &gt; end) return "";
+    ...</code></pre>
+    <p><code>KeyNotFound</code> 整个类消失了。</p>
+  </div>
+</div>
+
+<h3>聚合：一个 catch，只接请求级错误</h3>
+<div class="ba">
+  <div data-label="改之前：16 个 catch">
+<pre><code class="lang-cpp">std::string Server::handleIncr() {
+    ...
+    try {
+        int64_t v = db_.incr(key, delta, writeOptions_);
+        return "(integer) " + std::to_string(v);
+    } catch (const std::invalid_argument&amp; e) {
+        return std::string("ERR ") + e.what();
+    } catch (const std::overflow_error&amp; e) {
+        return std::string("ERR ") + e.what();
+    } catch (const std::exception&amp; e) {
+        return std::string("ERR ") + e.what();   // 连"磁盘写失败"也吞掉
+    }
+}</code></pre>
+  </div>
+  <div data-label="改之后：Server::handle 里一处">
+<pre><code class="lang-cpp">// request_error.h
+// Thrown when one request cannot be carried out because of what it asks
+// for. ... Every other exception means minikv itself is in trouble; those
+// are deliberately not caught per request.
+class RequestError : public std::runtime_error { ... };
+
+// server.cpp
+std::string Server::handle(const std::string&amp; line) {
+    ...
+    try {
+        return (this-&gt;*(it-&gt;second))();
+    } catch (const RequestError&amp; e) {
+        return std::string("ERR ") + e.what();
+    }
+}
+
+std::string Server::handleIncr() {
+    ...
+    int64_t v = db_.incr(key, delta, writeOptions_);
+    return "(integer) " + std::to_string(v);
+}</code></pre>
+  </div>
+</div>
+<p><code>server.cpp</code> 的 <code>catch</code> 从 16 个降到 3 个（剩下 2 个是把 <code>std::stoll</code> 的异常就地翻译成错误回复，属于 m05 要消除的重复），文件从 232 行变成 194 行。写日志失败现在会一路传到 <code>main</code>、进程退出：这是书里说的<strong>错误提升</strong>，把一个难以就地处理的错误，变成一个已经有恢复路径的大错误——重启时的残缺尾部处理。</p>
+
+<h3>屏蔽与崩溃：都在重放循环里</h3>
+<pre><code class="lang-cpp">// Store::load()
+while (true) {
+    uint64_t start = reader.offset();
+    bool more = false;
+    try {
+        more = reader.next(raw);
+    } catch (const TruncatedRecord&amp;) {     // file ends inside a record
+        dropTornTail(start, fileSize);       // warn + truncate(2)
+        break;
+    } catch (const std::exception&amp; e) {
+        damaged(e.what());                   // prints where and what, then abort()
+    }
+    if (!more) break;
+    Record r;
+    try {
+        r = RecordParser::parse(raw);
+    } catch (const std::exception&amp; e) {
+        if (reader.offset() == fileSize) {   // complete-looking last record, bad checksum
+            dropTornTail(start, fileSize);
+            break;
+        }
+        damaged(e.what());
+    }
+    handle(r);
+    end = reader.offset();
+}</code></pre>
+<p>判断依据：<code>append</code> 用一次 <code>write(2)</code> 写一条记录，所以写到一半只可能留下<strong>最后一条</strong>记录的前缀。崩溃时打印的信息类似：</p>
+<pre><code>minikv: fatal: data.log: record at offset 0 is damaged (checksum mismatch) and more data
+follows it, so it is not an interrupted write. Refusing to start. Restore the file from a
+backup, or truncate it to 0 bytes to drop this record and everything after it.</code></pre>
+
+<h3>代价与边界</h3>
+<div class="counter" data-title="崩溃在什么时候是不可以的">
+  <p>对单进程的命令行工具，中间损坏时停下来是最安全的：继续运行就是带着一个大小未知的数据缺口对外服务。但如果 minikv 被做成<strong>库</strong>、嵌在别人的进程里，<code>abort()</code> 会把宿主一起带走，那时应该改为抛出明确的"日志损坏"异常，让宿主决定。如果它是<strong>有副本的存储服务</strong>，坏一份数据可以从副本恢复，崩溃反而把可恢复的故障变成停机。写日志失败就退出也是同样的道理：对单机工具是最简单的正确做法，对高可用服务可能要改成只读模式。书中 10.8 节同样强调这取决于应用。</p>
+</div>
+<div class="counter" data-title="屏蔽做过头的风险（10.9 节）">
+  <p>屏蔽只适用于上层不需要知道的信息。丢掉残缺尾部，损失最多是崩溃前的最后一次写，等价于"崩溃早发生了一点"。但现在的格式没有单独校验头部：如果中间某条记录的<strong>长度字段</strong>被磁盘翻了位，它看起来会"越过文件末尾"，被误当成残缺尾部，后面的好数据会一起被截掉。不改格式就分辨不了，真正的修复是给头部加独立 checksum。在那之前，警告里打出被丢弃的字节数是一道保险：写到一半最多丢一条记录，如果警告说丢了几 MB，就该警觉了。</p>
+</div>
+<div class="counter" data-title="把错误定义掉，会不会掩盖 bug？">
+  <p>有人担心 DEL 不报错会让"删错了 key"的 bug 更难发现。书中 10.5 节对这类质疑的回答是：带错误的接口会制造另一类 bug（多出来的检查代码、被忽略的错误）。而且信息并没有丢：DEL 返回 0 还是 1，真正关心的少数调用者照样能知道。</p>
+</div>
+
+<h3>审稿人仍会指出的问题</h3>
+<ul>
+  <li>整数参数解析仍在 INCR 和 GETRANGE 里各写一遍，严格程度还不一致（INCR 拒绝 <code>12abc</code>，GETRANGE 接受）：<a href="m05.html">m05</a>。</li>
+  <li>参数个数不对、key 太长等错误仍在每个 handler 里各写一遍 <code>return "ERR …"</code>；也可以统一改成抛 <code>RequestError</code>，但那是 m05 的"消除重复"。</li>
+  <li>残缺尾部的判断要同时看 <code>LogReader</code> 和 <code>RecordParser</code> 的结果，正是因为格式知识散落在多个类里（<a href="m01.html">m01</a>）；在 m01 的 <code>LogFile</code> 里做这件事会更自然。</li>
+</ul>
+
+<p>完整讨论见 <code>solutions/m06/DISCUSSION.md</code>。对照自己的改动：</p>
+<pre><code>cd project            # 仓库里 minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m06 clean
+diff -ru minikv solutions/m06
+make -C solutions/m06 test</code></pre>
+
+</div></details>
+
+<nav class="chapter-nav">
+  <a class="prev" href="m05.html"><small>← 上一个任务</small>m05：合在一起还是分开</a>
+  <a class="next" href="m07.html"><small>下一个任务 →</small>m07：名字与注释</a>
+</nav>
+
+</main>
+</body>
+</html>

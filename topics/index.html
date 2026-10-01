@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>专题：争议与对照 · APOSD 精读</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.topic-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin: 20px 0; }
+.topic { display: block; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--part5); border-radius: var(--radius); padding: 14px 18px; color: var(--fg); text-decoration: none; }
+.topic:hover { border-color: var(--accent); }
+.topic h3 { margin: 0 0 6px; color: var(--accent); }
+.topic p { margin: 0 0 6px; font-size: 14.5px; }
+.topic .meta { font-size: 13px; color: var(--muted); margin: 0; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part5)"></span>专题<span>Topics</span></div>
+  <h1>争议与对照</h1>
+  <p class="en">Controversies &amp; Contrasts</p>
+</div>
+
+<p>章节页跟着原书的结构走，专题页则横着切：把这本书放到它和别的观点、别的书、别的时代的关系里去看。三篇专题的共同规则是：<strong>凡是"某人说过"，都给出原始出处</strong>；本站自己的判断单独标成"本站看法"，你可以不同意。</p>
+
+<div class="topic-list">
+  <a class="topic" href="clean-code.html">
+    <h3>APOSD 与 Clean Code：三处分歧</h3>
+    <p>Ousterhout 和 Robert Martin 在 2024–2025 年做过一次长篇书面讨论，争的是方法该多短、注释算不算失败、TDD 会不会压制设计。本篇按双方各自的论证梳理三处分歧和他们真正达成的共识，用原创 C++ 代码把两种风格并排摆出来，最后给几道"这种情况该用哪种风格"的判断题。</p>
+    <p class="meta">对应第 4、9、12、13、19 章</p>
+  </a>
+  <a class="topic" href="ostep.html">
+    <h3>与 OSTEP 对照阅读</h3>
+    <p>你在 OSTEP 里学过的机制（文件 I/O、分层、设备驱动、NFS 重试、日志与崩溃恢复、LFS、内存 API），很多正是 APOSD 用来讲接口设计的例子。本篇逐一配对两本书的相应章节，讲清楚"机制"和"接口取舍"各自看到了什么，并指出 OSTEP 里那些恰好构成 APOSD 反例或边界的地方。</p>
+    <p class="meta">对应第 4、6、7、8、10 章 · 附 OSTEP 精读站链接</p>
+  </a>
+  <a class="topic" href="ai-era.html">
+    <h3>在 AI 写代码的时代读这本书</h3>
+    <p>先严格区分 Ousterhout 关于 AI 编程工具真正说过的话（有出处、有时间点）和网上流传的转述，再用书中的框架推演：代码变便宜之后什么变稀缺。附一份用 14 个红旗审阅 AI 生成代码的清单，以及一段"AI 写的"会话缓存从诊断到重构的完整示例。</p>
+    <p class="meta">对应第 3、4、8、10、11、15、21 章</p>
+  </a>
+</div>
+
+<div class="aside" data-title="怎么读">
+  <p>专题默认你已经读过相关章节的原书。如果还没读，建议先读完对应章节和本站的章节页，再回来读专题：争论只有在你已经理解原论点时才有意义。</p>
+</div>
+
+</main>
+</body>
+</html>

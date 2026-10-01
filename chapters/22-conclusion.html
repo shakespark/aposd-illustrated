@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 22 章 · 结语</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch22.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.book-map a text { fill: var(--accent); }
+.book-map a:hover text { text-decoration: underline; }
+.book-map .cn { font-size: 11px; fill: var(--muted); }
+.go-cards .card { display: block; color: var(--fg); }
+.go-cards .card:hover { border-color: var(--accent); text-decoration: none; }
+.go-cards .card h4 { color: var(--accent); }
+</style>
+</head>
+<body data-chapter="22">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>读完全书，最该带走的是什么？在前期多花设计功夫，到底值不值？</strong></p>
+</div>
+<p>原书的结语只有两页、没有小节：先用一段话回顾全书，再坦白这套做法的代价，最后讲为什么值得。读它花不了五分钟。本站把这一页做成<strong>全书复习页</strong>：一张图把二十一章串起来，再告诉你接下来去哪里练。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>第一段的回顾</strong>：作者只点了三个红旗作代表（信息泄漏、不必要的错误情况、太泛的名字），想法也只挑了几条。对照下面的地图想一想：如果让你挑，你会挑哪几个？</li>
+    <li><strong>第二段</strong>：作者坦白承认这些建议会让项目初期多花功夫，学习阶段还会更慢。留意作者说这件事在什么前提下会显得像"苦差事"。</li>
+    <li><strong>最后两段</strong>：作者给出的回报有好几种，不只是"代码质量"。还要注意"一旦你掌握了方法"这个前提条件，它和第 3 章的投资曲线是同一个论证。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>全书只讲一件事</h4><p>复杂性。它让系统难以构建和维护，常常还让系统变慢（第 20 章）。</p></div>
+  <div class="card"><h4>两个根源</h4><p>依赖和模糊。红旗帮你认出不必要的复杂性，各章的技巧帮你去掉它。</p></div>
+  <div class="card"><h4>代价在前</h4><p>前期要多花功夫，学习时会更慢。如果只在乎"现在能跑"，设计会像苦差事。<span data-principle="2"></span></p></div>
+  <div class="card"><h4>回报来得快</h4><p>精心定义的模块会被反复复用，半年前写的文档会帮回到这段代码的你，设计能力本身也越练越快。</p></div>
+  <div class="card"><h4>设计本身是乐趣</h4><p>用尽可能简单的结构解决一个问题，是一个有趣的谜题。好的设计者把更多时间花在设计上，而不是追 bug。</p></div>
+</div>
+
+<h2>全书地图：一张图串起二十一章</h2>
+<p>从上往下读：复杂性表现为三种症状，来自两个根源。全书中段的大部分章节都在对付这两个根源：<strong>依赖</strong>主要靠把模块做深来减少，<strong>模糊</strong>主要靠注释、命名和一致性来消除。过程与心态让你持续做对，最后用"判断什么重要"把它们统一起来。图中每个章节名都可以点击。</p>
+<figure class="fig book-map">
+<svg viewBox="0 0 720 600" width="720" role="img" aria-label="全书地图：复杂性的症状与根源；减少依赖的一组章节（深模块及其技巧）；减少模糊的一组章节（注释、命名、一致性、明显的代码）；过程与心态；最后由判断什么重要串起来">
+<defs><marker id="ar22" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+<rect x="160" y="12" width="400" height="56" rx="10" class="accent-soft"/>
+<text x="360" y="36" text-anchor="middle" font-weight="700" font-size="15">复杂性：让系统难懂、难改的一切</text>
+<a href="01-introduction.html"><text x="300" y="58" text-anchor="middle" font-size="13">引言 <tspan class="cn">1</tspan></text></a>
+<a href="02-complexity.html"><text x="410" y="58" text-anchor="middle" font-size="13">复杂性的本质 <tspan class="cn">2</tspan></text></a>
+<line x1="360" y1="68" x2="360" y2="90" class="arrow" marker-end="url(#ar22)"/>
+<rect x="40" y="92" width="640" height="70" rx="10" class="box"/>
+<text x="360" y="118" text-anchor="middle" font-size="13.5"><tspan font-weight="700">症状</tspan>：变更放大 · 认知负担 · 未知的未知</text>
+<text x="190" y="148" text-anchor="middle" font-size="13.5"><tspan font-weight="700">根源一</tspan>：依赖</text>
+<text x="530" y="148" text-anchor="middle" font-size="13.5"><tspan font-weight="700">根源二</tspan>：模糊</text>
+<line x1="190" y1="162" x2="190" y2="196" class="arrow" marker-end="url(#ar22)"/>
+<line x1="530" y1="162" x2="530" y2="196" class="arrow" marker-end="url(#ar22)"/>
+<rect x="30" y="198" width="320" height="200" rx="10" class="ok-soft"/>
+<text x="190" y="224" text-anchor="middle" font-weight="700" font-size="14">减少依赖：把模块做深</text>
+<a href="04-deep-modules.html"><text x="190" y="252" text-anchor="middle" font-size="13">核心度量：深模块 <tspan class="cn">4</tspan></text></a>
+<a href="05-information-hiding.html"><text x="110" y="286" text-anchor="middle" font-size="13">信息隐藏 <tspan class="cn">5</tspan></text></a>
+<a href="06-general-purpose.html"><text x="270" y="286" text-anchor="middle" font-size="13">通用的模块 <tspan class="cn">6</tspan></text></a>
+<a href="07-layers.html"><text x="110" y="316" text-anchor="middle" font-size="13">不同层不同抽象 <tspan class="cn">7</tspan></text></a>
+<a href="08-pull-down.html"><text x="270" y="316" text-anchor="middle" font-size="13">把复杂性往下拉 <tspan class="cn">8</tspan></text></a>
+<a href="09-together-apart.html"><text x="110" y="346" text-anchor="middle" font-size="13">合在一起还是分开 <tspan class="cn">9</tspan></text></a>
+<a href="10-define-errors-out.html"><text x="270" y="346" text-anchor="middle" font-size="13">把错误定义掉 <tspan class="cn">10</tspan></text></a>
+<text x="190" y="384" text-anchor="middle" font-size="12" class="t-muted">接口越简单、藏得越多，依赖越少</text>
+<rect x="370" y="198" width="320" height="200" rx="10" class="warn-soft"/>
+<text x="530" y="224" text-anchor="middle" font-weight="700" font-size="14">减少模糊：让代码说清楚</text>
+<a href="12-why-comments.html"><text x="450" y="256" text-anchor="middle" font-size="13">为什么写注释 <tspan class="cn">12</tspan></text></a>
+<a href="13-comments.html"><text x="610" y="256" text-anchor="middle" font-size="13">注释写什么 <tspan class="cn">13</tspan></text></a>
+<a href="14-names.html"><text x="450" y="286" text-anchor="middle" font-size="13">起名字 <tspan class="cn">14</tspan></text></a>
+<a href="17-consistency.html"><text x="610" y="286" text-anchor="middle" font-size="13">一致性 <tspan class="cn">17</tspan></text></a>
+<a href="18-obvious.html"><text x="530" y="316" text-anchor="middle" font-size="13">代码应该一目了然 <tspan class="cn">18</tspan></text></a>
+<text x="530" y="352" text-anchor="middle" font-size="12" class="t-muted">接口注释是抽象的一部分；</text>
+<text x="530" y="370" text-anchor="middle" font-size="12" class="t-muted">名字和一致性让读者少猜</text>
+<line x1="190" y1="398" x2="190" y2="424" class="arrow" marker-end="url(#ar22)" style="stroke-dasharray:3 3"/>
+<line x1="530" y1="398" x2="530" y2="424" class="arrow" marker-end="url(#ar22)" style="stroke-dasharray:3 3"/>
+<rect x="30" y="426" width="660" height="92" rx="10" class="box"/>
+<text x="360" y="450" text-anchor="middle" font-weight="700" font-size="14">过程与心态：怎样一直做对</text>
+<a href="03-strategic.html"><text x="140" y="478" text-anchor="middle" font-size="13">战略式编程 <tspan class="cn">3</tspan></text></a>
+<a href="11-design-twice.html"><text x="360" y="478" text-anchor="middle" font-size="13">设计两次 <tspan class="cn">11</tspan></text></a>
+<a href="15-comments-first.html"><text x="580" y="478" text-anchor="middle" font-size="13">先写注释 <tspan class="cn">15</tspan></text></a>
+<a href="16-modifying-code.html"><text x="140" y="506" text-anchor="middle" font-size="13">修改已有代码 <tspan class="cn">16</tspan></text></a>
+<a href="19-trends.html"><text x="360" y="506" text-anchor="middle" font-size="13">软件开发趋势 <tspan class="cn">19</tspan></text></a>
+<a href="20-performance.html"><text x="580" y="506" text-anchor="middle" font-size="13">为性能而设计 <tspan class="cn">20</tspan></text></a>
+<line x1="360" y1="518" x2="360" y2="540" class="arrow" marker-end="url(#ar22)"/>
+<rect x="170" y="542" width="380" height="48" rx="10" class="accent-soft"/>
+<text x="360" y="563" text-anchor="middle" font-weight="700" font-size="14">贯穿全书的判断力</text>
+<a href="21-decide-what-matters.html"><text x="360" y="582" text-anchor="middle" font-size="13">判断什么是重要的 <tspan class="cn">21</tspan></text></a>
+</svg>
+<figcaption>这是本站的归纳，不是原书的分类：很多章节同时对付依赖和模糊（例如第 10 章既减少接口，也减少需要记住的特殊情况）。本站自绘示意。</figcaption>
+</figure>
+<p>如果只记一条线索，可以记"特殊情况"这条：第 6 章让通用接口吸收特殊情况，第 10 章把异常这个最大的特殊情况来源定义掉，第 17 章用不变量减少需要考虑的情况，第 18 章说特殊情况少了代码才明显，第 20 章又发现去掉特殊情况的代码更快。同一个想法在五个地方各起了一次作用。</p>
+
+<h2>接下来去哪里：复习路线</h2>
+<p>作者在 1.1 节建议，这本书最好配合代码审查来用：读别人的代码时，用红旗去找问题，再想替代设计。本站把这件事拆成了四个去处：</p>
+<div class="cards go-cards">
+  <a class="card" href="../cheatsheet.html"><h4>速查页 →</h4><p>14 个红旗、16 条原则，每条配一个本站的例子和改法。做代码审查时开在旁边。</p></a>
+  <a class="card" href="../train/index.html#review"><h4>训练场 · 今日复习 →</h4><p>到期的题先做，再补新题。间隔复习会把你答错过的题推回来，每天十分钟就够。</p></a>
+  <a class="card" href="../project/index.html"><h4>项目：minikv →</h4><p>八个任务，把一个按"战术式"风格写成的键值存储一步步重构干净。这是从"认得出"到"做得出"的一步。</p></a>
+  <a class="card" href="../topics/index.html"><h4>专题 →</h4><p>本书和 Clean Code 的分歧、和 OSTEP 的对照、AI 时代怎么读这本书。</p></a>
+</div>
+<div class="tip">
+  <p>一个可行的节奏：读完全书后的第一周，每天做一次今日复习，同时开始 minikv 的 m01；之后每次做代码审查时，挑一个红旗专门找它。第 1 章说过：刚开始找替代设计时可能要试好几个方案才能消掉一个红旗，别轻易放弃，试得越多学得越多。</p>
+</div>
+
+<h2>边界与反方：什么时候别生搬硬套</h2>
+<div class="counter" data-title="前期的代价是真的">
+  <p>作者没有回避：这些建议会让项目初期多花功夫，不习惯设计思考的人学习时还会更慢。作者的论证是这笔投资回收得很快，而且掌握方法之后，好的设计并不比又快又脏的写法慢多少。第 3 章给过一个具体的量：把大约 10%～20% 的开发时间花在设计投资上。<em>本站补充：</em>这个判断建立在"代码会活很久、会被很多人改"的前提上。真正写完就扔的脚本，战术式写法未必是错的。</p>
+</div>
+<div class="counter" data-title="原则不是教条">
+  <p>作者在第 1 章就提醒：每条规则都有例外，每个原则都有边界，把任何设计想法推到极端都会出问题。所以书里有好几节专门讲"做过头"（5.9、8.3、10.9、17.3 节），还有几节直接讨论不同意见（9.8、12.6、14.6 节）。复习时，除了记住原则，也要记住它在哪里会失效。本站每章的"边界与反方"一节就是为此而写的。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道是跨全书的综合题，可能用到任何一章的红旗。</p>
+<div class="drill-embed" data-ids="ch22-flag-01 ch22-ab-01 ch22-judge-01"></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="3"><div class="q">按全书的框架，复杂性的两个根源是？</div>
+  <div class="opts"><button>A. 需求变化和人员流动</button><button>B. 变更放大和认知负担</button><button>C. 代码太长和函数太多</button><button>D. 依赖和模糊</button></div>
+  <div class="explain">依赖和模糊是根源（第 2 章）；变更放大、认知负担、未知的未知是症状。区分症状和根源，才能对症下药。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">关于"做好设计要多花多少时间"，作者在结语里的说法最接近？</div>
+  <div class="opts"><button>A. 初期确实要多花功夫，但回报来得快；掌握方法后，好设计并不比又快又脏的写法慢多少</button><button>B. 只有大公司才负担得起好设计</button><button>C. 好设计永远比快速写法慢一倍</button><button>D. 好设计不需要任何额外时间</button></div>
+  <div class="explain">作者承认初期和学习阶段的额外成本，但认为投资回收得快，熟练之后成本会变得很小。这和第 3 章的投资论证一致。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">一个模块的接口注释写满了内部用了几层哈希表、怎么分段加锁。最可能说明什么？</div>
+  <div class="opts"><button>A. 文档写得很全面，是好事</button><button>B. 名字起得不好</button><button>C. 实现细节污染了接口注释，这个模块可能也不够深</button><button>D. 注释重复了代码</button></div>
+  <div class="explain">接口注释应该只写使用者需要知道的东西（第 13 章）。如果非得讲实现才能说清怎么用，往往说明抽象本身有问题。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">下列哪一组配对是正确的？</div>
+  <div class="opts"><button>A. 透传方法 —— 第 7 章；先写注释 —— 第 15 章</button><button>B. 战略式编程 —— 第 20 章；性能 —— 第 3 章</button><button>C. 把错误定义掉 —— 第 14 章；起名字 —— 第 10 章</button><button>D. 设计两次 —— 第 4 章；深模块 —— 第 11 章</button></div>
+  <div class="explain">透传方法是第 7 章（不同层不同抽象）提出的红旗；先写注释是第 15 章。其余几组都配错了：把错误定义掉是第 10 章，起名字第 14 章，设计两次第 11 章，深模块第 4 章，战略式编程第 3 章，性能第 20 章。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">作者在 1.1 节建议的、最好的用书方式是？</div>
+  <div class="opts"><button>A. 背下全部原则和红旗</button><button>B. 配合代码审查：读别人的代码时，用书中的概念和红旗去找问题、提改进</button><button>C. 把原则写进代码规范，用工具强制检查</button><button>D. 只在新项目开始时读一遍</button></div>
+  <div class="explain">作者说书里的原则比较抽象，单靠读书可能不足以学会应用；配合代码审查效果最好，而且别人代码里的设计问题比自己的更容易看出来。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>全书只关于一件事：复杂性。症状是变更放大、认知负担、未知的未知；根源是依赖和模糊。</li>
+  <li>深模块及其各种技巧主要用来减少依赖；注释、命名、一致性主要用来消除模糊；战略式编程和设计两次等做法让你持续做对。</li>
+  <li>前期要多花功夫，但回报来得快；熟练之后，好设计并不比快速写法慢多少。</li>
+  <li>接下来：用速查页做代码审查，用训练场间隔复习，用 minikv 项目练重构。</li>
+</ul>
+<p><strong>读后一句话</strong>：读完全书，写下一个你打算从明天起改变的写代码习惯。</p>
+<textarea class="note" data-key="ch22-oneline" placeholder="例如：每次加参数之前，先问一句：大多数调用者需要想这件事吗？"></textarea>
+
+</main>
+</body>
+</html>

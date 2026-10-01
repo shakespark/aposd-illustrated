@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 12 章 · 为什么写注释：四个借口</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch12.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.excuse-table td:first-child { font-weight: 600; min-width: 6em; }
+</style>
+</head>
+<body data-chapter="12">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>如果代码写得足够好，还需要注释吗？如果需要，注释承担的是哪一部分代码承担不了的工作？</strong></p>
+</div>
+<p>这一章开启了全书的第四部分：注释与命名（第 12～15 章，第 16 章讲注释的维护）。它是一篇"辩护词"：作者逐一反驳开发者不写注释时最常用的四个借口，然后说明好注释能带来什么。具体怎么写，留给第 13 章。</p>
+<p>如果你认真读了第 4 章，这一章的核心论证其实已经埋好了伏笔：接口分<strong>正式部分</strong>（签名）和<strong>非正式部分</strong>（行为、约束、副作用），而非正式部分只能用注释写。作者在这里把这条线索推到结论：<strong>没有注释，就没有抽象。</strong>注释不是锦上添花的文档工作，而是模块设计的一部分。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>12.1 节</strong>的后半段有一个只含两个参数的取子串函数的例子。读之前先想一想：只给你这个函数的声明，你有几件事不能确定？</li>
+    <li><strong>12.2 节</strong>有一段很简单的算术（敲代码占开发时间的比例）。用你自己最近一周的工作估一下这个比例，看作者的结论在你身上是否成立。</li>
+    <li><strong>12.6 节</strong>作者和 Clean Code 唱反调。留意作者<strong>同意</strong>对方的那半句话：好的设计能减少哪一类注释？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>注释是抽象的组成部分</h4><p>没有注释，一个方法唯一的抽象就是它的声明；声明缺少太多关键信息。使用者如果必须读实现才能用，就根本没有抽象。</p></div>
+  <div class="card"><h4>"读代码就行"会制造浅方法</h4><p>如果指望使用者读实现，你会尽量把方法切短，结果是一堆浅方法；而且读者照样要理解被调用的那些方法。</p></div>
+  <div class="card"><h4>代价不大</h4><p>敲代码通常只占开发时间的一小部分（作者估计不超过 10%），即使注释敲得和代码一样多，总时间也只多出约 10%。</p></div>
+  <div class="card"><h4>过期是可以管理的</h4><p>代码大改时文档才需要大改，而改代码本身更费时间。避免重复、让文档贴近代码、靠代码审查发现过期注释。</p></div>
+  <div class="card"><h4>"注释都没用"是最有道理的借口</h4><p>大多数现存注释确实质量平平。但这是能学会解决的问题，第 13 章开始给方法。</p></div>
+  <div class="card"><h4>好注释治什么病</h4><p>它减轻<strong>认知负担</strong>和<strong>未知的未知</strong>，讲清依赖、消除模糊性。它不能减少<strong>变更放大</strong>，那是设计的事。</p></div>
+  <div class="card"><h4>注释不是失败</h4><p>注释和代码承载的是不同的信息，各有所长。好的设计能减少注释，特别是方法体内的注释，但不能取代它们。</p></div>
+</div>
+
+<h2>心智模型：设计者脑子里的信息去哪了</h2>
+<p>写代码时，你脑子里装着大量信息：这个函数在什么情况下被调用、返回 0 代表什么、为什么这里要多判断一次、那个奇怪的常量从哪来。代码只能装下其中一部分。剩下的，要么写进注释，要么随着你忘记而消失，后来的人只能<strong>重新推导或者猜</strong>。</p>
+<figure class="fig">
+<svg viewBox="0 0 660 270" width="660" role="img" aria-label="设计者脑中的信息分三路：能写进代码的、只能写进注释的、没写下来而丢失的">
+  <rect x="20" y="95" width="150" height="80" rx="10" class="box" stroke-width="1.5"/>
+  <text x="95" y="128" text-anchor="middle" font-weight="700">设计者脑中</text>
+  <text x="95" y="150" text-anchor="middle" font-weight="700">的信息</text>
+
+  <line x1="170" y1="118" x2="262" y2="52" class="stroke" stroke-width="1.5"/>
+  <line x1="170" y1="135" x2="262" y2="135" class="stroke" stroke-width="1.5"/>
+  <line x1="170" y1="152" x2="262" y2="218" class="stroke" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+  <rect x="265" y="18" width="375" height="68" rx="8" class="accent-soft" stroke-width="1.5"/>
+  <text x="280" y="42" font-weight="700">代码能表达的</text>
+  <text x="280" y="64" font-size="12.5">签名与类型、具体的执行步骤、编译器能检查的约束</text>
+
+  <rect x="265" y="101" width="375" height="68" rx="8" class="ok-soft" stroke-width="1.5"/>
+  <text x="280" y="125" font-weight="700">只能靠注释表达的</text>
+  <text x="280" y="147" font-size="12.5">结果的含义、边界与约束、为什么这样设计、何时该调用</text>
+
+  <rect x="265" y="184" width="375" height="68" rx="8" class="bad-soft" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="280" y="208" font-weight="700">没写下来的</text>
+  <text x="280" y="230" font-size="12.5">后来的人（包括几周后的你）只能重新推导或猜，猜错就是 bug</text>
+</svg>
+<figcaption>注释的总体作用：把设计者脑子里、代码装不下的那部分信息保存下来。本站自绘示意。</figcaption>
+</figure>
+<p>注意第三条路里有"几周后的你"。作者特别指出，即使是原作者自己，离开一段代码几周后也会忘掉很多设计细节。</p>
+
+<h2>四个借口与作者的回应</h2>
+<div class="table-wrap">
+<table class="excuse-table">
+  <thead><tr><th>借口</th><th>作者的回应（本站概括）</th><th>后续章节</th></tr></thead>
+  <tbody>
+    <tr><td>好代码是自解释的</td><td>好名字确实能减少注释，但接口的非正式部分、设计理由、调用时机这类信息代码写不出来。让使用者读实现，既费力，又逼出一堆浅方法。</td><td>第 13 章（写什么）、第 14 章（名字）</td></tr>
+    <tr><td>没时间写</td><td>"以后再写"等于永远不写。这是第 3 章的投资心态：注释的成本大约是开发时间的 10%，很快能收回；而类和方法的接口注释在设计阶段就能立刻回本。</td><td>第 15 章（先写注释）</td></tr>
+    <tr><td>注释会过期</td><td>会，但不难管理：只有代码大改时文档才需要大改；避免重复、贴近代码、在代码审查中检查。</td><td>第 16 章（修改代码时）</td></tr>
+    <tr><td>见过的注释都没用</td><td>四个里最有道理的一个：大多数现存文档确实平平。但写好注释不难，学会方法就行。</td><td>第 13 章</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>一个原创例子：声明到底缺了什么</h2>
+<p>书中 12.1 节用一个只有起止两个参数的取子串函数说明：光看声明，你连"终点含不含"都不知道。下面是一个后端开发里常见的、同样性质的例子：分布式锁的客户端接口。</p>
+<div class="ba">
+  <div data-label="只有声明">
+<pre><code class="lang-cpp">class LockClient {
+public:
+    bool tryLock(const std::string&amp; name, std::chrono::seconds ttl);
+    void unlock(const std::string&amp; name);
+};</code></pre>
+    <p>名字起得不差，类型也清楚。可是调用者想正确使用它，还有一串问题没有答案：<code>tryLock</code> 拿不到锁时是立即返回还是等待？返回 <code>false</code> 是"别人持有"还是"网络出错"？<code>ttl</code> 到期后锁会自动释放吗？到期前需要续约吗？同一个进程对同一个 <code>name</code> 再调一次会怎样？<code>unlock</code> 一个已经过期、被别人拿走的锁会怎样？</p>
+  </div>
+  <div data-label="声明 + 接口注释">
+<pre><code class="lang-cpp">// 基于协调服务的分布式互斥锁客户端。每个 name 是一把独立的锁；
+// 同一时刻全集群最多一个持有者。线程安全。
+class LockClient {
+public:
+    // 尝试获取锁，不等待：已被持有时立即返回 false。
+    // 成功后锁最多保持 ttl；到期自动释放，期间进程崩溃也一样。
+    // 需要更久时，在到期前再调用一次 tryLock 续期（自己已持有时返回 true）。
+    // 与协调服务通信失败时抛 LockServiceError，而不是返回 false。
+    bool tryLock(const std::string&amp; name, std::chrono::seconds ttl);
+
+    // 释放锁。如果锁已经过期、或已被别人持有，什么也不做。
+    void unlock(const std::string&amp; name);
+};</code></pre>
+    <p>加上注释后，声明才变成一个<strong>可用的抽象</strong>：调用者不用读实现，也不用去翻协调服务的协议，就知道怎么用、出错时会怎样。实现里怎么续约、怎么和协调服务通信，一个字也没写，它们仍然被藏着。</p>
+  </div>
+</div>
+<p>换一个角度看：如果没有这些注释，每个使用者都得去读实现、甚至读协调服务的文档，才能回答上面那串问题。那么 <code>LockClient</code> 就算接口再短，也没有替任何人隐藏复杂性，第 4 章意义上的"深"也就无从谈起。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="作者也同意的部分">
+  <p>作者并不是说"注释越多越好"。书中明确同意：选好名字、做好设计，确实能减少对注释的需要，<strong>特别是方法体内部的注释</strong>。作者反对的是把这推到极端，认为好代码<em>完全</em>不需要注释。第 13 章还会说，很多短方法根本不需要实现注释；而重复代码的注释是红旗。所以正确的读法是：注释的重心在<strong>接口</strong>，不在逐行解释。</p>
+</div>
+<div class="counter" data-title="与 Clean Code 的分歧">
+  <p>Robert Martin 在 Clean Code 里把注释看作"未能用代码表达自己"的补偿：</p>
+  <blockquote class="quote">Comments are always failures.<cite>— 第 12.6 节（作者引用的 Clean Code 原话）</cite></blockquote>
+  <p>Martin 的替代方案是把代码块抽成方法、用方法名代替注释。作者认为这会产生又长又晦涩的名字，信息量反而不如一条好注释，而且每次调用都等于把"文档"重新敲一遍；更担心的是文化上的副作用：写注释的人会被质疑"你的代码有什么问题才需要注释"。两人后来有过一次公开的长篇讨论，本站的<a href="../topics/clean-code.html#comments">专题：APOSD 与 Clean Code</a> 对这场分歧有完整对照。</p>
+</div>
+<div class="counter" data-title="10% 是估算，不是测量">
+  <p>12.2 节的"不超过 10%"是作者基于两个假设的估算：敲代码不超过开发时间的 10%，注释最多和代码一样多。本站补充：真正的代价往往不在敲字，而在<strong>想清楚要写什么</strong>：写不出一句简洁的接口注释，常常说明你还没想清楚这个接口。这部分时间算不算"写注释的成本"？第 15 章的回答是：它本来就是设计工作，提前做甚至可能更省。</p>
+</div>
+<div class="counter" data-title="过期的注释可能比没有更糟">
+  <p>作者对"注释会过期"的回应比较乐观。本站补充一个现实的提醒：一条<strong>错误</strong>的注释会误导读者，危害可能大于没有注释。所以这个借口的正确结论不是"不写"，而是认真对待注释的位置和粒度：接口注释紧贴声明、同一件事只写一处、代码审查时把注释当代码一样审。这些正是第 16 章的内容。</p>
+</div>
+<div class="aside" data-title="AI 时代还要写注释吗？">
+  <p>有人认为现在可以让 AI 读代码、替你解释，注释不那么重要了。作者本人在一次访谈里谈过这个问题，承认 AI 工具在一定程度上能弥补注释的缺失，但认为如果原作者当初花一点时间写注释，会比事后让 AI 去猜容易得多。见<a href="../topics/ai-era.html#said">专题：AI 时代读这本书</a>。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道看"用方法名代替注释"会产生什么，一道比较长方法名和一条注释，一道请你亲手列出声明表达不了的信息。</p>
+<div class="drill-embed" data-ids="ch12-flag-01 ch12-ab-02 ch12-write-02"></div>
+
+<h2>动手：项目任务</h2>
+<p>第 12～15 章合起来对应 minikv 的任务 m07（注释与命名）。这一章只负责说服你"值得做"，具体的做法在第 13 章。建议读完第 13 章后再开始，任务说明见 <a href="../project/m07.html">m07 任务页</a>，第 13 章页面里也有任务入口。</p>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">作者说"注释是抽象的基础"，最核心的理由是什么？</div>
+  <div class="opts"><button>A. 没有注释，方法的抽象只剩声明，而声明缺少使用所需的关键信息；使用者只好读实现，抽象也就不存在了</button><button>B. 文档工具需要注释才能生成网页</button><button>C. 注释比代码更精确</button><button>D. 注释能让代码看起来更专业</button></div>
+  <div class="explain">抽象的意义在于"只看接口就能用"。声明只有名字和类型，表达不了结果的含义、边界、约束。注释补全这些信息，抽象才完整。注意 C 恰好说反了：作者承认自然语言不如代码精确，但表达力更强，能写出简单直观的描述。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">按书中 12.1 节，"想知道方法做什么就去读代码"这种做法会导致什么？</div>
+  <div class="opts"><button>A. 代码会变得更深</button><button>B. 开发者为了让代码好读而把方法切得很小，产生大量浅方法，而读者照样要理解被调用的方法</button><button>C. 变更放大会减少</button><button>D. 注释会更容易过期</button></div>
+  <div class="explain">指望读者读实现，就会想办法让每个方法都短到好读，于是拆出很多浅方法。这不仅没有减少阅读量（要理解顶层方法，还得理解嵌套调用的那些方法），还违背了第 4 章的"模块应该深"。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">四个借口里，作者认为哪一个"最有道理"？</div>
+  <div class="opts"><button>A. 我见过的注释都没什么用</button><button>B. 没时间写注释</button><button>C. 注释会过期、变得误导人</button><button>D. 好代码是自解释的</button></div>
+  <div class="explain">作者承认，几乎每个开发者都见过毫无信息量的注释，大多数现存文档质量也一般。但作者认为这是可以解决的：写好注释不难，学会方法就行。第 13 章就是这套方法。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">关于 12.2 节"没时间写注释"的反驳，下列说法哪个最准确？</div>
+  <div class="opts"><button>A. 作者认为只有大型项目才值得写注释</button><button>B. 作者认为写注释和写代码花的时间一样多，所以要双倍预算</button><button>C. 作者认为注释可以等功能稳定后统一补上</button><button>D. 作者认为一旦允许给注释让路，就永远不会有注释；而写注释的额外时间大约只占开发时间的 10%</button></div>
+  <div class="explain">项目永远有时间压力，永远有看起来更紧急的事，所以"以后再写"的结果就是不写。作者用投资心态（第 3 章）回应：先投入一点，长期获得更高效率；而且类和方法的接口注释在设计阶段就能立刻回本（第 15 章）。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">作者对 Clean Code"注释是失败"观点的回应，哪一项<strong>不</strong>符合原书？</div>
+  <div class="opts"><button>A. 用长方法名代替注释，名字晦涩且信息量不如一条好注释</button><button>B. 只要方法名起得足够好，接口注释就可以省略</button><button>C. 这种观点可能让写注释的人受到不公正的批评</button><button>D. 好的设计能减少对注释的需要，特别是方法体内的注释</button></div>
+  <div class="explain">B 正是作者反对的立场。作者认为注释提供的信息和代码不同，目前无法用代码表达；即使能，也不见得更好。D 是作者明确同意的部分，A 和 C 是反驳理由。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">一个模块的接口注释写得很好，但同一个设计决定分散在五个模块里。修改它时，这些注释主要能帮上什么忙？</div>
+  <div class="opts"><button>A. 什么也帮不上，注释和修改无关</button><button>B. 让你只需要改一处</button><button>C. 让你更快知道要看哪些代码、需要了解什么（减轻认知负担和未知的未知），但五处仍然都要改</button><button>D. 消除了变更放大</button></div>
+  <div class="explain">作者在 12.5 节说，好文档帮助的是认知负担和未知的未知，不包括变更放大。要减少需要修改的地方，得靠设计（例如消除信息泄漏）。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>注释保存设计者脑中、代码装不下的信息：接口的非正式部分、结果含义、设计理由、调用条件。</li>
+  <li>没有注释就没有抽象：使用者必须读实现时，复杂性就完全暴露了。</li>
+  <li>四个借口：自解释代码（不成立）、没时间（约 10% 的投资）、会过期（可管理）、都没用（最有道理，但可以解决）。</li>
+  <li>好注释减轻认知负担和未知的未知，讲清依赖、消除模糊性；它不减少变更放大。</li>
+  <li>作者同意好设计能减少注释（尤其方法体内的），但不同意"注释是失败"。</li>
+</ul>
+<p>第 13 章回答这一章留下的问题：<strong>什么样的注释才不是"没用的注释"？</strong>答案的核心是一句话：注释应该描述代码里看不出来的东西。</p>
+<p><strong>读后一句话</strong>：你最常用（或最常听到）的是哪个借口？读完这一章，你会怎么回应它？</p>
+<textarea class="note" data-key="ch12-oneline" placeholder="例如：我常说'代码就是最好的文档'，但我们那个 xxx 接口，如果不读实现，根本不知道……"></textarea>
+
+</main>
+</body>
+</html>

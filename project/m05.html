@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务 m05 · 该合的合，该分的分</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.mission-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.checklist li { list-style: none; margin-left: -1.2em; }
+.checklist li::before { content: "☐ "; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part1)"></span>minikv 重构项目 · 任务 5 / 8</div>
+  <h1>m05：该合的合，该分的分</h1>
+  <p class="en">对应第 9 章（合在一起还是分开？）</p>
+  <div class="mission-meta"><span data-flag="repetition"></span><span data-flag="special-general"></span><span data-flag="conjoined"></span><span data-principle="8"></span></div>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">背景与对应章节</a></li>
+  <li><a href="#find">你要找的问题</a></li>
+  <li><a href="#task">任务与约束</a></li>
+  <li><a href="#check">自查清单</a></li>
+  <li><a href="#hints">提示</a></li>
+  <li><a href="#answer">参考答案与讨论</a></li>
+</ol></nav>
+
+<h2 id="bg">背景与对应章节</h2>
+<div class="crux"><p><strong><code>server.cpp</code> 里哪些代码应该合成一处？哪些本该分开的东西被搅在了一起？哪两个方法必须对照着读才看得懂？</strong></p></div>
+<p><code>Server</code> 是 minikv 的命令层：把一行文本切成词，找到对应的处理函数，处理函数检查参数、调用 <code>Database</code>、格式化回复。每加一个命令，同事就复制一个现成的处理函数改一改；某天需要支持"值里带空格"，又在切词函数里加了个特殊分支。代码一直能跑，测试也全绿。</p>
+<p>这个任务练的是第 9 章的判断：两段代码共享信息、合起来能让接口更简单、或者合起来能消除重复时，应该合；通用机制和专用逻辑应该分开；而拆分本身也有代价。做之前请读 <a href="../chapters/09-together-apart.html">第 9 章 · 合在一起还是分开？</a>，重点是原书 9.3（消除重复）、9.4～9.5（通用与专用分开）、9.7～9.8（方法的拆与合，以及和 Clean Code 的分歧）。</p>
+
+<h2 id="find">你要找的问题</h2>
+<p>这次只看两个文件：<code>src/server.h</code> 和 <code>src/server.cpp</code>（外加 <code>Store::incr</code> 里的一小段）。读的时候回答：</p>
+<div class="table-wrap"><table>
+  <tr><th>位置</th><th>读的时候问自己</th></tr>
+  <tr><td>10 个 <code>handleXxx()</code> 的开头</td><td>哪几行在每个函数里都出现？把它们排成一列对比：<strong>有没有哪一份和别的不一样？</strong>不一样是有意的，还是复制时漏了？</td></tr>
+  <tr><td><code>handleIncr()</code>、<code>handleGetRange()</code>、<code>Store::incr()</code></td><td>三处都在把字符串解析成整数。它们对 <code>12abc</code>、<code>0x</code> 的处理一样吗？</td></tr>
+  <tr><td><code>Server::tokenize()</code></td><td>一个"按空白切词"的函数，为什么要知道命令名？再加一个值里能带空格的命令时，你得记得改哪里？</td></tr>
+  <tr><td><code>handleSet()</code> 的第一行</td><td>SET 明明有键和值两个参数，为什么检查的是 <code>args_.size() != 2</code>？<code>rawValue_</code> 是什么时候、被谁填的？不看别的方法，你能读懂这一行吗？</td></tr>
+</table></div>
+<p>把找到的每一处问题记下来，标上它属于"重复""通用与专用混杂""连体方法"中的哪一种。</p>
+<textarea class="note" data-key="m05-findings" placeholder="重复：……（有一处副本和别的不一样：……）&#10;混杂：……&#10;连体：……"></textarea>
+
+<div class="lab"><p>确认测试全绿，然后亲手验证一下副本之间的不一致：</p>
+<pre><code>cd project/minikv
+make test
+printf 'SET k hello\nGETRANGE k 0 1x\nINCR n 1x\n' | ./minikv /tmp/m05.log; rm -f /tmp/m05.log
+grep -n "wrong number\|kMaxKeyLength\|stoll" src/server.cpp</code></pre></div>
+
+<h2 id="task">任务与约束</h2>
+<ol>
+  <li><strong>消除重复</strong>：参数个数检查、键长检查、整数解析，各只保留一份。</li>
+  <li><strong>让切词函数回到通用</strong>：它不应该知道任何命令名。"哪个命令的最后一个参数可以带空格"这件事，放到描述命令的地方去。</li>
+  <li><strong>拆开连体方法</strong>：处理函数需要的输入通过参数传进来，不再通过成员变量和切词函数暗中交接。</li>
+  <li>如果修重复时顺手修掉了副本之间的不一致，导致某些输入的回复变了，<strong>把变化列出来</strong>，说明为什么新行为是对的。</li>
+</ol>
+<p>约束：</p>
+<ul>
+  <li><code>make test</code> 全绿，<strong>不许修改 <code>tests/</code></strong>。已有的错误回复文字保持不变。</li>
+  <li>不要为了消灭重复把代码拆成一堆两三行的小函数。拆出来的每个函数都应该能单独读懂、签名简单。</li>
+  <li>只做本任务的事：每个处理函数里的 <code>try/catch</code> 看起来也是重复，但怎么处理异常是 <a href="m06.html">m06</a> 的题目，这次先留着。</li>
+</ul>
+
+<h2 id="check">自查清单</h2>
+<ul class="checklist">
+  <li><code>grep -c "wrong number" src/server.cpp</code> 的结果是 1。</li>
+  <li>切词函数里搜不到任何命令名。</li>
+  <li><code>Server</code> 不再有"由一个方法写、由另一个方法读"的临时成员变量。</li>
+  <li>随便挑一个处理函数，不看其他代码就能说清楚它的参数是什么、已经被检查过什么。</li>
+  <li>加一个新命令（比如值里能带空格的 <code>SETNX key value</code>）只需要改一处登记加一个处理函数。在纸上走一遍试试。</li>
+  <li><code>make test</code> 全绿，编译零警告。</li>
+</ul>
+
+<h2 id="hints">提示</h2>
+<details class="reveal"><summary>提示 1：重复的部分其实是"数据"</summary><div>
+  <p>把每个处理函数开头的检查排成表格：命令名、最少几个参数、最多几个参数、第一个参数是不是键。你会发现各个函数之间不同的只是这几个数，相同的是检查逻辑。数据放进一张表，逻辑写一遍。</p>
+</div></details>
+<details class="reveal"><summary>提示 2：怎么让切词函数不认识 SET</summary><div>
+  <p>很多语言的 split 都有一个"最多切几段"的参数：切到最后一段时，剩下的部分原样保留。这个参数是通用的，和命令无关。"SET 最多两个参数、最后一个吃掉整行剩余"可以写进 SET 的命令描述里，由分派代码把它翻译成这个参数。</p>
+</div></details>
+<details class="reveal"><summary>提示 3：整数解析值得一个函数吗</summary><div>
+  <p>第 9.3 节说，抽出重复代码只在两种情况下划算：被抽出的代码不算太短，且抽出后的签名简单。整数解析符合吗？想想 <code>strtoll</code> 的几个坑：前导空白、在第一个非数字字符处悄悄停下、溢出要看 <code>errno</code>。基线的副本各自踩了不同的坑。反过来，处理函数里那两三行 <code>try/catch</code>，抽成函数后签名会是什么样？</p>
+</div></details>
+
+<h2 id="answer">参考答案与讨论</h2>
+<div class="aside" data-title="先自己做"><p>先自己做完、测试全绿，再打开下面的内容。你的命令表字段、函数名和参考答案不同都没关系；要检查的是：每段知识是不是只出现一次，每个函数是不是能单独读懂。</p></div>
+
+<details class="reveal"><summary>打开参考答案</summary><div>
+
+<h3>重复 → 一张命令表</h3>
+<div class="ba">
+  <div data-label="改之前：10 个处理函数各检查一遍">
+<pre><code class="lang-cpp">std::string Server::handleGet() {
+    if (args_.size() != 2) return "ERR wrong number of arguments for 'get'";
+    const std::string&amp; key = args_[1];
+    if (key.size() &gt; kMaxKeyLength) return "ERR key too long";
+    ...
+}
+std::string Server::handleAppend() {
+    if (args_.size() != 2 || rawValue_.empty()) return "ERR wrong number ...";
+    const std::string&amp; key = args_[1];
+    // (键长检查漏掉了)
+    ...
+}
+std::string Server::handleGetRange() {
+    ...
+    start = std::stoll(args_[2]);   // "1x" 被当成 1
+    end = std::stoll(args_[3]);</code></pre>
+  </div>
+  <div data-label="改之后：描述一次，检查一次">
+<pre><code class="lang-cpp">struct Command {
+    Handler handler;
+    size_t minArgs;
+    size_t maxArgs;
+    bool firstIsKey;   // args[0] is a key and must be at most kMaxKeyLength bytes
+    bool restOfLine;   // the last argument is the rest of the line, spaces included
+};
+//                         handler                  min max  key?   rest of line?
+commands_["SET"]      = {&amp;Server::handleSet,      2, 2, true,  true};
+commands_["GET"]      = {&amp;Server::handleGet,      1, 1, true,  false};
+commands_["APPEND"]   = {&amp;Server::handleAppend,   2, 2, true,  true};
+commands_["GETRANGE"] = {&amp;Server::handleGetRange, 3, 3, true,  false};
+...
+// in handle():
+if (args.size() &lt; cmd.minArgs || args.size() &gt; cmd.maxArgs)
+    return "ERR wrong number of arguments for '" + toLower(name) + "'";
+if (cmd.firstIsKey &amp;&amp; args[0].size() &gt; kMaxKeyLength) return "ERR key too long";
+return (this-&gt;*cmd.handler)(args);</code></pre>
+  </div>
+</div>
+
+<h3>混杂与连体 → 通用的切词 + 显式参数</h3>
+<div class="ba">
+  <div data-label="改之前：切词函数认识 SET">
+<pre><code class="lang-cpp">void Server::tokenize(const std::string&amp; line) {
+    ...
+        if (args_.size() == 2) {
+            std::string cmd = toUpper(args_[0]);
+            if (cmd == "SET" || cmd == "APPEND") {
+                ...
+                rawValue_ = line.substr(i);   // 只有这两个命令读它
+                return;
+            }
+        }
+}
+std::string Server::handleSet() {
+    if (args_.size() != 2 || rawValue_.empty()) ...   // 为什么是 2？</code></pre>
+  </div>
+  <div data-label="改之后：谁都不认识">
+<pre><code class="lang-cpp">// Splits `text` into words separated by runs of whitespace. If `maxWords` is
+// not 0 and the text has more words than that, the last word returned is
+// everything from the start of word number `maxWords` to the end of the
+// text, whitespace included.
+std::vector&lt;std::string&gt; splitWords(const std::string&amp; text, size_t maxWords);
+
+// in handle():
+Args args;
+if (nameAndRest.size() == 2)
+    args = splitWords(nameAndRest[1], cmd.restOfLine ? cmd.maxArgs : 0);
+
+std::string Server::handleSet(const Args&amp; args) {
+    try {
+        db_.set(args[0], args[1], writeOptions_);
+        return "OK";
+    } ...</code></pre>
+  </div>
+</div>
+<p>整数解析合成一个 <code>parseInt64()</code>（<code>src/parse_int.h</code>），INCR、GETRANGE 和 <code>Store::incr()</code> 共用。它值得独立，是因为它藏住的是真正容易写错的东西，而签名只有"字符串进、成功与否和数值出"。</p>
+<p>数字：参数个数检查 10 处 → 1 处，键长检查 6 处 → 1 处，整数解析 4 处 → 1 处；<code>server.cpp</code> 232 → 211 行，加上新的 <code>parse_int.*</code> 35 行。测试一行未改。</p>
+
+<h3>两处回复变了</h3>
+<div class="table-wrap"><table>
+  <tr><th>输入</th><th>基线</th><th>参考答案</th></tr>
+  <tr><td><code>APPEND &lt;超过 256 字节的键&gt; x</code></td><td><code>(integer) 1</code>（漏了检查）</td><td><code>ERR key too long</code>，和 SET 一致</td></tr>
+  <tr><td><code>GETRANGE k 0 1x</code></td><td>当成 <code>0 1</code> 执行</td><td><code>ERR start and end must be integers</code>，和 INCR 一致</td></tr>
+</table></div>
+<p>这两个都是重复代码"走样"留下的 bug。消除重复的直接回报，就是这类不一致以后不会再出现。</p>
+
+<h3>代价与取舍</h3>
+<div class="counter" data-title="抽公共代码要看签名（9.3 节）">
+  <p>命令表每行 5 个字段，<code>Command</code> 的注释要解释每一个，这也是要学的接口。它划算，是因为它替换了 10 份副本，而且每个字段都是命令本来就有的属性。反例就在眼前：每个处理函数里的两三行 <code>try/catch</code> 如果硬抽成一个带一堆参数的辅助函数，签名会比被替换的代码还难懂。那部分留给 m06，用另一种思路（在一处聚合处理异常）解决。</p>
+</div>
+<div class="counter" data-title="别拆成一堆小函数（9.7～9.8 节）">
+  <p>继续拆下去很诱人：<code>checkArity()</code>、<code>validateKey()</code>、<code>formatInteger()</code>……每个两三行。那样得到的是一串浅函数，读一个命令要在五六处之间跳，又回到了"连体"。参考答案只在一个地方切开：<code>handle()</code> 负责"这一行是不是合法的命令调用"，处理函数负责"这个命令做什么"。判断拆得对不对，看的是两边能否各自读懂，不是行数。</p>
+</div>
+<div class="counter" data-title="通用函数多了一个参数">
+  <p><code>splitWords</code> 比原来"只切词"多了一个 <code>maxWords</code>。这是把专用知识移出去的代价。可以接受，因为这个参数本身是通用的：任何调用者都按同一个规则理解它，它不暗示任何具体命令。</p>
+</div>
+
+<h3>审稿人仍会指出的问题</h3>
+<ul>
+  <li>每个处理函数里几乎相同的 <code>try/catch</code>，以及 DEL、GETRANGE 那些本可以不存在的错误：<a href="m06.html">m06</a>。</li>
+  <li><code>Store</code> 的 <code>set/incr/append</code> 各自重复写日志和更新索引：<a href="m02.html">m02</a>。那是另一种重复，解法是更通用的接口，而不是抽辅助函数。</li>
+  <li><code>handleGet()</code> 先 <code>exists()</code> 再 <code>get()</code>，<code>bulk(s, true, true)</code> 的两个 bool 看不出意思：<a href="m08.html">m08</a>。</li>
+</ul>
+
+<p>完整讨论见 <code>solutions/m05/DISCUSSION.md</code>。对照自己的改动：</p>
+<pre><code>cd project            # 仓库里 minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m05 clean
+diff -ru minikv solutions/m05
+make -C solutions/m05 test</code></pre>
+
+</div></details>
+
+<nav class="chapter-nav">
+  <a class="prev" href="m04.html"><small>← 上一个任务</small>m04：把配置参数收回去</a>
+  <a class="next" href="m06.html"><small>下一个任务 →</small>m06：把错误定义掉</a>
+</nav>
+
+</main>
+</body>
+</html>

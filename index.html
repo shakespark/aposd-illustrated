@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>APOSD 精读 · 把软件设计练成手感</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/chapters.js"></script>
+<script src="assets/aposd.js"></script>
+<script src="train/data/index.js"></script>
+<script src="assets/drill.js"></script>
+<style>
+  .hero { padding: 24px 0 8px; }
+  .hero h1 { font-size: clamp(30px, 6vw, 46px); line-height: 1.15; margin: 0 0 10px; letter-spacing: -.02em; }
+  .hero .sub { font-size: 18px; color: var(--muted); max-width: 44em; }
+  .today { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 22px 0 6px; }
+  .today .card { display: flex; flex-direction: column; gap: 6px; }
+  .today .card .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .today .card .act { margin-top: auto; }
+  .track { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
+  .track .fill { height: 100%; background: var(--ok); width: 0; transition: width .4s; }
+  .layers { counter-reset: step; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 16px 0; }
+  .layers .card { position: relative; padding-top: 36px; }
+  .layers .card::before { counter-increment: step; content: counter(step); position: absolute; top: 10px; left: 16px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  .layers .card a.go { display: inline-block; margin-top: 8px; font-size: 14px; }
+  .part { margin: 40px 0 0; }
+  .part-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 2px solid var(--pc); padding-bottom: 6px; margin-bottom: 14px; }
+  .part-head h2 { margin: 0; padding: 0; font-size: 22px; }
+  .part-head .en { color: var(--muted); }
+  .part-head .cnt { margin-left: auto; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .part-intro { color: var(--muted); margin-bottom: 14px; }
+  .ch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  .ch { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; color: var(--fg); position: relative; }
+  .ch:hover { border-color: var(--pc); text-decoration: none; }
+  .ch .no { font: 600 13px var(--mono); color: var(--pc); min-width: 2em; padding-top: 2px; }
+  .ch .t { font-weight: 600; line-height: 1.4; padding-right: 14px; }
+  .ch .e { font-size: 12.5px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+  .ch .m { font-size: 12px; color: var(--muted); margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+  .ch .m .mini { width: 60px; height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; display: inline-block; }
+  .ch .m .mini i { display: block; height: 100%; background: var(--ok); }
+  .ch .chk { position: absolute; top: 8px; right: 10px; color: var(--ok); font-weight: 700; }
+  #map svg { max-width: none; }
+  #map svg .node rect { fill: var(--surface); stroke-width: 1.5; }
+  #map svg .node:hover rect { fill: var(--surface-2); }
+  #map svg .node.done rect { fill: var(--ok-soft); }
+  #map svg .node text { font-size: 12.5px; }
+  #map svg .edge { stroke: var(--faint); stroke-width: 1.2; fill: none; marker-end: url(#arr); }
+  #map svg .lane { font-size: 12.5px; font-weight: 700; }
+  .extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .extras a.card { color: var(--fg); }
+  .extras a.card:hover { border-color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="kicker muted small" style="letter-spacing:.08em">A PHILOSOPHY OF SOFTWARE DESIGN · 2ND EDITION · 中文学习伴侣</div>
+    <h1>读懂不难，<br>难的是写代码时认得出来</h1>
+    <p class="sub">John Ousterhout 的《软件设计的哲学》讲的不是知识，而是<strong>判断力</strong>：什么样的模块是深的，哪里在泄漏信息，这个异常能不能干脆不存在。本站陪你读原书 22 章，用几百道原创 C/C++ 题练眼力，再在一个故意写得很"战术"的键值存储里亲手重构。</p>
+  </section>
+
+  <div class="today" id="today"></div>
+
+  <h2>三层学法</h2>
+  <div class="layers">
+    <div class="card"><h4>读前导读，读原书</h4><p class="small muted">每章页面先给一个关键问题和"读原书时留意"的三个点。带着问题读原书，读完回来看核心观点、反方与边界，做自测。</p><a class="go" href="chapters/01-introduction.html">从第 1 章开始 →</a></div>
+    <div class="card"><h4>训练场：练眼力</h4><p class="small muted">认红旗、比较两种设计、先自己写再对照参考。答题按掌握程度安排间隔复习，每天 10 分钟。</p><a class="go" href="train/index.html">进入训练场 →</a></div>
+    <div class="card"><h4>项目：动手重构</h4><p class="small muted">minikv 是一个能跑、有测试、但设计很"战术"的 C++ 键值存储。8 个任务对应全书各章，每个都有参考解答和讨论。</p><a class="go" href="project/index.html">看项目 →</a></div>
+    <div class="card"><h4>速查与专题</h4><p class="small muted">14 个红旗、16 条原则、设计评审清单；以及与 Clean Code 的分歧、与 OSTEP 的对照、AI 时代怎么读这本书。</p><a class="go" href="cheatsheet.html">速查页 →</a></div>
+  </div>
+
+  <h2>全书地图</h2>
+  <p class="muted">这本书只讲一件事：<strong>复杂性</strong>。前三章定义敌人并给出心态，第 4～11 章是"把模块做深"的各种手段，第 12～18 章处理"模糊"（注释、命名、一致性），最后三章谈趋势、性能和品味。点击节点进入章节，读完的会变绿。</p>
+  <figure class="fig" id="map"></figure>
+
+  <div id="parts"></div>
+
+  <h2>延伸</h2>
+  <div class="extras">
+    <a class="card" href="topics/clean-code.html"><h4>APOSD 与 Clean Code</h4><p>Ousterhout 与 Robert Martin 在函数长度、注释、TDD 上的分歧，各自的理由，和本站的看法。</p></a>
+    <a class="card" href="topics/ostep.html"><h4>与 OSTEP 对照阅读</h4><p>Unix I/O 为什么是深接口、NFS 为什么"卡住重试"、巫毒常量和配置参数……两本书原来在说同一件事。</p></a>
+    <a class="card" href="topics/ai-era.html"><h4>AI 时代读这本书</h4><p>代码越来越便宜，什么变得更贵？用红旗清单审查 AI 写的代码。</p></a>
+    <a class="card" href="cheatsheet.html#checklist"><h4>设计评审清单</h4><p>按"设计接口 / 写实现 / 写注释 / 改代码 / 评审"分组，可以打印出来放在手边。</p></a>
+  </div>
+
+  <hr>
+  <p class="small muted">原书：John Ousterhout，<em>A Philosophy of Software Design</em>, 2nd Edition（Yaknyam Press，2021）。本站是个人学习用的辅助材料，<strong>不是原书的翻译或替代</strong>：所有讲解、代码与题目都是本站原创，书中观点以原书为准，请阅读原书。学习进度和答题记录只保存在你的浏览器里。</p>
+</main>
+
+<script>
+(function () {
+  const { h, s, LS } = APOSD;
+  const D = APOSD_DRILL;
+  const list = APOSD_CHAPTERS, parts = APOSD_PARTS;
+  const done = (n) => !!LS.get("done-" + n, false);
+  const items = D.all(), st = D.SRS.load(), now = Date.now();
+  const intros = [
+    "复杂性是什么、从哪里来，以及为什么\"能跑就行\"的战术式编程会把系统一点点拖垮。",
+    "全书的核心：用简单的接口隐藏大量实现。信息隐藏、通用化、分层、把复杂性往下拉、该合还是该分。",
+    "异常是复杂性的大户：能不能让错误根本不存在？以及一个朴素却常被跳过的习惯——设计两次。",
+    "注释是抽象的一部分，名字是最小的抽象。写什么、怎么写、什么时候写。",
+    "系统的设计大多是在修改中决定的。修改时保持战略、保持一致、让代码一目了然。",
+    "用复杂性的眼光审视流行做法，在不牺牲简洁的前提下追求性能，最后：分清什么重要。",
+  ];
+
+  // 今天该做什么
+  const nDone = list.filter((c) => done(c.n)).length;
+  const next = list.find((c) => !done(c.n));
+  const seen = items.filter((d) => st[d.id]);
+  const due = seen.filter((d) => st[d.id].d <= now).length;
+  const mastered = seen.filter((d) => st[d.id].b >= 4).length;
+  const card = (title, big, sub, act, pct) => h("div", { class: "card" }, h("h4", { style: { margin: 0 } }, title), h("div", { class: "big" }, big), pct != null ? h("div", { class: "track" }, h("div", { class: "fill", style: { width: pct + "%" } })) : null, h("p", { class: "small muted", style: { margin: 0 } }, sub), act);
+  document.getElementById("today").append(
+    card("读书进度", `${nDone} / ${list.length} 章`, next ? `下一章：第 ${next.n} 章 ${next.title}` : "全部读完了！可以去做第 22 章的全书复习。",
+      next ? h("a", { class: "act", href: `chapters/${next.slug}.html` }, "去读 →") : h("a", { class: "act", href: "chapters/22-conclusion.html" }, "全书复习 →"), 100 * nDone / list.length),
+    card("今日复习", due ? `${due} 题到期` : "没有到期的题", seen.length ? `已做过 ${seen.length} 题，其中 ${mastered} 题已掌握（共 ${items.length} 题）` : `题库共 ${items.length} 题。读完一章就去做那一章的题。`,
+      h("a", { class: "act", href: "train/index.html#review" }, due ? "开始复习 →" : "去训练场 →"), items.length ? 100 * mastered / items.length : 0),
+    card("动手项目", "minikv", "读完第 5 章后可以开始第一个重构任务；读完第 10 章前完成前 6 个任务效果最好。", h("a", { class: "act", href: "project/index.html" }, "看任务列表 →")));
+
+  // 分部章节卡片
+  const host = document.getElementById("parts");
+  parts.forEach((p, pi) => {
+    const chs = list.filter((c) => c.part === pi);
+    host.append(h("section", { class: "part", style: { "--pc": p.color } },
+      h("div", { class: "part-head" }, h("h2", {}, p.name), h("span", { class: "en" }, p.en), h("span", { class: "cnt" }, `${chs.filter((c) => done(c.n)).length} / ${chs.length}`)),
+      h("p", { class: "part-intro" }, intros[pi]),
+      h("div", { class: "ch-grid" }, chs.map((c) => {
+        const mine = items.filter((d) => d.ch === c.n);
+        const m = mine.filter((d) => st[d.id] && st[d.id].b >= 4).length;
+        return h("a", { class: "ch", href: `chapters/${c.slug}.html` },
+          h("span", { class: "no" }, String(c.n).padStart(2, "0")),
+          h("span", {}, h("div", { class: "t" }, c.title), h("div", { class: "e" }, c.en),
+            mine.length ? h("div", { class: "m" }, `${mine.length} 题`, h("span", { class: "mini" }, h("i", { style: { width: (100 * m / mine.length) + "%" } })), m ? `掌握 ${m}` : "") : null),
+          done(c.n) ? h("span", { class: "chk", title: "已读完" }, "✓") : null);
+      }))));
+  });
+
+  // 全书地图：六个分部各一条泳道，节点按"后一章建立在前一章之上"连线
+  const lanes = [
+    { part: 0, rows: [[1], [2], [3]] },
+    { part: 1, rows: [[4], [5, 6], [7, 8], [9]] },
+    { part: 2, rows: [[10], [11]] },
+    { part: 3, rows: [[12], [13], [14, 15]] },
+    { part: 4, rows: [[16], [17], [18]] },
+    { part: 5, rows: [[19], [20], [21], [22]] },
+  ];
+  // 分部内按阅读顺序连线，分部之间只画一条过渡线（细节关系在各章"读前"里讲）
+  const edges = [[1,2],[2,3],[3,4],[4,5],[4,6],[5,7],[6,7],[6,8],[7,9],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14],[13,15],[15,16],[16,17],[17,18],[18,19],[19,20],[20,21],[21,22]];
+  const LANE_LABEL = [["复杂性", "与心态"], ["模块设计"], ["错误与", "设计过程"], ["注释与命名"], ["演进与", "可读性"], ["趋势、性能", "与取舍"]];
+  const colW = 128, nodeW = 116, nodeH = 30, laneH = 74, x0 = 120;
+  const pos = {};
+  lanes.forEach((ln, li) => ln.rows.forEach((row, ci) => row.forEach((n, ri) => {
+    pos[n] = { x: x0 + ci * colW, y: 16 + li * laneH + (ri - (row.length - 1) / 2) * 34 + (row.length > 1 ? 0 : 0) };
+  })));
+  const W = x0 + 4 * colW + 10, H = 16 + lanes.length * laneH;
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": "全书章节关系图" });
+  svg.append(s("defs", {}, s("marker", { id: "arr", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" }, s("path", { d: "M0,0 L10,5 L0,10 z", style: "fill:var(--faint)" }))));
+  lanes.forEach((ln, li) => {
+    const y = 16 + li * laneH + nodeH / 2 + 4, lab = LANE_LABEL[li];
+    lab.forEach((line, k) => svg.append(s("text", { x: 8, y: y + (k - (lab.length - 1) / 2) * 16, class: "lane", style: `fill:${parts[ln.part].color}`, text: line })));
+  });
+  const eg = s("g"), ng = s("g");
+  svg.append(eg, ng);
+  const byN = Object.fromEntries(list.map((c) => [c.n, c]));
+  edges.forEach(([a, b]) => {
+    const A = pos[a], B = pos[b];
+    if (!A || !B) return;
+    let d;
+    if (Math.abs(A.y - B.y) < 40 && B.x > A.x) { const ax = A.x + nodeW, ay = A.y + nodeH / 2, bx = B.x, by = B.y + nodeH / 2, mx = (ax + bx) / 2; d = `M${ax},${ay} C${mx},${ay} ${mx},${by} ${bx},${by}`; }
+    else { // 跨分部：从上一分部最后一章的底部，绕到下一分部第一章的顶部
+      const ax = A.x + nodeW / 2, ay = A.y + nodeH, bx = B.x + nodeW / 2, by = B.y, my = ay + (by - ay) * 0.5;
+      d = `M${ax},${ay} C${ax},${my} ${bx},${my} ${bx},${by}`; }
+    eg.append(s("path", { d, class: "edge" }));
+  });
+  const SHORT = { 1: "引言", 3: "战略式编程", 5: "信息隐藏", 6: "通用模块", 7: "分层与抽象", 8: "复杂性下沉", 9: "合并还是拆分", 10: "定义掉错误", 12: "为何写注释", 13: "注释写什么", 15: "先写注释", 16: "修改代码", 18: "一目了然", 19: "软件趋势", 20: "性能", 21: "什么重要" };
+  Object.entries(pos).forEach(([n, p]) => {
+    const c = byN[n]; if (!c) return;
+    const col = parts[c.part].color;
+    const short = SHORT[c.n] || c.title;
+    ng.append(s("a", { href: `chapters/${c.slug}.html`, class: "node" + (done(c.n) ? " done" : "") },
+      s("title", { text: `第 ${c.n} 章 ${c.title}` }),
+      s("rect", { x: p.x, y: p.y, width: nodeW, height: nodeH, rx: 6, style: `stroke:${col}` }),
+      s("text", { x: p.x + 8, y: p.y + 19.5, class: "mono", style: `fill:${col};font-size:11.5px;font-weight:700`, text: c.n }),
+      s("text", { x: p.x + 28, y: p.y + 19.5, text: short.length > 6 ? short.slice(0, 6) + "…" : short })));
+  });
+  document.getElementById("map").append(svg, h("figcaption", {}, "箭头表示\"后者建立在前者之上\"。地图较宽时可以左右滑动。"));
+})();
+</script>
+</body>
+</html>

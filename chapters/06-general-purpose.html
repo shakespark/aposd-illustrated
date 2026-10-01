@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 6 章 · 通用的模块更深</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch06.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.gp-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.gp-row .lbl { font-size: 13px; color: var(--muted); min-width: 4.5em; }
+.gp-row button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.gp-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 820px) { .gp-wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); } }
+.gp-wrap h4 { margin: 0 0 6px; font-size: 13.5px; color: var(--muted); font-weight: 600; }
+.gp-wrap pre { margin: 0; font-size: 12.5px; }
+.gp-q { list-style: none; padding: 0; margin: 12px 0 0; font-size: 14px; display: grid; gap: 4px; }
+.gp-q li { display: flex; gap: 8px; align-items: baseline; }
+.gp-q .m { font: 700 12px var(--mono); border-radius: 4px; padding: 0 6px; white-space: nowrap; }
+.gp-q .m.y { background: var(--ok-soft); color: var(--ok); }
+.gp-q .m.n { background: var(--bad-soft); color: var(--bad); }
+</style>
+</head>
+<body data-chapter="6">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>写一个新模块时，该为眼前这几个用法量身定制，还是做得"通用一点"？通用到什么程度算刚好？</strong></p>
+</div>
+<p>第 5 章说，深模块来自信息隐藏。这一章换一个入口回到同一个目标：<strong>通用的接口天然藏得住更多信息</strong>。作者的说法相当激进，认为过度专用化（over-specialization）<em>可能是</em>软件复杂性最大的单一来源。</p>
+<p>这和很多人的直觉相反。"只做今天需要的，以后真要复用再重构"听起来既务实又符合增量开发。作者坦白自己教课之初也这么想，看了几届学生的项目后改了主意：通用一点的设计几乎总是更好，<strong>哪怕根本没有被复用</strong>。这一章就是作者给出的理由和分寸。</p>
+<p>后半章把"专用"往下推到更细的粒度：专用代码不可能消灭，但可以和通用代码干净地分开；方法体里的特殊情况（special case），很多也可以通过重新设计正常路径来消掉。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>6.1 节</strong>：注意"有点通用"（somewhat general-purpose）的精确定义，它把<em>功能</em>和<em>接口</em>分开说。读完试着用一句话回答：按这个定义，要不要现在就实现将来可能用到的功能？</li>
+    <li><strong>6.4 节最后一段</strong>：书中把一个专用方法称为"虚假的抽象"。想一想：为什么藏起某些细节反而让使用者更难拿到他们需要的信息？这和第 4 章、第 5.9 节是一条线。</li>
+    <li><strong>6.7 节结尾的 "Note"</strong>：把通用代码和专用代码分开，是针对<em>同一个机制</em>说的。读完你应该能解释，为什么某些专用的撤销代码放在文本类里反而是对的。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>专用化制造复杂性</h4><p>为某个具体用法量身定制的接口，往往方法多、每个方法都浅，还把上层的概念带进了下层。<span data-principle="7"></span></p></div>
+  <div class="card"><h4>"有点通用"</h4><p>功能只做今天需要的，接口不绑死在今天的用法上。"有点"两个字很重要：通用到今天反而难用，就过头了。</p></div>
+  <div class="card"><h4>通用 → 藏得更多</h4><p>下层只提供基本操作，上层的具体用法留在上层。两边可以各自独立地改，谁也不必知道对方的细节。</p></div>
+  <div class="card"><h4>三个自问</h4><p>覆盖当前全部需求的最简接口是什么？这个方法会在几种场合用到？用它满足今天的需求方便吗？</p></div>
+  <div class="card"><h4>谁需要知道什么，什么时候</h4><p>使用者确实需要的细节，应该明确而显眼；藏进一个专用方法里，只会制造模糊。</p></div>
+  <div class="card"><h4>专用代码往上推，或往下推</h4><p>具体功能留在顶层；设备差异这类专用细节压到底层的驱动里，中间的核心保持通用。<span data-principle="8"></span></p></div>
+  <div class="card"><h4>消灭特殊情况</h4><p>把正常路径设计成能自然处理边界情况，少写 <code>if</code>。第 10 章的异常处理和第 20 章的性能都会回到这一点。</p></div>
+</div>
+
+<h2>心智模型：专用知识住在哪一层</h2>
+<p>书中的贯穿例子是学生写的图形界面文本编辑器：有的小组给文本类设计了一组和界面按键一一对应的方法，有的小组只给了"在某个位置插入""删除一段范围"这样的基本操作（6.2～6.3 节）。本站换一个 C++ 程序员更熟悉的场景：<strong>TCP 连接的接收缓冲区</strong>。上层有 HTTP、Redis 协议、内部 RPC 三种解析器，都要从同一个缓冲区里取数据。</p>
+<figure class="fig">
+<svg viewBox="0 0 680 250" width="680" role="img" aria-label="三种接收缓冲区设计：专用设计把各协议知识放进缓冲区；有点通用的设计让协议知识留在上层；过度通用的设计让每个协议解析器都写逐字节循环">
+  <text x="110" y="20" text-anchor="middle" font-weight="700">专用</text>
+  <text x="340" y="20" text-anchor="middle" font-weight="700">有点通用</text>
+  <text x="570" y="20" text-anchor="middle" font-weight="700">过度通用</text>
+  <g font-size="12">
+    <rect x="20" y="36" width="180" height="56" rx="6" class="box"/><text x="110" y="58" text-anchor="middle" class="t-muted">协议解析器</text><text x="110" y="78" text-anchor="middle" class="t-muted">（几乎什么都不做）</text>
+    <rect x="20" y="110" width="180" height="110" rx="6" class="bad-soft"/><text x="110" y="130" text-anchor="middle" class="mono">RecvBuffer</text>
+    <text x="110" y="152" text-anchor="middle" class="mono" font-size="11.5">readHttpLine()</text>
+    <text x="110" y="170" text-anchor="middle" class="mono" font-size="11.5">readRedisBulk()</text>
+    <text x="110" y="188" text-anchor="middle" class="mono" font-size="11.5">readFrame32() …</text>
+    <text x="110" y="208" text-anchor="middle" font-size="11.5">每加一个协议，改这里</text>
+
+    <rect x="250" y="36" width="180" height="56" rx="6" class="ok-soft"/><text x="340" y="58" text-anchor="middle">HTTP / Redis / RPC</text><text x="340" y="78" text-anchor="middle" class="t-muted">协议知识留在上层</text>
+    <rect x="250" y="110" width="180" height="110" rx="6" class="ok-soft"/><text x="340" y="130" text-anchor="middle" class="mono">RecvBuffer</text>
+    <text x="340" y="156" text-anchor="middle" class="mono" font-size="11.5">find / peek / consume</text>
+    <text x="340" y="180" text-anchor="middle" font-size="11.5">只懂"字节和偏移"</text>
+    <text x="340" y="200" text-anchor="middle" font-size="11.5">藏住：分段存储、扩容、拷贝</text>
+
+    <rect x="480" y="36" width="180" height="56" rx="6" class="warn-soft"/><text x="570" y="58" text-anchor="middle">每个解析器</text><text x="570" y="78" text-anchor="middle">都写一遍逐字节循环</text>
+    <rect x="480" y="110" width="180" height="110" rx="6" class="box"/><text x="570" y="130" text-anchor="middle" class="mono">RecvBuffer</text>
+    <text x="570" y="156" text-anchor="middle" class="mono" font-size="11.5">at(i) / pop()</text>
+    <text x="570" y="180" text-anchor="middle" font-size="11.5">接口最小，</text>
+    <text x="570" y="200" text-anchor="middle" font-size="11.5">但替上层做的事也最少</text>
+  </g>
+  <line x1="110" y1="92" x2="110" y2="110" class="arrow"/><line x1="340" y1="92" x2="340" y2="110" class="arrow"/><line x1="570" y1="92" x2="570" y2="110" class="arrow"/>
+  <text x="340" y="244" text-anchor="middle" font-size="12" class="t-muted">红：上层概念漏进了下层　绿：各层只懂自己的事　黄：下层太薄，复杂性堆在调用方</text>
+</svg>
+<figcaption>同一个接收缓冲区的三种接口。本站自绘示意。</figcaption>
+</figure>
+
+<blockquote class="quote">the module's functionality should reflect your current needs, but its interface should not.<cite>— 第 6.1 节</cite></blockquote>
+
+<p>光看图还不够具体。下面把三种接口和三个现有用法、外加一个"明天才来的新需求"逐一摆出来。切换设计和用例，对照右边的调用方代码，再看下方三个自问的结论。</p>
+
+<section class="sim" id="sim-gp">
+  <div class="sim-head"><span class="tag">交互</span><h3>三个自问：接收缓冲区的三种接口</h3>
+    <div class="desc">左边是 <code>RecvBuffer</code> 的公开接口，右边是上层协议解析器为了某个用例要写的代码（<code>NeedMore</code> 表示数据还没收全，等下次再来）。</div></div>
+  <div class="sim-body">
+    <div class="controls" style="display:grid;gap:8px">
+      <div class="gp-row"><span class="lbl">接口设计</span><span id="gp-designs" class="gp-row"></span></div>
+      <div class="gp-row"><span class="lbl">用例</span><span id="gp-uses" class="gp-row"></span></div>
+    </div>
+    <div class="gp-wrap">
+      <div><h4 id="gp-if-title">RecvBuffer 的接口</h4><div id="gp-if"></div></div>
+      <div><h4 id="gp-use-title">调用方代码</h4><div id="gp-use"></div></div>
+    </div>
+    <ul class="gp-q" id="gp-q"></ul>
+    <div class="narrate" id="gp-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="gp-m">0</div><div class="l">RecvBuffer 公开方法</div></div>
+      <div class="stat"><div class="v" id="gp-l">0</div><div class="l">这个用例的调用方代码（行）</div></div>
+      <div class="stat"><div class="v" id="gp-c">—</div><div class="l">新需求要改 RecvBuffer 吗（选第 4 个用例）</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">行数不含注释，只为比较量级。注意"有点通用"那一列：调用方代码比专用设计长几行，这一点作者也承认（6.3 节），但这几行把"读到哪里为止、行尾怎么算"明明白白摆在协议解析器里，而那正是协议解析器的开发者需要知道的东西。</p>
+
+<h3>专用方法为什么是虚假的抽象</h3>
+<p>专用设计里的 <code>readHttpLine()</code> 看起来替 HTTP 解析器藏住了"怎么找行尾"。可写 HTTP 解析器的人恰恰<strong>必须</strong>知道：只认 <code>\r\n</code>，还是也接受单独的 <code>\n</code>？行太长时返回什么？于是还是得翻进 <code>RecvBuffer</code> 的实现去确认。书中对编辑器里那个专用删除方法下了同样的判断（6.4 节）：它假装隐藏了信息，实际上使用者需要这些信息，放进下层只是让它更难找。</p>
+<blockquote class="quote">One of the most important elements of software design is determining who needs to know what, and when.<cite>— 第 6.4 节</cite></blockquote>
+<p>反过来，在"有点通用"的设计里，协议解析器自己调用 <code>find("\r\n")</code>，规则写在它该在的地方；<code>RecvBuffer</code> 藏住的是协议解析器<strong>确实不关心</strong>的东西：数据是存在一块连续内存还是一串分段里、什么时候扩容、<code>peek</code> 跨段时要不要拷贝。这才是信息隐藏。</p>
+
+<h2>把通用机制从专用细节里拆出来</h2>
+<p>书中 6.7 节用编辑器的多级撤销（undo）说明了一个更细的拆分：<strong>通用机制</strong>、<strong>具体细节</strong>、<strong>组合策略</strong>各住一处。下面是本站的一个服务端例子，结构上是同一回事：一个连接类里长出了"顺便帮别人管定时器"的代码。</p>
+<div class="ba">
+  <div data-label="改之前：连接类替所有人管定时器">
+<pre class="numbered" data-mark="2,6,7,15,16,17,18"><code class="lang-cpp">class Connection {
+    enum class TimerKind { Idle, RequestDeadline, AuthSessionExpiry, RateLimitWindow };
+    struct Timer { TimerKind kind; Clock::time_point at; std::string sessionId; };
+    std::vector&lt;Timer&gt; timers_;
+public:
+    void addAuthSessionTimer(const std::string&amp; sid, Clock::time_point at);  // 给 AuthService 用
+    void addRateLimitTimer(Clock::time_point at);                            // 给 RateLimiter 用
+    void onTick(Clock::time_point now) {
+        for (const Timer&amp; t : takeDue(now)) {
+            switch (t.kind) {
+            case TimerKind::Idle:
+                close("idle"); break;
+            case TimerKind::RequestDeadline:
+                failPending(Status::Timeout); break;
+            case TimerKind::AuthSessionExpiry:
+                auth_-&gt;onSessionExpired(t.sessionId); break;
+            case TimerKind::RateLimitWindow:
+                limiter_-&gt;resetWindow(id_); break;
+            }
+        }
+    }
+};</code></pre>
+    <p>"按到期时间排序、到点触发"是通用机制；认证会话过期、限流窗口重置是别人家的专用细节，却都写进了 <code>Connection</code>（第 2、6～7、15～18 行）。<code>Connection</code> 因此要知道 <code>auth_</code> 和 <code>limiter_</code>，那两个模块也要知道 <code>Connection</code> 的专用方法。再加一种定时器，就得改枚举、加方法、加分支。</p>
+  </div>
+  <div data-label="改之后：机制 / 细节 / 策略">
+<pre class="numbered" data-mark="1,2"><code class="lang-cpp">// 通用机制：只负责"到点调用回调"，不知道每个定时器是干什么的。
+// 回调在事件循环线程里执行；取消已触发或不存在的 id 是无害的空操作。
+class TimerQueue {
+public:
+    using Id = uint64_t;
+    Id schedule(Clock::time_point at, std::function&lt;void()&gt; fn);
+    void cancel(Id id);
+    void runDue(Clock::time_point now);   // 事件循环每轮调用一次
+};
+
+// 具体细节：每个模块自己定义自己的定时器
+void Connection::armIdleTimer() {
+    timers_.cancel(idleTimer_);
+    idleTimer_ = timers_.schedule(Clock::now() + opts_.idleTimeout,
+                                  [this] { close("idle"); });
+}
+void AuthService::startSession(const Session&amp; s) {
+    expiry_[s.id] = timers_.schedule(s.expiresAt, [this, id = s.id] { expire(id); });
+}
+
+// 组合策略：各种超时设多长、断线时取消哪些定时器，由顶层组装代码决定
+Server::Server(const Config&amp; cfg)
+    : conns_(timers_, {.idleTimeout = cfg.idleTimeout}),
+      auth_(timers_, {.sessionTtl = cfg.sessionTtl}) {}</code></pre>
+    <p><code>TimerQueue</code> 可以原封不动地用在任何事件循环里；每种定时器只被一个模块理解；"超时设多长"这类策略集中在顶层配置。三部分可以各自理解、各自修改。</p>
+  </div>
+</div>
+<figure class="fig">
+<svg viewBox="0 0 620 170" width="620" role="img" aria-label="三部分拆分：通用机制 TimerQueue 在底部；具体细节在 Connection、AuthService、RateLimiter 各自内部；组合策略在顶层 Server 配置">
+  <rect x="20" y="14" width="580" height="38" rx="6" class="accent-soft"/>
+  <text x="310" y="38" text-anchor="middle" font-size="13">组合策略：Server 配置（idleTimeout、sessionTtl……、断线时取消哪些）</text>
+  <rect x="20" y="66" width="180" height="40" rx="6" class="box"/><text x="110" y="91" text-anchor="middle" font-size="12.5">Connection：空闲断开</text>
+  <rect x="220" y="66" width="180" height="40" rx="6" class="box"/><text x="310" y="91" text-anchor="middle" font-size="12.5">AuthService：会话过期</text>
+  <rect x="420" y="66" width="180" height="40" rx="6" class="box"/><text x="510" y="91" text-anchor="middle" font-size="12.5">RateLimiter：窗口重置</text>
+  <rect x="20" y="120" width="580" height="38" rx="6" class="ok-soft"/>
+  <text x="310" y="144" text-anchor="middle" font-size="13">通用机制：TimerQueue（schedule / cancel / runDue），不认识任何具体定时器</text>
+</svg>
+<figcaption>中间一层是具体细节，各自住在最懂它的模块里。本站自绘示意。</figcaption>
+</figure>
+<p><strong>代价</strong>：回调捕获了 <code>this</code>，于是"对象销毁前必须取消自己的定时器"成了一条新的接口约束，<code>TimerQueue</code> 的接口注释和各模块的析构函数都要处理它。另外，调试时"到底有哪些定时器在排队"不再能从一个枚举里一眼看出来。这些代价通常远小于原来的纠缠，但值得写进注释。</p>
+<p>注意 <code>Connection::armIdleTimer</code> 里那个回调：它是专门服务"定时器"这个机制的专用代码，却住在 <code>Connection</code> 里。这正是 6.7 节末尾那段 Note 的意思：<strong>分开通用与专用，是针对同一个机制而言的</strong>。空闲断开和连接的其他代码关系紧密，放在一起是对的；不该放在一起的，是它和 <code>TimerQueue</code> 的通用代码。</p>
+
+<h3>往下推：驱动程序</h3>
+<p>专用代码也可以往<strong>下</strong>推。书中的例子是操作系统的设备驱动（6.6 节）：核心只认识"读一个块""写一个块"这样的通用操作，每种设备的专用命令集压到各自的驱动里。新设备只要能实现这个通用接口，就能接入，核心代码不用改。</p>
+<div class="aside" data-title="对照 OSTEP">
+  <p><a href="https://t.miaowuao.cn/ostep/chapters/36-io-devices.html">OSTEP 第 36 章</a>讲设备驱动时也提到了这种抽象的代价：通用块接口让文件系统不知道底层是什么设备，但也让它用不上某些设备的特殊能力（OSTEP 举的是 SCSI 丰富的错误报告）。这和 6.5 节"别通用到今天不好用"是同一个权衡的两面。</p>
+</div>
+
+<h2>消灭特殊情况</h2>
+<p>专用化不只出现在类和方法的设计上，也出现在方法体里，形式是特殊情况的 <code>if</code>。书中的例子是编辑器里"当前有没有选区"的状态变量（6.8 节）：改成"选区总是存在，没选东西时它是空的"，大量判断就消失了。C 程序员最熟悉的同类技巧是带哨兵（sentinel）节点的双向链表：</p>
+<div class="ba">
+  <div data-label="改之前：头尾为空要特殊处理">
+<pre class="numbered" data-mark="5,6,10"><code class="lang-c">struct node { struct node *prev, *next; };
+struct list { struct node *head, *tail; };
+
+void list_remove(struct list *l, struct node *n) {
+    if (n-&gt;prev) n-&gt;prev-&gt;next = n-&gt;next; else l-&gt;head = n-&gt;next;
+    if (n-&gt;next) n-&gt;next-&gt;prev = n-&gt;prev; else l-&gt;tail = n-&gt;prev;
+}
+void list_push_back(struct list *l, struct node *n) {
+    n-&gt;next = NULL; n-&gt;prev = l-&gt;tail;
+    if (l-&gt;tail) l-&gt;tail-&gt;next = n; else l-&gt;head = n;
+    l-&gt;tail = n;
+}</code></pre>
+    <p>每个修改操作都要区分"是不是头""是不是尾""链表是不是空的"。每多一种操作（插到某节点前、拼接两个链表），这些分支就再写一遍，漏掉一个就是空指针。</p>
+  </div>
+  <div data-label="改之后：环形 + 哨兵">
+<pre><code class="lang-c">/* 环形链表，head 是哨兵节点，不存数据。
+ * 空链表：head.next == head.prev == &amp;head。 */
+struct list { struct node head; };
+
+void list_init(struct list *l) { l-&gt;head.next = l-&gt;head.prev = &amp;l-&gt;head; }
+
+void list_remove(struct node *n) {
+    n-&gt;prev-&gt;next = n-&gt;next;
+    n-&gt;next-&gt;prev = n-&gt;prev;
+}
+void list_push_back(struct list *l, struct node *n) {
+    n-&gt;prev = l-&gt;head.prev;  n-&gt;next = &amp;l-&gt;head;
+    l-&gt;head.prev-&gt;next = n;  l-&gt;head.prev = n;
+}</code></pre>
+    <p>每个节点的前后永远有邻居（最坏情况下就是哨兵本身），"空""头""尾"不再是特殊情况，<code>list_remove</code> 甚至不需要知道节点属于哪个链表。Linux 内核的 <code>list_head</code> 就是这样设计的。代价：遍历的终止条件从"遇到 NULL"变成"回到 &amp;head"，新手容易写错；需要判断"是否为空"的地方仍然要判断，只是只剩真正需要的那几处。</p>
+  </div>
+</div>
+
+<h2>边界与反方：什么时候别生搬硬套</h2>
+<div class="counter" data-title="&quot;有点&quot;通用：别通用到今天不好用">
+  <p>作者专门强调"有点"二字。交互里的"过度通用"设计接口最小、也完全通用，但每个协议解析器都要写一堆逐字节循环，而且大块数据逐字节处理也慢。书里对应的例子是只支持单字符插入删除的文本类（6.5 节），结论是应该直接支持对一段范围的操作。判断方法就是第三个自问：<strong>为了今天的需求，调用方要写很多额外代码吗？</strong>要，就说明接口没提供合适的功能。</p>
+</div>
+<div class="counter" data-title="和 YAGNI 冲突吗？">
+  <p>"You aren't gonna need it"反对的是<strong>提前实现</strong>用不上的功能。作者的"有点通用"同样要求功能只反映当前需求，分歧主要在<strong>接口的形状</strong>：作者认为，即使只服务今天的用法，通用的接口也更简单、实现代码更少。本站补充：两者真正的分歧在"先写专用的，等出现第二个用法再重构成通用的"这条路线（6.1 节作者自己起初也是这么教的）。作者后来改主意的理由并不是"将来一定会复用"，而是"即使不复用，通用一点的接口现在就更简单、实现代码更少"。既然如此，就没有理由先走专用这一步。第 19 章讨论敏捷开发时还会回到这个话题。</p>
+</div>
+<div class="counter" data-title="方法少了，参数多了，不算简化">
+  <p>第一个自问说的是"在不减少能力的前提下减少方法数"。但如果靠给一个方法加五个布尔参数、把三个方法硬并成一个，每个调用者都得弄懂所有参数的组合，接口其实更复杂了（6.5 节）。通用接口的方法应该少，<strong>每一个也都应该简单</strong>。</p>
+</div>
+<div class="counter" data-title="专用代码消灭不了，只能安顿好">
+  <p>应用的顶层功能天生就是专用的，没必要、也不可能"通用化"一切。这一章的要求是把专用代码<strong>往上或往下推</strong>，让它和通用代码分开（6.6 节）。如果你发现自己在给一个只有一处调用的业务流程抽象"可扩展框架"，那是走到了另一个极端。第 9 章会把"通用与专用混杂"正式列为一个红旗。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道识别专用接口，一道"看起来通用但其实过头了"，一道消除特殊情况。本章题库共 20 题，<a href="../train/index.html#ch=6">去训练场做完整一组</a>。</p>
+<div class="drill-embed" data-ids="ch06-flag-01 ch06-ab-02 ch06-ab-03"></div>
+
+<h2>动手：项目任务</h2>
+<p><a href="../project/index.html">minikv</a> 的 <code>Store</code> 为每条命令各写了一个专用方法（<code>set</code>、<code>del</code>、<code>incr</code>、<code>append</code>、<code>getRange</code>），每个都重复一遍"组记录、写日志、记垃圾字节、更新索引"；INCR 的整数解析、GETRANGE 的切片这些命令语义也落在了存储层。结果是加一条命令要同时改 <code>Server</code>、<code>Database</code>、<code>Store</code> 三处。任务 m02 要求你用这一章的三个自问审视 <code>src/store.cpp</code> 和 <code>src/database.cpp</code>，设计一个"有点通用"的存储核心，把命令语义推回上层。动手之前先读第 11 章"设计两次"：至少画出两套截然不同的接口再比较，这是 m02 的设计步骤。</p>
+<div class="lab"><p>任务 m02：把一组专用方法换成一个有点通用的核心接口。详见 <a href="../project/m02.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">按书中的定义，"有点通用"（somewhat general-purpose）的模块指的是：</div>
+  <div class="opts"><button>A. 功能反映当前需求，接口则足够通用、能支持多种用法，同时今天用起来也方便</button><button>B. 现在就实现将来可能用到的所有功能，以便日后复用</button><button>C. 接口尽可能小，哪怕调用方要写很多代码</button><button>D. 只为当前需求写专用接口，等有第二个用法再改</button></div>
+  <div class="explain">功能和接口要分开看：功能只做今天需要的（这一点和"别提前实现"一致），接口不绑死在今天的具体用法上。C 是"通用过头"。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">作者认为通用的接口比专用的好，即使：</div>
+  <div class="opts"><button>A. 这个类从来没有被复用</button><button>B. 通用接口让下层需要了解上层的功能</button><button>C. 通用接口的方法数更多</button><button>D. 通用接口导致总代码量变多</button></div>
+  <div class="explain">作者最意外的发现是：即使只按专用方式使用，通用的设计也更简单、更深，实现代码也更少。复用只是额外的收益。B、C、D 都和书中描述的通用设计的特点相反。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">一个方法只在整个代码库里被调用一次，而且名字直接对应一个界面按钮。按 6.5 节，这提示什么？</div>
+  <div class="opts"><button>A. 没有问题：方法和功能一一对应最好理解</button><button>B. 它可能太专用了，看看能不能用一个通用方法替代几个这样的专用方法</button><button>C. 应该把它改成内联函数以提升性能</button><button>D. 它太通用了</button></div>
+  <div class="explain">"这个方法会在几种场合用到？"如果答案是一种，那是专用化的警告信号。书中还特别指出，把类的方法和用户可见的功能一一对应，往往会把上层概念泄漏进下层。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">为了把 <code>exportCsv()</code>、<code>exportJson()</code>、<code>exportForEmail()</code> 三个方法"通用化"，有人合成了 <code>exportData(bool json, bool gzip, bool forEmail, bool legacy, int indent)</code>。评价：</div>
+  <div class="opts"><button>A. 这是消除特殊情况的好例子</button><button>B. 不一定是简化：每个调用者都得理解这些参数的组合，单个方法的接口变复杂了</button><button>C. 这是把专用代码往下推</button><button>D. 很好：方法数从 3 变成 1，接口更简单了</button></div>
+  <div class="explain">作者明确提醒：减少方法数只有在每个方法本身保持简单时才有意义。靠堆参数合并方法，得到的往往是一个更难用的接口。更好的方向是找出真正的通用核心（例如"把记录序列化成某种格式写到某个流"），让格式成为一个可替换的部件。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">在本页的定时器例子里，"空闲多久算超时、断线时取消哪些定时器"属于哪一部分？</div>
+  <div class="opts"><button>A. 通用机制（TimerQueue）</button><button>B. 应该写死在 TimerQueue 里</button><button>C. 组合策略（顶层组装和配置代码）</button><button>D. 具体细节（Connection 的回调）</button></div>
+  <div class="explain">三分法：通用机制管"到点调用"；具体细节由各模块的回调实现；怎么设、怎么组合属于策略，放在最了解整体行为的顶层代码。书中的撤销例子里，"把哪些动作分成一组"同样由上层决定。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">关于"消灭特殊情况"，下列哪项最符合 6.8 节的意思？</div>
+  <div class="opts"><button>A. 遇到边界情况直接抛异常，交给调用者处理</button><button>B. 把所有 <code>if</code> 换成查表</button><button>C. 在每个函数开头集中检查所有边界情况</button><button>D. 重新设计正常路径（例如用"空选区"代替"没有选区"），让边界情况不需要额外代码就能被正确处理</button></div>
+  <div class="explain">关键是让常规代码自然覆盖边界，而不是把检查挪到别处。A 只是把特殊情况推给了调用者，第 10 章会专门讨论怎样减少这类异常。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>过度专用化是复杂性的主要来源之一；通用一点的接口更简单、更深，哪怕不被复用。</li>
+  <li>"有点通用"：功能反映当前需求，接口不反映。别通用到今天难用。</li>
+  <li>三个自问：覆盖当前需求的最简接口？会用在几种场合？今天用起来方便吗？</li>
+  <li>使用者需要的细节要明确地交给他们；藏进专用方法就成了虚假的抽象。</li>
+  <li>专用代码往上推（顶层功能）或往下推（驱动），和通用代码分开；分开的单位是"同一个机制"。</li>
+  <li>方法体里的特殊情况，尽量靠重新设计正常路径来消除。</li>
+</ul>
+<p>第 7 章看系统的纵向结构：相邻两层如果提供几乎一样的抽象（比如一个方法只是把参数原样转交给下一层），说明分层出了问题。本章的"专用往上推、往下推"，到那里会变成"每一层都应该提供不同的抽象"。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段代码。</p>
+<textarea class="note" data-key="ch06-oneline" placeholder="例如：我们 DAO 里那一串 findXxxForYyyPage 方法，其实都是一个通用查询的专用版本……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, codeBlock } = APOSD;
+  const USES = ["HTTP 请求行", "RPC 定长帧", "Redis 批量串", "新需求：PROXY 头"];
+  const DESIGNS = [
+    { name: "专用", methods: 6,
+      iface: `class RecvBuffer {
+public:
+    void append(std::string_view data);
+    std::optional<std::string> readHttpLine();   // 读到行尾，去掉行尾
+    bool skipHttpHeaders();                       // 跳到空行之后
+    std::optional<std::string> readRedisBulk();  // $<len>\\r\\n<data>\\r\\n
+    std::optional<std::string> readRedisSimple();// +OK\\r\\n
+    std::optional<std::string> readFrame32();    // 4 字节小端长度 + 负载
+};`,
+      uses: [
+`auto line = buf.readHttpLine();
+if (!line) return NeedMore;
+parseRequestLine(*line);
+// 单独的 \\n 算不算行尾？行太长怎么办？得去读 RecvBuffer 的实现`,
+`auto frame = buf.readFrame32();
+if (!frame) return NeedMore;
+handleFrame(*frame);`,
+`auto s = buf.readRedisBulk();
+if (!s) return NeedMore;
+handleBulk(*s);`,
+`// RecvBuffer 里没有合适的方法，先去改它：
+//   recv_buffer.h   + std::optional<std::string> readProxyV1Header();
+//   recv_buffer.cpp + 约 40 行：认 "PROXY " 前缀、找行尾、限制 107 字节
+auto hdr = buf.readProxyV1Header();
+if (!hdr) return NeedMore;
+handleProxyHeader(*hdr);`],
+      change: [false, false, false, true],
+      q: [false, false, true],
+      say: ["接口里 6 个方法，其中 5 个各自只服务一个协议、只在一处被调用。HTTP、Redis、RPC 的格式知识全都漏进了缓冲区类，协议解析器的开发者想确认细节，还得去读缓冲区的实现。",
+            "每加一种协议，就要在 RecvBuffer 里加一个只用一次的方法：负责网络缓冲区的人和负责协议的人被绑在了一起。"] },
+    { name: "有点通用", methods: 5,
+      iface: `class RecvBuffer {
+public:
+    void append(std::string_view data);
+    size_t size() const;
+    // 从 from 开始查找 pattern，返回偏移；找不到返回 npos
+    size_t find(std::string_view pattern, size_t from = 0) const;
+    std::string_view peek(size_t offset, size_t n) const;  // 只看不取
+    void consume(size_t n);                                // 丢弃最前面 n 字节
+    static constexpr size_t npos = size_t(-1);
+};`,
+      uses: [
+`size_t eol = buf.find("\\r\\n");
+if (eol == RecvBuffer::npos) return NeedMore;
+parseRequestLine(buf.peek(0, eol));
+buf.consume(eol + 2);`,
+`if (buf.size() < 4) return NeedMore;
+uint32_t len = decodeLE32(buf.peek(0, 4));
+if (buf.size() < 4 + len) return NeedMore;
+handleFrame(buf.peek(4, len));
+buf.consume(4 + len);`,
+`size_t eol = buf.find("\\r\\n");
+if (eol == RecvBuffer::npos) return NeedMore;
+size_t n = parseLen(buf.peek(1, eol - 1));   // 跳过开头的 '$'
+size_t start = eol + 2;
+if (buf.size() < start + n + 2) return NeedMore;
+handleBulk(buf.peek(start, n));
+buf.consume(start + n + 2);`,
+`// 现有方法就够了，RecvBuffer 不用改
+size_t eol = buf.find("\\r\\n");
+if (eol == RecvBuffer::npos)
+    return buf.size() > 107 ? BadHeader : NeedMore;  // 协议规定最长 107 字节
+handleProxyHeader(buf.peek(0, eol));
+buf.consume(eol + 2);`],
+      change: [false, false, false, false],
+      q: [true, true, true],
+      say: ["接口只讲\"字节和偏移\"，三个协议都用同一组方法，每个方法都用在好几处。调用方多写了几行，但行尾规则、长度怎么算都摆在协议解析器自己的代码里。",
+            "新协议直接用现有方法写，RecvBuffer 完全不用动：负责缓冲区的人和负责协议的人可以各干各的。"] },
+    { name: "过度通用", methods: 4,
+      iface: `class RecvBuffer {
+public:
+    void append(std::string_view data);
+    size_t size() const;
+    char at(size_t i) const;   // 第 i 个字节
+    void pop();                // 丢掉第一个字节
+};`,
+      uses: [
+`size_t i = 0;
+while (i + 1 < buf.size() && !(buf.at(i) == '\\r' && buf.at(i + 1) == '\\n')) ++i;
+if (i + 1 >= buf.size()) return NeedMore;
+std::string line;
+for (size_t k = 0; k < i; ++k) line += buf.at(k);
+for (size_t k = 0; k < i + 2; ++k) buf.pop();
+parseRequestLine(line);`,
+`if (buf.size() < 4) return NeedMore;
+uint32_t len = 0;
+for (int k = 0; k < 4; ++k) len |= uint32_t(uint8_t(buf.at(k))) << (8 * k);
+if (buf.size() < 4 + len) return NeedMore;
+std::string frame;
+for (size_t k = 0; k < len; ++k) frame += buf.at(4 + k);
+for (size_t k = 0; k < 4 + len; ++k) buf.pop();
+handleFrame(frame);`,
+`size_t i = 0;
+while (i + 1 < buf.size() && !(buf.at(i) == '\\r' && buf.at(i + 1) == '\\n')) ++i;
+if (i + 1 >= buf.size()) return NeedMore;
+size_t n = 0;
+for (size_t k = 1; k < i; ++k) n = n * 10 + (buf.at(k) - '0');
+size_t start = i + 2;
+if (buf.size() < start + n + 2) return NeedMore;
+std::string s;
+for (size_t k = 0; k < n; ++k) s += buf.at(start + k);
+for (size_t k = 0; k < start + n + 2; ++k) buf.pop();
+handleBulk(s);`,
+`// RecvBuffer 不用改，但"找行尾"的循环又得写一遍
+size_t i = 0;
+while (i + 1 < buf.size() && !(buf.at(i) == '\\r' && buf.at(i + 1) == '\\n')) ++i;
+if (i + 1 >= buf.size()) return buf.size() > 107 ? BadHeader : NeedMore;
+std::string hdr;
+for (size_t k = 0; k < i; ++k) hdr += buf.at(k);
+for (size_t k = 0; k < i + 2; ++k) buf.pop();
+handleProxyHeader(hdr);`],
+      change: [false, false, false, false],
+      q: [true, true, false],
+      say: ["接口最小、也最通用，但它几乎没替调用方做任何事：每个协议都在写逐字节的查找和拷贝循环，几乎是在重新实现缓冲区，大块数据逐字节处理也慢。",
+            "新协议同样不用改 RecvBuffer，可\"找行尾\"的循环已经是第三次复制了。通用，但通用过了头。"] },
+  ];
+  const QS = ["覆盖当前全部需求的最简接口？", "这个方法会在几种场合用到？", "满足今天的需求方便吗？"];
+  const QNOTE = [
+    ["方法多，且每多一种协议就多一个", "接口只讲字节和偏移，覆盖全部需求", "方法最少，但缺了范围操作"],
+    ["每个协议方法只用在一处", "find/peek/consume 每个协议都在用", "at/pop 到处都在用"],
+    ["调用最短", "多写几行，但意图清楚", "调用方要写一堆循环"],
+  ];
+  const dEl = document.getElementById("gp-designs"), uEl = document.getElementById("gp-uses");
+  let d = 1, u = 0;
+  const dBtns = DESIGNS.map((x, i) => h("button", { onclick: () => { d = i; draw(); } }, x.name));
+  const uBtns = USES.map((x, i) => h("button", { onclick: () => { u = i; draw(); } }, x));
+  dEl.append(...dBtns); uEl.append(...uBtns);
+  function draw() {
+    const D = DESIGNS[d], src = D.uses[u];
+    dBtns.forEach((b, i) => b.classList.toggle("on", i === d));
+    uBtns.forEach((b, i) => b.classList.toggle("on", i === u));
+    document.getElementById("gp-if-title").textContent = `RecvBuffer 的接口（${D.name}）`;
+    document.getElementById("gp-use-title").textContent = `调用方代码：${USES[u]}`;
+    document.getElementById("gp-if").replaceChildren(codeBlock(D.iface, { numbers: false }));
+    document.getElementById("gp-use").replaceChildren(codeBlock(src, { numbers: false }));
+    const lines = src.split("\n").filter((l) => l.trim() && !l.trim().startsWith("//")).length;
+    document.getElementById("gp-m").textContent = D.methods;
+    document.getElementById("gp-l").textContent = lines;
+    document.getElementById("gp-c").textContent = u === 3 ? (D.change[3] ? "要" : "不用") : "—";
+    document.getElementById("gp-q").replaceChildren(...QS.map((q, i) =>
+      h("li", {}, h("span", { class: "m " + (D.q[i] ? "y" : "n") }, D.q[i] ? "通过" : "不通过"), h("span", {}, `${q} ${QNOTE[i][d]}。`))));
+    document.getElementById("gp-narrate").textContent = u === 3 ? D.say[1] : D.say[0];
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务 m04 · 把配置参数收回去</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.mission-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.checklist li { list-style: none; margin-left: -1.2em; }
+.checklist li::before { content: "☐ "; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part1)"></span>minikv 重构项目 · 任务 4 / 8</div>
+  <h1>m04：把配置参数收回去</h1>
+  <p class="en">对应第 8 章（把复杂性往下拉）</p>
+  <div class="mission-meta"><span data-principle="10"></span><span data-principle="6"></span><span data-flag="overexposure"></span></div>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">背景与对应章节</a></li>
+  <li><a href="#find">你要找的问题</a></li>
+  <li><a href="#task">任务与约束</a></li>
+  <li><a href="#check">自查清单</a></li>
+  <li><a href="#hints">提示</a></li>
+  <li><a href="#answer">参考答案与讨论</a></li>
+</ol></nav>
+
+<h2 id="bg">背景与对应章节</h2>
+<div class="crux"><p><strong>minikv 有 5 个可调参数。哪几个是使用者真的比 minikv 更懂的？其余的，minikv 能不能自己决定？</strong></p></div>
+<p>minikv 的日志会不断积累垃圾（被覆盖、被删除的旧记录），所以需要定期压缩。什么时候压缩？写代码的同事一时拿不准，于是做成了参数；顺手又加了"每隔几次写检查一次"和"索引预留多少个键"。README 里为此专门写了一节"调参"，<code>main.cpp</code> 解析 5 个命令行参数，<code>Options::validate()</code> 检查它们的组合是否合法。</p>
+<p>看起来很"灵活"，但第 8 章会让你换个角度看：每个配置参数都是一个<strong>交给使用者去做的决定</strong>。模块的开发者只有一个，使用者有很多；如果开发者都拿不准，使用者更拿不准。做之前请读 <a href="../chapters/08-pull-down.html">第 8 章 · 把复杂性往下拉</a>（重点是原书 8.2 节"配置参数"和 8.3 节"做过头"），再回头看一眼 <a href="../chapters/05-information-hiding.html">第 5 章</a> 的 5.9 节。</p>
+
+<h2 id="find">你要找的问题</h2>
+<p>先只读代码和文档，不改。需要看的地方：</p>
+<div class="table-wrap"><table>
+  <tr><th>位置</th><th>读的时候问自己</th></tr>
+  <tr><td><code>README.md</code> 的"调参"一节</td><td>假如你是第一次部署 minikv 的运维，读完这一节，你知道 <code>--compact-ratio</code> 该填多少吗？那句"写多读少可以调高"有什么依据？</td></tr>
+  <tr><td><code>src/options.h</code>、<code>src/options.cpp</code></td><td>每个字段：它在权衡什么和什么？权衡所需的信息，是使用者手里有，还是程序运行时就有？</td></tr>
+  <tr><td><code>Database::maybeCompact()</code></td><td>把默认的 <code>compaction_ratio = 0.5</code> 换成一句话描述的规则，它等价于什么？如果有人把 ratio 和 min_bytes 都设得很小，会发生什么？</td></tr>
+  <tr><td><code>compaction_check_interval</code></td><td>它要省掉的那个"检查"，到底有多贵？</td></tr>
+  <tr><td><code>index_reserve</code></td><td>不设它，<code>std::unordered_map</code> 会怎样？设错了又会怎样？</td></tr>
+  <tr><td><code>src/main.cpp</code></td><td>有多少行代码只是因为参数存在而存在（解析、报错、帮助文本、校验）？</td></tr>
+</table></div>
+<p>为每个参数写一句判断："使用者能 / 不能比模块选出更好的值，因为……"。</p>
+<textarea class="note" data-key="m04-findings" placeholder="compaction_ratio：不能，因为……&#10;compaction_min_bytes：……&#10;compaction_check_interval：……&#10;index_reserve：……&#10;sync_writes：……"></textarea>
+
+<div class="lab"><p>确认基线测试全绿，再数一数"参数"一共牵涉了多少地方：</p>
+<pre><code>cd project/minikv
+make test
+grep -n "compaction_\|index_reserve\|sync_writes\|validate" src/*.cpp src/*.h README.md</code></pre></div>
+
+<h2 id="task">任务与约束</h2>
+<ol>
+  <li>对每个参数做第 8.2 节的检验：<strong>使用者能不能选出一个比模块自己算的更好的值？</strong>不能的，删掉，让模块自己决定。</li>
+  <li>能的，保留，并把它的注释写到使用者一看就知道"打开它换来什么、付出什么"。</li>
+  <li>把压缩时机改成一条<strong>说得出理由</strong>的内部规则，理由写在代码注释里。如果规则里还有常数，也要说明这个常数为什么合理。</li>
+  <li>删掉因参数消失而失去意义的代码：校验、命令行解析、帮助文本、README 段落。</li>
+</ol>
+<p>约束：</p>
+<ul>
+  <li><code>make test</code> 全绿，<strong>不许修改 <code>tests/</code></strong>。注意 <code>test_persistence.cpp</code> 里的 <code>log_compacts_itself_under_overwrites</code>：它用默认构造的 <code>Server</code> 覆盖写 3000 次约 1 KB 的值，要求日志最后小于 1.5 MB。你的规则必须让它通过。</li>
+  <li><code>Server(path)</code> 和 <code>Server(path, options)</code> 两种构造方式都要还能用。</li>
+  <li>只做本任务的事：<code>WriteOptions</code> 一路往下传（m03）、<code>Database</code> 的透传方法（m03）、含糊的 <code>dead()</code>/<code>total()</code>（m07）先别碰。</li>
+</ul>
+
+<h2 id="check">自查清单</h2>
+<ul class="checklist">
+  <li>每个被删掉的参数，你都能用一句话说出"模块凭什么比使用者更懂"。</li>
+  <li>每个留下的参数，你都能说出一个具体的使用者，以及这个人知道而 minikv 不可能知道的事。</li>
+  <li>压缩规则的注释说明了它保证什么（例如日志最多多大、额外写入最多多少），而不只是复述 <code>if</code> 条件。</li>
+  <li><code>./minikv --help</code> 之类的输出和 README 都只讲留下的参数。</li>
+  <li><code>make test</code> 全绿，编译零警告；<code>make bench</code> 的 SET 耗时没有变坏。</li>
+</ul>
+
+<h2 id="hints">提示</h2>
+<details class="reveal"><summary>提示 1：哪些信息程序运行时本来就有</summary><div>
+  <p>决定"现在压不压缩"需要两个量：日志里有多少垃圾、有多少有效数据。<code>Store</code> 时刻都知道这两个数（<code>dead()</code> 和 <code>total() - dead()</code>）。使用者在启动 minikv 时只能猜，猜完还会过时。凡是"运行时测得到的量"，通常比"启动时填进去的数"更可靠——书中用网络重试间隔说明过同样的道理。</p>
+</div></details>
+<details class="reveal"><summary>提示 2：给 ratio 找一个理由</summary><div>
+  <p>压缩只重写有效数据，代价约等于 <code>live</code> 字节的写入，换回 <code>garbage</code> 字节。问自己：垃圾和有效数据是什么关系时，压缩"划算"？算出来以后，再和基线默认的 0.5 比较一下。</p>
+</div></details>
+<details class="reveal"><summary>提示 3：哪个参数该留</summary><div>
+  <p>某个参数决定的是"数据丢不丢"，而不是"快一点还是慢一点"。键值存储无从知道里面存的是缓存还是账本。这种业务层面的取舍，是第 8 章承认的、使用者确实更懂的情形。</p>
+</div></details>
+
+<h2 id="answer">参考答案与讨论</h2>
+<div class="aside" data-title="先自己做"><p>先自己做完、测试全绿，再打开下面的内容。你的规则和参考答案不同没关系，关键是能把规则背后的理由讲清楚。</p></div>
+
+<details class="reveal"><summary>打开参考答案</summary><div>
+
+<h3>逐个参数的判断</h3>
+<div class="table-wrap"><table>
+  <tr><th>参数</th><th>使用者更懂吗？</th><th>处理</th></tr>
+  <tr><td><code>compaction_ratio</code></td><td>不。权衡的是磁盘空间和额外写入，两个量模块运行时精确知道</td><td>删，改为"垃圾 ≥ 有效数据"</td></tr>
+  <tr><td><code>compaction_min_bytes</code></td><td>不。防止小文件反复压缩是实现层面的成本</td><td>删，改为内部常量 1 MiB</td></tr>
+  <tr><td><code>compaction_check_interval</code></td><td>不。被"省掉"的检查只是两次整数比较</td><td>删，每次写都检查</td></tr>
+  <tr><td><code>index_reserve</code></td><td>不。哈希表会自己扩容</td><td>删</td></tr>
+  <tr><td><code>sync_writes</code></td><td><strong>是。</strong>数据能不能在掉电时丢，是业务决定</td><td>保留，注释写清代价</td></tr>
+</table></div>
+
+<div class="ba">
+  <div data-label="改之前：5 个参数 + 校验">
+<pre><code class="lang-cpp">struct Options {
+    double compaction_ratio = 0.5;
+    uint64_t compaction_min_bytes = 1 &lt;&lt; 20;
+    uint32_t compaction_check_interval = 100;
+    size_t index_reserve = 1024;
+    bool sync_writes = false;
+    std::string validate() const;
+};
+
+void Database::maybeCompact() {
+    if (++writesSinceCheck_ &lt; options_.compaction_check_interval) return;
+    writesSinceCheck_ = 0;
+    uint64_t garbage = store_.dead();
+    if (garbage &lt; options_.compaction_min_bytes) return;
+    if (static_cast&lt;double&gt;(garbage) &lt;
+        options_.compaction_ratio * static_cast&lt;double&gt;(store_.total())) return;
+    store_.compact();
+}</code></pre>
+  </div>
+  <div data-label="改之后：1 个参数 + 有理由的规则">
+<pre><code class="lang-cpp">struct Options {
+    // Call fsync(2) after every write command, so that an acknowledged write
+    // survives a power failure. Without it, a write survives a crash of
+    // minikv but may be lost if the machine goes down. ...
+    bool sync_writes = false;
+};
+
+// Compaction rewrites only the live data, so it costs about `live` bytes of
+// I/O and reclaims `garbage` bytes. Waiting until garbage &gt;= live means every
+// byte compaction writes pays for at least one byte of garbage removed: total
+// disk writes stay within 2x of what the commands wrote, and the log stays
+// within about 2x the size of the live data. ...
+void Database::maybeCompact() {
+    uint64_t garbage = store_.dead();
+    uint64_t live = store_.total() - garbage;
+    if (garbage &gt;= kMinGarbageToCompact &amp;&amp; garbage &gt;= live) store_.compact();
+}</code></pre>
+  </div>
+</div>
+<p>注意一个有意思的事实："垃圾占日志一半"和"垃圾 ≥ 有效数据"<strong>完全等价</strong>，所以基线的默认值本来就是对的。问题不在默认值，而在把它做成了参数：谁都可以把它改坏，改坏的后果没有任何地方提醒，而为了防止改坏又写了 <code>validate()</code>。</p>
+<p>改动规模：<code>options.cpp</code> 整个删除，<code>options.h</code> 39 → 20 行，<code>main.cpp</code> 94 → 66 行，<code>src/</code> 总计 1418 → 1346 行（diff +48 / −121）。测试一行未改。</p>
+
+<h3>1 MiB 这个常数</h3>
+<p>内部常数仍然是一个决定，区别在于<strong>谁为它负责</strong>：现在由模块作者负责，理由写在常数旁边——低于 1 MiB 的垃圾，回收它省下的空间无人在意，却要付创建文件、fsync、rename 的固定成本。将来想改它，只需要改一个地方、说服一个人，而不需要每个部署都重新理解一遍。</p>
+
+<h3>代价与取舍</h3>
+<div class="counter" data-title="磁盘最坏用到 2 倍">
+  <p>新规则让日志最多约为有效数据的 2 倍。磁盘非常紧张的使用者可能接受不了。如果真有这样的使用者，对方知道的是"我最多能给 X 字节"，那么该暴露的是一个<strong>磁盘预算</strong>，而不是把 ratio 放回来：参数应该用使用者懂的语言表达。这对应书中 5.9 节的提醒，确实需要被外界掌握的东西不能为了"简洁"而藏起来。</p>
+</div>
+<div class="counter" data-title="压缩是同步的">
+  <p>触发压缩的那次写会一直卡到有效数据全部重写完。在乎尾延迟的使用者可能想控制"什么时候压缩"。更好的回应是把压缩挪到后台或提供"暂缓压缩"的开关，而不是让每个人都去调 ratio。本任务没做，因为 minikv 现在没有这样的使用者。</p>
+</div>
+<div class="counter" data-title="别往下拉过头（8.3 节）">
+  <p><code>sync_writes</code> 看上去也能"自动决定"，比如写得频繁就不 sync。但那等于替使用者做一个关于数据安全的业务决定，猜错就是丢数据。往下拉的复杂性要和模块本来的职责紧密相关；"这份数据值不值得等磁盘"不是键值存储能知道的事。</p>
+</div>
+
+<h3>审稿人仍会指出的问题</h3>
+<ul>
+  <li><code>Server</code> 仍然接收整个 <code>Options</code>，只为了取出一个 bool 转成 <code>WriteOptions</code> 再一层层往下传：<a href="m03.html">m03</a>。</li>
+  <li><code>maybeCompact()</code> 用到的 <code>dead()</code>、<code>total()</code> 名字含糊：<a href="m07.html">m07</a>。</li>
+</ul>
+
+<p>完整讨论见 <code>solutions/m04/DISCUSSION.md</code>。对照自己的改动：</p>
+<pre><code>cd project            # 仓库里 minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m04 clean
+diff -ru minikv solutions/m04
+make -C solutions/m04 test</code></pre>
+
+</div></details>
+
+<nav class="chapter-nav">
+  <a class="prev" href="m03.html"><small>← 上一个任务</small>m03：透传方法与透传变量</a>
+  <a class="next" href="m05.html"><small>下一个任务 →</small>m05：合在一起还是分开</a>
+</nav>
+
+</main>
+</body>
+</html>

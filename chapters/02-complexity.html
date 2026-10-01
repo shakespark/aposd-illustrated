@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 2 章 · 复杂性的本质</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch02.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.formula { text-align: center; font-size: 20px; margin: 14px 0 6px; font-family: var(--mono); }
+.formula sub { font-size: 12px; }
+.cx-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.cx-presets button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.cx-rows { display: grid; gap: 8px; }
+.cx-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 14px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+@media (min-width: 760px) { .cx-row { grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); } }
+.cx-row.top { border-color: var(--accent); }
+.cx-name { font-weight: 600; font-size: 14px; }
+.cx-name small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.cx-row label { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.cx-row label input { flex: 1; min-width: 0; }
+.cx-row label b { color: var(--fg); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+.cx-bar { display: flex; align-items: center; gap: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cx-bar .track { flex: 1; height: 12px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.cx-bar .fill { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; }
+.cx-row.top .fill { background: var(--bad); }
+.cx-bar b { min-width: 3em; text-align: right; }
+</style>
+</head>
+<body data-chapter="2">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>"这段代码很复杂"到底是什么意思？怎样在复杂性把你拖垮之前就认出它？</strong></p>
+</div>
+<p>第 1 章说全书都关乎复杂性，这一章就给它下定义。作者把这一章称为全书的基础：后面各章把这里的结论当作前提，用它来论证各种具体的设计建议。所以这一章的词汇（三种症状、两个成因）值得记牢，本站后面的题目解析也一直在用。</p>
+<p>这一章的一个关键立场是：<strong>认出复杂性比造出简单的设计容易</strong>。你未必一开始就能写出简单的设计，但只要能判断"这个方案比那个复杂"，就能拿这种判断力引导自己去试别的方案，慢慢积累出哪些做法通常更简单的经验。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>2.1 节</strong>：作者的定义是"实用的"，注意它说复杂性和系统的规模、功能多少<em>不一定</em>有关。读到那个加权公式时，想一想：你们系统里最吓人的那部分代码，真的是最拖后腿的吗？</li>
+    <li><strong>2.2 节</strong>：三种症状中作者认为哪一种最糟？读的时候留意作者是怎么拿它和另外两种比较的，判断标准是什么。</li>
+    <li><strong>2.3 节</strong>回到网站横幅的例子：改进后的设计<strong>并没有消除依赖</strong>，而是换了一个依赖。作者给了几条理由说明新依赖为什么更好，把它们找出来。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>实用的定义</h4><p>复杂性是系统结构中一切让它难以理解、难以修改的东西。它是开发者在某个时刻为某个目标而<strong>体验到</strong>的，不等于规模大、功能多。</p></div>
+  <div class="card"><h4>加权：看人在哪里花时间</h4><p>系统整体复杂度 = 各部分复杂度按开发时间比例加权求和。很复杂但几乎没人碰的部分，对整体影响很小。</p></div>
+  <div class="card"><h4>读者说了算</h4><p>你觉得简单、别人觉得复杂，那它就是复杂的。代码要让别人也能轻松地用和改。</p></div>
+  <div class="card"><h4>三种症状</h4><p><strong>变更放大</strong>：小改动要改很多处。<strong>认知负担</strong>：要知道的太多。<strong>未知的未知</strong>：不知道该改哪里、缺什么信息，最糟。</p></div>
+  <div class="card"><h4>行数 ≠ 复杂度</h4><p>几行就能写完、却没人知道该写哪几行的框架并不简单。有时行数更多的方案更简单，因为它降低了认知负担。</p></div>
+  <div class="card"><h4>两个成因</h4><p><strong>依赖</strong>：一段代码不能被孤立地理解和修改。<strong>模糊</strong>：重要的信息不明显。</p></div>
+  <div class="card"><h4>复杂性是累积起来的</h4><p>没有哪一个灾难性错误，而是成百上千个小依赖、小模糊叠在一起。所以要"零容忍"。<span data-principle="1"></span></p></div>
+</div>
+
+<h2>心智模型：两个成因，三种症状</h2>
+<p>作者在 2.3 节末尾把成因和症状连了起来。画出来是这样的：</p>
+<figure class="fig">
+<svg viewBox="0 0 640 290" width="640" role="img" aria-label="依赖导致变更放大和认知负担；模糊导致未知的未知并加重认知负担；二者由许多小问题累积而成">
+  <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <text x="120" y="22" text-anchor="middle" font-size="12.5" class="t-muted">成因</text>
+  <text x="500" y="22" text-anchor="middle" font-size="12.5" class="t-muted">症状</text>
+  <rect x="30" y="50" width="180" height="56" rx="10" class="accent-soft" stroke-width="1.5"/>
+  <text x="120" y="74" text-anchor="middle" font-weight="700">依赖</text>
+  <text x="120" y="94" text-anchor="middle" font-size="12" class="t-muted">不能孤立地理解和修改</text>
+  <rect x="30" y="150" width="180" height="56" rx="10" class="warn-soft" stroke-width="1.5"/>
+  <text x="120" y="174" text-anchor="middle" font-weight="700">模糊</text>
+  <text x="120" y="194" text-anchor="middle" font-size="12" class="t-muted">重要的信息不明显</text>
+
+  <rect x="410" y="36" width="180" height="46" rx="10" class="box" stroke-width="1.5"/>
+  <text x="500" y="64" text-anchor="middle" font-weight="600">变更放大</text>
+  <rect x="410" y="104" width="180" height="46" rx="10" class="box" stroke-width="1.5"/>
+  <text x="500" y="132" text-anchor="middle" font-weight="600">认知负担</text>
+  <rect x="410" y="172" width="180" height="46" rx="10" class="bad-soft" stroke-width="1.5"/>
+  <text x="500" y="194" text-anchor="middle" font-weight="600">未知的未知</text>
+  <text x="500" y="210" text-anchor="middle" font-size="11.5" class="t-muted">三者中最糟</text>
+
+  <line x1="212" y1="72" x2="406" y2="60" style="stroke:var(--muted)" stroke-width="1.5" marker-end="url(#ar2)"/>
+  <line x1="212" y1="84" x2="406" y2="122" style="stroke:var(--muted)" stroke-width="1.5" marker-end="url(#ar2)"/>
+  <line x1="212" y1="170" x2="406" y2="134" style="stroke:var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+  <line x1="212" y1="186" x2="406" y2="194" style="stroke:var(--muted)" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+  <rect x="30" y="236" width="560" height="38" rx="8" class="box" stroke-width="1"/>
+  <text x="310" y="260" text-anchor="middle" font-size="13">底下是成百上千个小依赖、小模糊，日积月累（2.4 节）</text>
+</svg>
+<figcaption>虚线表示"也会加重"：模糊主要制造未知的未知，同时也增加认知负担。本站自绘。</figcaption>
+</figure>
+<p>这张图有两个用法。<strong>诊断时从右往左</strong>：你感到"改这个好累"（症状），去找背后是哪个依赖、哪处模糊。<strong>设计时从左往右</strong>：每加一个依赖、每引入一个不明显的约定，都在给右边某个症状加码。</p>
+
+<h2>复杂度看的是"人在哪里花时间"</h2>
+<p>作者用一个粗略的数学式子刻画系统的整体复杂度：</p>
+<p class="formula"><i>C</i> = Σ<sub>p</sub> <i>c</i><sub>p</sub> · <i>t</i><sub>p</sub></p>
+<p>其中 <i>c</i><sub>p</sub> 是部分 <i>p</i> 的复杂度，<i>t</i><sub>p</sub> 是开发者花在这个部分上的时间所占的比例。所有 <i>t</i><sub>p</sub> 加起来是 1，所以 <i>C</i> 其实就是"开发者平均每时每刻感受到的复杂度"。</p>
+<blockquote class="quote">Isolating complexity in a place where it will never be seen is almost as good as eliminating the complexity entirely.<cite>— 第 2.1 节</cite></blockquote>
+<p>下面这个计算器让你亲手体会这句话。左边两根滑杆分别调复杂度和时间权重（权重会自动归一化成比例），右边的条是这一部分对 <i>C</i> 的贡献。先看"现状"，再切到"把难点藏进深模块"，最后看"模块漏了"。</p>
+
+<section class="sim" id="sim-cx">
+  <div class="sim-head"><span class="tag">交互</span><h3>加权复杂度计算器</h3>
+    <div class="desc">一个虚构的电商后端。<b>c</b> = 这一部分的复杂度（0～10），<b>t</b> = 开发时间落在这里的比例。贡献最大的一行会被标红。数字是为了建立直觉而编的，不是测量值。</div></div>
+  <div class="sim-body">
+    <div class="controls"><div class="cx-presets" id="cx-presets"></div></div>
+    <div class="cx-rows" id="cx-rows"></div>
+    <div class="narrate" id="cx-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="cx-total">0</div><div class="l">整体复杂度 C</div></div>
+      <div class="stat"><div class="v" id="cx-max">—</div><div class="l">c 最高的部分</div></div>
+      <div class="stat"><div class="v" id="cx-top">—</div><div class="l">对 C 贡献最大的部分</div></div>
+      <div class="stat"><div class="v" id="cx-lever">—</div><div class="l">c 降 1 分收益最大的部分</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">一个小推论：把某部分的 <i>c</i> 降低 1，<i>C</i> 就减少该部分的 <i>t</i>。所以"改进哪里收益最大"只取决于大家在哪里花时间，和那部分本身有多复杂无关（当然，复杂的部分通常更容易降分）。</p>
+
+<h2>一个原创例子：日志记录的头部格式</h2>
+<p>一个追加写的存储引擎，每条记录前有一个 12 字节的头部：校验和、键长、值长。现在要加一个 4 字节的时间戳字段。看三种代码结构下，这个改动分别有多难。书中 2.2～2.3 节用网站横幅颜色说明同一件事。</p>
+<div class="ba">
+  <div data-label="字面量散落各处">
+<pre><code class="lang-cpp">// writer.cpp
+char hdr[12];
+encodeU32(hdr,     crc32(key, val));
+encodeU32(hdr + 4, key.size());
+encodeU32(hdr + 8, val.size());
+
+// reader.cpp
+pread(fd, hdr, 12, off);
+uint32_t klen = decodeU32(hdr + 4), vlen = decodeU32(hdr + 8);
+off += 12 + klen + vlen;
+
+// compactor.cpp
+if (fileSize - off &lt; 12) break;   // 文件尾部是残缺记录</code></pre>
+    <p><strong>变更放大</strong>：每个 12 和每个偏移都得改。更要命的是 compactor 里那个 12：没人会想到压缩线程也"知道"头部多长，它很可能被漏掉，等到某天文件尾部恰好残留 12～15 字节的半条记录，压缩线程会把它当成完整的头部去解析，这是<strong>未知的未知</strong>。</p>
+  </div>
+  <div data-label="共享一个常量">
+<pre><code class="lang-cpp">// format.h
+constexpr size_t kHeaderSize = 12;
+
+// writer.cpp
+char hdr[kHeaderSize];
+encodeU32(hdr + 4, key.size());   // 偏移仍然写死
+// reader.cpp
+uint32_t klen = decodeU32(hdr + 4);
+// compactor.cpp
+if (fileSize - off &lt; kHeaderSize) break;</code></pre>
+    <p>头部长度改一处就行，compactor 也跟着变了。但<strong>字段布局</strong>这个知识还同时存在于 writer 和 reader 里：如果新字段插在中间，两边的偏移都要改，改漏一边就是读写不一致。依赖少了，但没有消失。</p>
+  </div>
+  <div data-label="布局只有一个出处">
+<pre><code class="lang-cpp">// record_format.h —— 记录格式的唯一出处
+struct RecordHeader { uint32_t crc, keyLen, valLen, timestamp; };
+constexpr size_t kHeaderSize = 16;
+void encodeHeader(const RecordHeader&amp; h, char* out);
+RecordHeader decodeHeader(const char* in);
+
+// writer.cpp
+encodeHeader({crc32(key, val), klen, vlen, now()}, hdr);
+// reader.cpp
+RecordHeader h = decodeHeader(hdr);</code></pre>
+    <p>格式知识集中在 <code>record_format</code> 里，加字段只改这里和真正要用新字段的地方。writer、reader 仍然<strong>依赖</strong>它，但这个依赖是明显的：搜 <code>RecordHeader</code> 就能找到所有使用者，结构一变编译器会指出没跟上的地方。代价是多了一个小模块要了解。</p>
+  </div>
+</div>
+<p>注意第三步并没有消灭依赖，而是用一个<strong>简单、明显、编译器能检查</strong>的依赖，替换了一堆隐蔽、难管理的依赖。这正是作者在 2.3 节说的：依赖是软件的基本组成部分，不可能完全消除，目标是让依赖更少、留下的尽量简单明显。</p>
+
+<h2>复杂性是一点一点累积起来的</h2>
+<p>回头看第一个面板：每一个写死的 12，在它被写下的那一刻都无伤大雅，甚至是最快的写法。作者在 2.4 节指出，复杂性不是由某一个灾难性错误造成的，而是由成百上千个这样的小依赖、小模糊叠出来的，直到系统里的每个改动都会撞上好几个。<span data-principle="1"></span></p>
+<p>这带来两个麻烦。一是<strong>很容易说服自己</strong>"这次加的一点点复杂性没关系"，而每个人每次都这么想，复杂性就涨得飞快。二是<strong>积累之后很难清除</strong>：修好其中一个，整体几乎感觉不到变化，于是更没有动力去修。作者的结论是对复杂性采取"零容忍"的态度，具体怎么做，是第 3 章的主题。</p>
+<blockquote class="quote">Complexity is more apparent to readers than writers.<cite>— 第 2.1 节</cite></blockquote>
+<p>还有一个让累积难以察觉的原因：写代码的人对自己加进去的依赖心知肚明，感觉不到复杂；感受到复杂的是后来的读者。所以当别人说你的代码难懂时，作者的建议是去问清楚对方为什么觉得复杂，这种看法上的落差里往往有值得学的东西。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="公式只是粗略的刻画">
+  <p>作者自己说这是"粗略的数学方式"。<i>c</i><sub>p</sub> 没法精确测量，<i>t</i><sub>p</sub> 也会随时间和任务变化。它的用处是纠正直觉（最吓人的代码不一定最拖后腿），而不是拿来打分。还要注意作者说的是"<strong>几乎</strong>和消除一样好"：被隔离的部分一旦出了 bug 或需要升级，你仍然要付全价。而且 <i>t</i><sub>p</sub> 不是天生的：接口没藏住细节的模块，会逼着别人频繁打开它。</p>
+</div>
+<div class="counter" data-title="&quot;行数不是复杂度&quot;，反过来也不成立">
+  <p>作者反对用代码行数衡量复杂度，这和"代码越少越好"的常见说法正面冲突。但作者说的是行数更多的方案<strong>有时</strong>更简单，条件是它降低了认知负担。这不是写啰嗦代码的许可证：多出来的行如果只是重复，那就是变更放大。判断标准始终是"完成任务需要知道多少、要改多少处"。</p>
+</div>
+<div class="counter" data-title="依赖消除不了，&quot;解耦&quot;也可能是假的">
+  <p>作者明确说依赖是软件的基本组成部分，每写一个新类就会围绕它的 API 制造依赖。本站补充：有些"解耦"手法只是把依赖藏了起来，比如用字符串名订阅事件、用无类型的 map 传参数。模块之间看似互不引用，依赖其实还在，只是从编译器能检查的明处，挪到了只能靠全文搜索的暗处，这反而增加了模糊。训练场里有一道 A/B 题专门讲这个。</p>
+</div>
+<div class="counter" data-title="文档能治好模糊吗？">
+  <p>作者承认模糊常常来自文档不足（第 13 章专门讲），但又说模糊<strong>也是设计问题</strong>：设计干净的系统需要的文档更少，需要大量文档才能讲清楚，本身往往说明设计不太对。减少模糊最好的办法是简化设计。这不等于"好代码不需要注释"，第 12 章会专门反驳这个说法。</p>
+</div>
+
+<h2>练一练</h2>
+<p>判断症状和成因是本章最该练熟的技能。先自己判断再看解析。</p>
+<div class="drill-embed" data-ids="ch02-judge-02 ch02-ab-02 ch02-write-01"></div>
+<p class="small muted">本章共 14 道题，全部在<a href="../train/index.html#ch=2">训练场</a>。</p>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">按本书的定义，下列哪种说法正确？</div>
+  <div class="opts"><button>A. 一个规模很大的系统，如果开发者在上面工作很轻松，按本书的定义就不算复杂</button><button>B. 系统越大、功能越多，就越复杂</button><button>C. 复杂性可以用代码行数或圈复杂度客观测量</button><button>D. 小系统不可能复杂</button></div>
+  <div class="explain">作者的定义是实用的：让系统难以理解和修改的结构性因素。它和规模、功能不一定相关。现实中大系统几乎都难以维护，所以通常也符合定义，但这不是必然的；小系统也可能非常复杂。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">三种症状中，作者认为未知的未知最糟。理由是什么？</div>
+  <div class="opts"><button>A. 你需要知道某件事，却没办法查出它是什么，甚至不知道有问题，只能等改完出 bug</button><button>B. 它会导致更多的代码行数</button><button>C. 它无法通过任何设计手段消除</button><button>D. 它只出现在大型系统里</button></div>
+  <div class="explain">变更放大和认知负担只要清楚该改什么、该读什么，改动仍然可以是正确的。未知的未知连"该做什么"都不清楚，唯一确定的办法是读完系统里的每一行，这对任何规模的系统都不现实。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">一个函数原来有 3 个参数，现在加了第 4 个，所有调用点都编译失败，必须逐个修改。关于这个依赖，下列哪个说法最准确？</div>
+  <div class="opts"><button>A. 这是未知的未知，因为改动影响了很多地方</button><button>B. 签名在实现和调用者之间建立了依赖，它带来了一些变更放大，但它是明显的：编译器会把每个要改的地方都指出来</button><button>C. 依赖都是坏的，应该用全局变量传第 4 个参数，避免修改调用点</button><button>D. 这是模糊，因为签名看不出参数含义</button></div>
+  <div class="explain">作者在 2.3 节正是用"给方法加参数"来说明依赖。这种依赖有代价（要改所有调用点），但它明显、可搜索、编译器能检查，所以不会变成未知的未知。用全局变量绕开它，反而把明显的依赖变成了隐蔽的依赖。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">按 <i>C</i> = Σ <i>c</i><sub>p</sub> <i>t</i><sub>p</sub>，下面哪种改动最可能明显降低整体复杂度？</div>
+  <div class="opts"><button>A. 把所有模块的代码行数都减少 10%</button><button>B. 让每天都要改的业务规则模块更好懂一些</button><button>C. 重写一个复杂度 10、但一年只改一次的底层编解码库</button><button>D. 增加一个新的、很简单但没人用的工具模块</button></div>
+  <div class="explain">加权的意思是：开发者花时间多的地方，复杂度的权重大。很少被碰的部分即使很复杂，对整体影响也很小。行数不是复杂度。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">关于复杂性的成因，下列哪项描述是<strong>模糊</strong>而不是依赖？</div>
+  <div class="opts"><button>A. 修改一个函数签名，所有调用点都要跟着改</button><button>B. 所有页面都必须使用同一个背景色</button><button>C. 同一个变量名在两处分别表示"字节数"和"条目数"，读代码的人分不清这里是哪一种</button><button>D. 发送方和接收方都必须遵守同一个网络协议</button></div>
+  <div class="explain">A、B、D 都是依赖：一段代码不能脱离另一段代码被修改。C 是模糊：重要的信息不明显，作者特别指出不一致（同一个名字两种用途）是模糊的主要来源。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">为什么复杂性一旦累积起来就很难清除？</div>
+  <div class="opts"><button>A. 因为编译器无法检查复杂性</button><button>B. 因为复杂性总是由一个灾难性的设计错误造成的，必须重写</button><button>C. 因为复杂性只存在于文档里</button><button>D. 因为它由大量小问题组成，修好其中一个对整体几乎没有可感知的改善，于是很难有动力去修</button></div>
+  <div class="explain">这是 2.4 节的论点：复杂性是增量的，没有单个罪魁祸首。也正因如此，防范要从每一个小改动做起，这就是第 3 章的"零容忍"和持续投资。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>复杂性是让系统难以理解和修改的结构性因素，由读者而不是作者判定，和规模不一定相关。</li>
+  <li>整体复杂度看开发者在哪里花时间：把复杂性隔离到没人会看的地方，几乎和消除它一样好。</li>
+  <li>三种症状：变更放大、认知负担、未知的未知（最糟）。行数不是复杂度。</li>
+  <li>两个成因：依赖（不可能消除，要更少、更明显）和模糊（重要信息不明显，最好用更简单的设计来减少）。</li>
+  <li>复杂性由大量小问题累积而成，所以每个小问题都值得较真。</li>
+</ul>
+<p>既然复杂性是一点点积累起来的，那么问题就变成了：每天写代码的时候，你愿意为了不积累复杂性多花多少时间？第 3 章讨论的就是这个问题：战术式编程和战略式编程。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段代码。</p>
+<textarea class="note" data-key="ch02-oneline" placeholder="例如：上次改超时配置踩的坑，其实是一个未知的未知，因为……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h } = APOSD;
+  // 每个预设：部分列表 [名称, 说明, c 复杂度 0~10, w 时间权重]；时间权重会归一化成比例 t
+  const PRESETS = [
+    { name: "现状", note: "促销规则又复杂又天天改，是整个系统最大的负担；支付网关适配和压缩库虽然吓人，几乎没人碰。",
+      parts: [["订单流程", "下单、取消、退款", 5, 40], ["促销规则", "满减、折扣、叠加规则", 8, 27], ["报表导出", "CSV/Excel", 3, 15], ["配置与启动", "", 4, 14], ["支付网关适配", "对接第三方", 9, 3], ["自研压缩库", "两年没人改过", 10, 1]] },
+    { name: "把难点藏进深模块", note: "把促销规则里最难的部分（规则求值、冲突消解）收进一个规则引擎内核，业务侧只写规则配置。系统里最复杂的部分并没有变简单，反而多了一个 c=9 的模块，但 C 下降了。",
+      parts: [["订单流程", "下单、取消、退款", 5, 40], ["促销规则配置", "业务侧只写规则", 3, 24], ["规则引擎内核", "求值、冲突消解", 9, 3], ["报表导出", "CSV/Excel", 3, 15], ["配置与启动", "", 4, 14], ["支付网关适配", "对接第三方", 9, 3], ["自研压缩库", "两年没人改过", 10, 1]] },
+    { name: "模块漏了", note: "同样的拆分，但内核的接口没藏住细节：写规则时经常要读内核实现、改内核来适配新规则。内核的时间比例从 3% 涨到约 20%，前面拆分换来的收益几乎被吃光了。t 不是天生的，它取决于接口设计。",
+      parts: [["订单流程", "下单、取消、退款", 5, 40], ["促销规则配置", "业务侧只写规则", 4, 12], ["规则引擎内核", "经常被打开", 9, 20], ["报表导出", "CSV/Excel", 3, 13], ["配置与启动", "", 4, 12], ["支付网关适配", "对接第三方", 9, 2], ["自研压缩库", "两年没人改过", 10, 1]] },
+  ];
+  const presetsEl = document.getElementById("cx-presets"), rowsEl = document.getElementById("cx-rows"), narr = document.getElementById("cx-narrate");
+  let cur = 0, parts = [];
+  const btns = PRESETS.map((p, i) => h("button", { onclick: () => load(i) }, p.name));
+  presetsEl.append(...btns);
+  let rowEls = [];
+
+  function load(i) {
+    cur = i;
+    parts = PRESETS[i].parts.map(([name, sub, c, w]) => ({ name, sub, c, w }));
+    btns.forEach((b, k) => b.classList.toggle("on", k === i));
+    rowEls = parts.map((p) => {
+      const cv = h("b", {}), tv = h("b", {}), fill = h("span", { class: "fill" }), val = h("b", {});
+      const cIn = h("input", { type: "range", min: 0, max: 10, step: 1, value: p.c, "aria-label": p.name + " 的复杂度", oninput: (e) => { p.c = +e.target.value; manual = true; update(); } });
+      const tIn = h("input", { type: "range", min: 0, max: 50, step: 1, value: p.w, "aria-label": p.name + " 的时间权重", oninput: (e) => { p.w = +e.target.value; manual = true; update(); } });
+      const row = h("div", { class: "cx-row" },
+        h("div", { class: "cx-name" }, p.name, p.sub ? h("small", {}, p.sub) : null),
+        h("label", {}, "c", cIn, cv),
+        h("label", {}, "t", tIn, tv),
+        h("div", { class: "cx-bar" }, h("span", { class: "track" }, fill), val));
+      return { row, cv, tv, fill, val };
+    });
+    rowsEl.replaceChildren(...rowEls.map((r) => r.row));
+    manual = false;
+    update();
+  }
+  let manual = false;
+
+  function update() {
+    const W = parts.reduce((s, p) => s + p.w, 0) || 1;
+    const t = parts.map((p) => p.w / W);
+    const contrib = parts.map((p, i) => p.c * t[i]);
+    const C = contrib.reduce((a, b) => a + b, 0);
+    const iTop = contrib.indexOf(Math.max(...contrib));
+    const iMax = parts.map((p) => p.c).indexOf(Math.max(...parts.map((p) => p.c)));
+    const iLever = t.indexOf(Math.max(...t));
+    const scale = Math.max(2.5, ...contrib);
+    rowEls.forEach((r, i) => {
+      r.cv.textContent = parts[i].c;
+      r.tv.textContent = (t[i] * 100).toFixed(0) + "%";
+      r.fill.style.width = (contrib[i] / scale * 100).toFixed(1) + "%";
+      r.val.textContent = contrib[i].toFixed(2);
+      r.row.classList.toggle("top", i === iTop && contrib[i] > 0);
+      r.row.title = `${parts[i].name}：c = ${parts[i].c}，t = ${(t[i] * 100).toFixed(1)}%，贡献 c×t = ${contrib[i].toFixed(2)}`;
+    });
+    document.getElementById("cx-total").textContent = C.toFixed(2);
+    document.getElementById("cx-max").textContent = parts[iMax].name;
+    document.getElementById("cx-top").textContent = contrib[iTop] > 0 ? parts[iTop].name : "—";
+    document.getElementById("cx-lever").textContent = parts[iLever].name;
+    const share = C > 0 ? (contrib[iMax] / C * 100).toFixed(0) : "0";
+    const head = `C = ${C.toFixed(2)}。最复杂的是"${parts[iMax].name}"（c = ${parts[iMax].c}），它占 ${(t[iMax] * 100).toFixed(0)}% 的时间，只贡献了 C 的 ${share}%。`;
+    narr.textContent = head + (manual ? " 你调整过滑杆：试试把某个很少被碰的部分的 c 拉到 10，再把某个常改部分的 c 降 1，比较 C 的变化。" : " " + PRESETS[cur].note);
+  }
+  load(0);
+})();
+</script>
+</body>
+</html>

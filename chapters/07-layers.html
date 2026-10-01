@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 7 章 · 不同的层，不同的抽象</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch07.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.pv-strats { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-strats button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.pv-chain { display: grid; gap: 0; min-width: 0; }
+.pv-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: start; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.pv-row .who { font-weight: 700; font-size: 13.5px; padding-top: 2px; }
+.pv-row .who small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+.pv-row code { display: block; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; background: none; padding: 0; }
+.pv-row.uses { background: var(--ok-soft); border-color: var(--ok); }
+.pv-row.aware { background: var(--bad-soft); border-color: var(--bad); }
+.pv-row.both { box-shadow: inset 5px 0 0 var(--ok); } /* 自己用到一个变量，同时替别人传另一个 */
+.pv-row.ctx { background: var(--accent-soft); border-color: var(--accent); }
+.pv-row.none { background: var(--surface-2); }
+.pv-arrow { text-align: center; color: var(--muted); font-size: 12px; line-height: 20px; }
+.pv-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+.pv-legend span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--border); }
+.pv-legend .l-uses::before { background: var(--ok-soft); border-color: var(--ok); }
+.pv-legend .l-aware::before { background: var(--bad-soft); border-color: var(--bad); }
+.pv-legend .l-ctx::before { background: var(--accent-soft); border-color: var(--accent); }
+.pv-legend .l-none::before { background: var(--surface-2); }
+</style>
+</head>
+<body data-chapter="7">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>系统里每多出一层（一个类、一个包装、一个参数），调用者到底多得到了什么？怎样判断一条层边界值不值得存在？</strong></p>
+</div>
+<p>第 4～6 章从"一个模块"的角度讨论深度：接口要短、要藏住知识、要通用一些。第 7 章换个角度，看<strong>上下相邻的模块</strong>：软件是一层叠一层搭起来的，高层用低层提供的设施。作者的判断标准很简单：在设计良好的系统里，沿着一次操作往下走，<strong>每经过一次方法调用，抽象就换一次</strong>。如果相邻两层说的是同一套话，这一层多半没有挣回它自己的成本。</p>
+<p>这一章列出了"抽象没换"的几种具体表现：透传方法、浅装饰器、照搬内部表示的接口、透传变量，并给出对应的改法。它也是第 9 章"合在一起还是分开"的前奏：本章讨论的是<strong>上下</strong>两层之间的边界，第 9 章讨论的是<strong>任意</strong>两段代码之间的边界。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>7.1 节</strong>：看到透传方法时，作者建议你问自己一个问题（关于两个类<em>各自</em>负责什么）。记住这个问题，然后看图 7.1 的三种改法，想一想你项目里那个"什么都转交"的类该用哪一种。</li>
+    <li><strong>7.3 节</strong>：作者在写装饰器之前会先问四个问题。读的时候注意第一个问题里的三个条件，并回头对照第 4 章的 Java I/O 例子：作者为什么认为缓冲流"本该合并"？</li>
+    <li><strong>7.5 节</strong>：作者推荐 context 对象，但紧接着用一整段列它的缺点，最后一句话很值得玩味。读完想想：你见过的 <code>AppContext</code> / <code>ServiceLocator</code> 有没有变成书里说的那种"杂物袋"？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>每层换一种抽象</h4><p>好的分层里，上层说"文件里的字节"，下层说"固定大小的块"，再下层说"设备上的扇区"。每一层都替上层省掉一类细节。<span data-principle="9"></span></p></div>
+  <div class="card"><h4>抽象相似是警告</h4><p>相邻两层提供差不多的抽象，说明类的划分可能出了问题。这种情况最常见的表现就是透传方法。</p></div>
+  <div class="card"><h4>透传方法</h4><p>只是把参数转交给一个签名相同或相近的方法。它让类变浅、制造依赖，并暴露出职责划分不清。<span data-flag="passthrough"></span></p></div>
+  <div class="card"><h4>签名相同不一定是错</h4><p>分派器（负责"选择"）和同一接口的多种实现（如各种设备驱动）签名都相同，但每个都贡献了不同的功能。</p></div>
+  <div class="card"><h4>装饰器容易浅</h4><p>为一点新功能包一整层，带来大量转交样板。写之前先问：能不能直接加进底层、放进用它的地方、并入已有的包装，或者独立实现？</p></div>
+  <div class="card"><h4>接口 ≠ 内部表示</h4><p>接口照抄存储结构，类就不会深。接口和表示之间的<strong>差别</strong>，正是这个类提供的价值。</p></div>
+  <div class="card"><h4>透传变量</h4><p>一个值穿过一长串用不到它的方法。共享对象、全局变量、context 对象都能消除它，各有代价；作者最常用 context。</p></div>
+  <div class="card"><h4>净收益测试</h4><p>每个接口、参数、函数、类都要人去学。它消除的复杂性必须多于它带来的，否则不如不要。</p></div>
+</div>
+
+<h2>心智模型：顺着一次调用往下走</h2>
+<p>判断分层好不好，最直接的办法是挑一个操作，沿着调用栈往下走，在每一层问一句：<strong>这一层用什么"词汇"描述这件事？</strong>下面两条调用链做的是同一件事（保存一个键值对），左边每层都换了说法，右边四层说的是同一句话。</p>
+<figure class="fig">
+<svg viewBox="0 0 640 330" width="640" role="img" aria-label="两条调用链对比：左边每一层的抽象都不同（键值对、日志记录、固定大小的块、文件字节偏移）；右边四层都是 put(key, value)，只有最底层真正干活">
+  <defs><marker id="ar7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <text x="160" y="22" text-anchor="middle" font-weight="700">每过一层，换一种抽象</text>
+  <text x="480" y="22" text-anchor="middle" font-weight="700">四层说的是同一句话</text>
+  <g font-size="12">
+    <rect x="20" y="40" width="280" height="50" rx="8" class="ok-soft"/>
+    <text x="34" y="60" class="mono">db.put("user:42", doc)</text>
+    <text x="34" y="80" class="t-muted">键值对</text>
+    <rect x="20" y="115" width="280" height="50" rx="8" class="ok-soft"/>
+    <text x="34" y="135" class="mono">wal.append(record)</text>
+    <text x="34" y="155" class="t-muted">带长度和校验和的日志记录</text>
+    <rect x="20" y="190" width="280" height="50" rx="8" class="ok-soft"/>
+    <text x="34" y="210" class="mono">blocks.write(blockNo, buf)</text>
+    <text x="34" y="230" class="t-muted">固定大小（4KB）的块，带缓存</text>
+    <rect x="20" y="265" width="280" height="50" rx="8" class="ok-soft"/>
+    <text x="34" y="285" class="mono">pwrite(fd, buf, 4096, off)</text>
+    <text x="34" y="305" class="t-muted">文件里的字节偏移</text>
+    <line x1="160" y1="90" x2="160" y2="113" class="arrow" marker-end="url(#ar7)"/>
+    <line x1="160" y1="165" x2="160" y2="188" class="arrow" marker-end="url(#ar7)"/>
+    <line x1="160" y1="240" x2="160" y2="263" class="arrow" marker-end="url(#ar7)"/>
+
+    <rect x="340" y="40" width="280" height="50" rx="8" class="bad-soft"/>
+    <text x="354" y="60" class="mono">handler.put(key, value)</text>
+    <text x="354" y="80" class="t-muted">键值对</text>
+    <rect x="340" y="115" width="280" height="50" rx="8" class="bad-soft"/>
+    <text x="354" y="135" class="mono">service.put(key, value)</text>
+    <text x="354" y="155" class="t-muted">键值对（原样转交）</text>
+    <rect x="340" y="190" width="280" height="50" rx="8" class="bad-soft"/>
+    <text x="354" y="210" class="mono">manager.put(key, value)</text>
+    <text x="354" y="230" class="t-muted">键值对（原样转交）</text>
+    <rect x="340" y="265" width="280" height="50" rx="8" class="box"/>
+    <text x="354" y="285" class="mono">storeImpl.put(key, value)</text>
+    <text x="354" y="305" class="t-muted">键值对：所有活都在这一层</text>
+    <line x1="480" y1="90" x2="480" y2="113" class="arrow" marker-end="url(#ar7)"/>
+    <line x1="480" y1="165" x2="480" y2="188" class="arrow" marker-end="url(#ar7)"/>
+    <line x1="480" y1="240" x2="480" y2="263" class="arrow" marker-end="url(#ar7)"/>
+  </g>
+</svg>
+<figcaption>左：每一层都替上层藏起一类细节（日志格式、块缓存、文件偏移）。右：三层只是在传话，每一层都是额外要学、要维护的接口。本站自绘示意。</figcaption>
+</figure>
+<p>书中用文件系统（文件 → 块缓存 → 设备驱动）和 TCP（可靠字节流 → 尽力而为的有界数据包）说明左边这种情况。注意右边的问题不在于"层多"，而在于<strong>层与层之间没有任何东西被藏起来</strong>。如果 <code>service</code> 那一层负责鉴权和事务，它就有了自己的抽象，不再是传话筒。</p>
+
+<div class="aside" data-title="对照 OSTEP">
+  <p>OSTEP 的<a href="https://t.miaowuao.cn/ostep/chapters/40-fs-impl.html">文件系统实现</a>一章就是一次完整的"顺着调用往下走"：<code>read(fd, buf, n)</code> 先变成 inode 里的块号，再变成对块缓存的访问，最后变成对磁盘的请求。每一层的数据结构和词汇都不一样，这正是本章开头说的好分层。</p>
+</div>
+
+<h2>透传方法：职责没分清的信号</h2>
+<p>透传方法（pass-through method）的问题有三层：它给类增加了接口却没增加功能，所以类变浅；它和下层方法签名绑在一起，下层一改它就得跟着改；最重要的是，它说明<strong>两个类的职责有重叠</strong>，没人说得清某项功能到底归谁。作者给出的判断原则是：</p>
+<blockquote class="quote">the interface to a piece of functionality should be in the same class that implements the functionality.<cite>— 第 7.1 节</cite></blockquote>
+<p>书中的例子是学生编辑器项目里的一个文档类，15 个公开方法里 13 个是透传（7.1 节）。下面换一个服务端的例子：一个支持断点续传的上传会话，内部用一个临时文件存数据。切换标签看现状和三种改法：</p>
+<div class="ba">
+  <div data-label="现状：几乎全是转交">
+<pre class="numbered" data-mark="4,5,6,7"><code class="lang-cpp">// 一次上传会话
+class UploadSession {
+public:
+    void append(ByteView data)     { file_.append(data); }
+    void sync()                    { file_.sync(); }
+    uint64_t size() const          { return file_.size(); }
+    std::string path() const       { return file_.path(); }
+    bool expired(TimePoint now) const { return now &gt; deadline_; }
+private:
+    TempFile file_;
+    TimePoint deadline_;
+};
+
+// 调用方：断点续传的逻辑散在 HTTP 处理函数里
+if (req.offset != s.size()) return resp.conflict(s.size());
+s.append(req.body);
+if (s.size() - lastSynced &gt; (8u &lt;&lt; 20)) { s.sync(); lastSynced = s.size(); }</code></pre>
+    <p>5 个方法里 4 个是透传。真正属于"上传"的逻辑（偏移校验、定期落盘）反而写在调用方。问一句"<code>UploadSession</code> 和 <code>TempFile</code> 各自负责什么"，答不上来。</p>
+  </div>
+  <div data-label="改法一：调用者直接用下层" data-tone="neutral">
+<pre><code class="lang-cpp">struct UploadSession {
+    TempFile&amp; file();              // 调用者直接对文件读写
+    bool expired(TimePoint now) const;
+};
+
+s.file().append(req.body);</code></pre>
+    <p>去掉中间那层"传话"，让 <code>UploadSession</code> 只负责它真正拥有的东西（过期时间）。适合上层确实没有自己的文件相关职责的情况。缺点：调用方依然要自己处理续传逻辑。</p>
+  </div>
+  <div data-label="改法二：重新分配职责">
+<pre><code class="lang-cpp">// 一次可续传的上传。内部用临时文件，调用方看不到。
+class UploadSession {
+public:
+    // 接收一段数据。offset 必须等于已收到的字节数，否则不写入，
+    // 返回已收到的字节数，供客户端从那里重发。每 8MiB 自动落盘一次。
+    std::optional&lt;uint64_t&gt; receive(uint64_t offset, ByteView data);
+    // 收完：校验摘要，原子地移动到 finalPath。失败抛 UploadError。
+    void finish(const Digest&amp; expected, const std::string&amp; finalPath);
+    bool expired(TimePoint now) const;
+private:
+    TempFile file_;
+    // ……
+};</code></pre>
+    <p>这是通常最好的改法：<code>UploadSession</code> 提供一种<strong>不同的</strong>抽象（"续传协议"），<code>TempFile</code> 只管文件。偏移校验、落盘节奏、原子提交都收进了会话里，调用方的 HTTP 代码变成两三行。</p>
+  </div>
+  <div data-label="改法三：合并" data-tone="neutral">
+<pre><code class="lang-cpp">// TempFile 只被上传会话使用，两者分不开时干脆合成一个类
+class Upload {
+public:
+    std::optional&lt;uint64_t&gt; receive(uint64_t offset, ByteView data);
+    void finish(const Digest&amp; expected, const std::string&amp; finalPath);
+private:
+    int fd_;
+    std::string tmpPath_;
+    uint64_t received_ = 0, synced_ = 0;
+};</code></pre>
+    <p>如果两个类的职责实在拆不开（<code>TempFile</code> 没有别的使用者，逻辑又互相缠绕），合并往往最干净。书中的学生正是把三个职责交织的类合成了两个。</p>
+  </div>
+</div>
+<p>三种改法的共同点：改完以后，<strong>每个类都有一组不同且自洽的职责</strong>，类之间不再需要互相转交。选哪一种，取决于上层有没有属于它自己的、和下层不同的抽象可以提供。</p>
+
+<h3>签名相同什么时候没问题</h3>
+<p>作者在 7.2 节划了一条清楚的线：签名相同不要紧，要紧的是<strong>每个方法都贡献了有用且不同的功能</strong>。两类常见的合理情况：</p>
+<ul>
+  <li><strong>分派器</strong>（dispatcher）：根据参数选择交给哪个方法处理，然后把参数转过去。签名和目标方法一样，但"选择"本身就是功能，有时还相当复杂（例如 Web 服务器按一组规则匹配 URL）。</li>
+  <li><strong>同一接口的多种实现</strong>：比如各种磁盘驱动。它们处在同一层、彼此不调用，学会一个就会用其他的，反而<strong>降低</strong>了认知负担。</li>
+</ul>
+
+<h3>装饰器：最容易制造透传的模式</h3>
+<p>装饰器（decorator，也叫 wrapper）接过一个已有对象，提供相同或相近的 API，在转交时顺便加点功能。它的初衷是把特殊扩展和通用核心分开，但作者认为装饰器类往往很浅：<strong>为一点新功能写一大堆转交</strong>，用多了就是一堆浅类（第 4 章的 Java I/O 就是这么来的）。写装饰器之前，用自己的话记住这四个替代方案：</p>
+<ol>
+  <li><strong>直接加进底层类</strong>：新功能比较通用、和底层逻辑相关、或者大多数使用者都会用时。</li>
+  <li><strong>和用途放在一起</strong>：新功能只服务某个具体场景时，放进那个场景的代码里。</li>
+  <li><strong>并入已有的装饰器</strong>：一个深一点的包装，好过好几个浅包装。</li>
+  <li><strong>独立实现</strong>：它真的需要包住原对象的全部功能吗？书中的例子是滚动条，多半可以和窗口分开实现。</li>
+</ol>
+<p>作者承认包装器偶尔有用：系统要用一个<strong>改不了接口</strong>的外部类，又要求它符合系统自己的接口，这时用一层包装来翻译。但也说这种情况很少见。</p>
+
+<h2>接口不该照抄内部表示</h2>
+<p>"不同层，不同抽象"在单个类内部也成立：<strong>接口的抽象应该和内部表示不同</strong>。如果接口只是把存储结构原样暴露出去，类就不会深，原本该由类处理的逻辑会散落到每个调用方。书中的例子是编辑器的文本类：内部按行存储，接口却应该按字符和任意范围来插入、删除（7.4 节，第 6、8 章也反复用到它）。下面是一个服务端常见的版本：</p>
+<div class="ba">
+  <div data-label="改之前：接口 = 令牌桶的字段">
+<pre class="numbered" data-mark="10,11,12,13,14,15"><code class="lang-cpp">class TokenBucket {
+public:
+    double tokens() const;           void setTokens(double t);
+    TimePoint lastRefill() const;    void setLastRefill(TimePoint t);
+    double ratePerSec() const;
+    double capacity() const;
+};
+
+// 每个需要限流的地方都有一份这样的代码
+auto now = Clock::now();
+double dt = std::chrono::duration&lt;double&gt;(now - tb.lastRefill()).count();
+tb.setTokens(std::min(tb.capacity(), tb.tokens() + dt * tb.ratePerSec()));
+tb.setLastRefill(now);
+if (tb.tokens() &lt; 1) return reject(req);
+tb.setTokens(tb.tokens() - 1);</code></pre>
+    <p>接口就是内部的四个字段。补充令牌的公式散在每个调用方（这也是第 5 章说的信息泄漏），而且"读、算、写"分成了好几次调用，多线程下根本没法保证正确。</p>
+  </div>
+  <div data-label="改之后：接口 = 能不能放行">
+<pre><code class="lang-cpp">// 令牌桶限流器，线程安全。
+class RateLimiter {
+public:
+    RateLimiter(double ratePerSec, double burst);
+    // 有足够令牌时扣除 cost 个并返回 true；否则不扣除，返回 false。
+    bool tryAcquire(double cost = 1);
+};
+
+if (!limiter.tryAcquire()) return reject(req);</code></pre>
+    <p>内部仍然是令牌数加时间戳，但接口说的是另一件事："现在能不能放行"。补充公式、时钟、加锁都藏进了类里。<strong>接口和表示之间的差距，就是这个类的价值。</strong>代价：如果有人需要"还要等多久"，得专门加一个方法，而不是自己拿字段去算。</p>
+  </div>
+</div>
+
+<h2>透传变量：一个值穿过整条调用链</h2>
+<p>透传方法是"方法在层之间重复"，透传变量（pass-through variable）是"参数在层之间重复"：一个值从入口一路往下传，路径上的大多数函数都用不到它，却都得在签名里写上它。后果是两个：中间每一层都被迫知道它的存在；以后再加一个这样的变量，整条路径上的签名都要改一遍。</p>
+<p>书中的例子是一个数据中心服务的证书参数（7.5 节，图 7.2）。下面换成一个键值存储：只有最底层的 <code>LogWriter</code> 关心 fsync 策略，但它是从 <code>main</code> 里解析出来的。切换四种做法，再打开"再加一个变量"，看看每种做法要改多少地方。</p>
+
+<section class="sim" id="sim-pv">
+  <div class="sim-head"><span class="tag">交互</span><h3>透传变量的四种处理方式</h3>
+    <div class="desc">每一行是调用链上的一层。绿色：产生或真正用到这个值；红色：用不到却必须知道它；蓝色：只在构造时接收 context；灰色：完全不知道。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <div class="pv-strats" id="pv-strats"></div>
+      <label><input type="checkbox" id="pv-extra"> 再加一个变量：慢查询阈值 <code>slowMs</code>（只有 Engine 用）</label>
+    </div>
+    <div class="stage"><div class="pv-chain" id="pv-chain"></div>
+      <div class="pv-legend"><span class="l-uses">用到它</span><span class="l-aware">只是传过去</span><span class="l-ctx">只在构造时接收 context</span><span class="l-none">不知道它</span></div></div>
+    <div class="narrate" id="pv-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="pv-aware">0</div><div class="l">用不到却得知道的层</div></div>
+      <div class="stat"><div class="v" id="pv-change">0</div><div class="l">新增变量要改的方法签名</div></div>
+      <div class="stat"><div class="v" id="pv-multi">—</div><div class="l">同一进程跑两个实例</div></div>
+    </div>
+  </div>
+</section>
+<p>作者最常用的是 context 对象，但对它的评价相当克制：context 里的变量仍有全局变量的大部分缺点（看不出某个字段为什么在、在哪里被用），不加约束会变成制造隐蔽依赖的杂物袋，还可能有线程安全问题（最好让字段不可变）。然后作者说：</p>
+<blockquote class="quote">Unfortunately, I haven't found a better solution than contexts.<cite>— 第 7.5 节</cite></blockquote>
+
+<h2>把本章收拢成一张账：净收益</h2>
+<p>7.6 节把整章归结为一句话：每个设计元素（接口、参数、函数、类、定义）都要让开发者多学一样东西，它必须<strong>消除</strong>比这更多的复杂性才划算。透传方法、浅装饰器、透传变量的共同问题，都是"让人学了，却没替人藏住什么"。拿本页出现过的例子记一笔账：</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>设计元素</th><th>使用者多学了什么</th><th>替使用者藏住了什么</th><th>账面</th></tr></thead>
+  <tbody>
+    <tr><td><code>service.put(key, value)</code> 透传层</td><td>一个类、一组和下层相同的方法</td><td>无</td><td>亏</td></tr>
+    <tr><td>按 URL 规则选处理函数的分派器</td><td>一个入口函数</td><td>有哪些路由、匹配顺序、统一的权限检查</td><td>赚</td></tr>
+    <tr><td>只加了两个计数器的装饰器</td><td>一个类、叠放顺序、9 个方法（其中 7 个纯转交）</td><td>两次自增</td><td>亏（计数放进存储或调用方）</td></tr>
+    <tr><td>适配第三方 C SDK 的包装</td><td>一个实现了已有接口的类</td><td>参数转换、错误码映射、手动释放</td><td>赚（但这种场景少见）</td></tr>
+    <tr><td><code>RateLimiter::tryAcquire</code></td><td>一个方法</td><td>补充公式、时钟、加锁</td><td>赚</td></tr>
+    <tr><td>穿过 4 层的 <code>fsync</code> 参数</td><td>4 个签名各多一个参数</td><td>无（中间层都用不到）</td><td>亏</td></tr>
+  </tbody>
+</table></div>
+<p>这张表的用法：下次你想加一层包装、一个 Manager、一个"为了以后扩展"的接口时，先在脑子里把这一行填出来。第三列写不出东西，就别加。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="与&quot;分层架构&quot;惯例的冲突">
+  <p>很多团队规定 Controller → Service → Repository 必须逐层调用，于是 Service 里塞满了一对一的转交。按本章的标准，这种层没有提供不同的抽象，是纯成本。本站补充：问题不在分层规范本身，而在<strong>某一层没有属于自己的职责</strong>。如果 Service 层真的负责事务边界、权限、跨仓储的业务规则，它就是一层不同的抽象；如果只是规范要求"必须经过"，就该问问这条规范值不值得。</p>
+</div>
+<div class="counter" data-title="装饰器模式并非一无是处">
+  <p>作者对装饰器的流行持保留态度，但没有说"永远别用"：适配改不了的外部接口是合理用途，只是少见。本站补充：C++ 里常见的 RAII 守卫（如加锁守卫）虽然也叫"包装"，但它们并不复制被包对象的 API，不属于本章批评的对象。判断时别看名字，看<strong>它是否原样暴露了下层的接口，却只多做了一点点事</strong>。</p>
+</div>
+<div class="counter" data-title="context 不是万能药">
+  <p>context 对象解决了透传变量，却引入了"隐式依赖"：一个类从 context 里取了什么，看签名看不出来。作者自己也承认它远不理想。实践中要守住几条纪律：每个系统实例一个；建好后只读；只放真正全局的东西（配置、共享子系统、计数器），不要把某个模块的私有状态也塞进去。</p>
+</div>
+<div class="counter" data-title="&quot;净收益&quot;是双向的">
+  <p>本章的结论不是"层越少越好"，而是<strong>每一层都要挣回自己的成本</strong>。一个真正藏住了东西的层（块缓存、协议、令牌桶）值得存在，哪怕它让调用链变长。反过来，把所有东西压进一层同样会失败，第 8 章的"别做过头"和第 9 章的拆分与合并会把这条线画得更细。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道识别透传、一道"看起来像透传其实不是"、一道透传变量的取舍。</p>
+<div class="drill-embed" data-ids="ch07-flag-01 ch07-flag-02 ch07-ab-01"></div>
+
+<h2>动手：项目任务</h2>
+<p>minikv 里有一个典型的"传话层"：存储引擎外面套了一层几乎只做转交的类，还有一个写入选项从命令处理层一路穿过好几层方法的签名，只在最底层的日志写入处才被用到。这个任务要你先用本章的问题判断那一层有没有自己的职责，选一种改法消除透传方法，再决定透传变量用哪种方式处理，并说出你接受了什么代价。</p>
+<div class="lab"><p>任务 m03：消除 minikv 中的透传方法和透传变量。详见 <a href="../project/m03.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">沿着一次操作在调用栈里往下走，好的分层应该表现为：</div>
+  <div class="opts"><button>A. 每经过一次调用，抽象就换一次，每层都替上层藏起一类细节</button><button>B. 每层都只调用正下方那一层</button><button>C. 层数越少越好</button><button>D. 每一层的方法签名都尽量一致，便于记忆</button></div>
+  <div class="explain">本章的核心规则：不同的层提供不同的抽象。签名一致恰恰是警告信号；层数多少不是标准，每层是否藏住了东西才是。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">一个类里大部分方法都是透传。作者建议你先问什么问题？</div>
+  <div class="opts"><button>A. 下层类是不是太大了，需要再拆？</button><button>B. 能不能用宏或代码生成减少样板？</button><button>C. 这些方法有没有单元测试？</button><button>D. 这两个类各自到底负责哪些功能和抽象？</button></div>
+  <div class="explain">透传方法说明职责划分不清，所以要从职责入手。用宏减少样板只是把症状藏起来，接口和依赖仍然在。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">下列哪种情况，方法签名和它调用的方法相同，<strong>不</strong>算问题？</div>
+  <div class="opts"><button>A. 为了加一行日志，写了一个实现全部 12 个接口方法的包装类</button><button>B. Facade 类的每个方法都直接调用内部对象的同名方法</button><button>C. 一个函数按请求路径匹配规则，选出处理函数后以相同参数调用它</button><button>D. Service 层的 <code>save(order)</code> 只是调用 Repository 的 <code>save(order)</code></button></div>
+  <div class="explain">C 是分派器："选择谁来处理"本身就是功能。其余三种都没有贡献新功能（或者新功能极少，却配了一大堆转交）。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">一个编辑器文本类内部按行存储。下面哪种接口最符合 7.4 节的观点？</div>
+  <div class="opts"><button>A. 按字符位置插入任意文本、删除任意范围，拆行与合并行在类内部完成</button><button>B. 同时提供按行和按字符两套接口，让调用者自选</button><button>C. 直接公开内部的 <code>std::vector&lt;std::string&gt;</code></button><button>D. <code>getLine(i)</code> / <code>putLine(i, s)</code>，与存储一致，实现最简单</button></div>
+  <div class="explain">接口和内部表示的差别就是类提供的价值。按行的接口让调用者在各处自己拆行、合并行，代码重复且分散。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">作者反对用全局变量消除透传变量，最主要的理由是：</div>
+  <div class="opts"><button>A. 全局变量会导致编译时间变长</button><button>B. 同一进程里没法再创建两个互相独立的系统实例，而测试经常需要这样做</button><button>C. 全局变量不能存放复杂对象</button><button>D. 全局变量访问慢</button></div>
+  <div class="explain">7.5 节举的正是这个问题。context 对象每个实例一份，就能让多个实例共存于同一进程。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">关于 context 对象的用法，哪一项符合书中的建议？</div>
+  <div class="opts"><button>A. 把所有模块的私有状态都放进 context，方便测试</button><button>B. 主要对象保存 context 的引用，只在构造新对象时显式传给构造函数；字段最好不可变</button><button>C. 每个方法都把 context 作为第一个参数</button><button>D. 把 context 做成全局单例，随处可取</button></div>
+  <div class="explain">每个方法都传 context，它就成了新的透传变量；做成单例就退化成全局变量；什么都往里放，就成了作者警告的杂物袋。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>好的分层里，每过一层抽象就换一次；相邻层抽象相似是警告。</li>
+  <li>透传方法让类变浅、制造依赖、暴露职责不清；改法：让调用者直接用下层、重新分配职责、或合并。</li>
+  <li>签名相同本身没问题，只要每个方法都贡献了不同的功能（分派器、多种实现）。</li>
+  <li>装饰器容易浅：先考虑加进底层、放进用途、并入已有包装、独立实现。</li>
+  <li>接口不该照抄内部表示，两者的差别就是类的价值。</li>
+  <li>透传变量可以用共享对象、全局变量、context 对象消除；context 最常用，但并不理想。</li>
+  <li>一切都归结为净收益：每个设计元素都要消除比它带来的更多的复杂性。</li>
+</ul>
+<p>第 8 章接着回答一个相关的问题：当复杂性<strong>无法消除</strong>时，该由哪一层来承担？作者的回答是"往下拉"：宁可让模块的实现复杂，也别把问题推给上层。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段代码。</p>
+<textarea class="note" data-key="ch07-oneline" placeholder="例如：我们的 XxxManager 有一半方法是透传，它真正的职责其实只有……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h } = APOSD;
+  // 每层：名字、角色说明；每种策略给出各层的代码行和角色（uses 用到 / aware 只是传 / ctx 构造时接收 context / none 不知道）
+  const LAYERS = [["main", "解析命令行"], ["Server", "接受连接"], ["Connection", "解析命令"], ["Engine", "索引 + 写日志"], ["LogWriter", "追加写文件"]];
+  const STRATS = [
+    { name: "逐层传参", multi: "可以",
+      rows: (x) => [
+        ["auto fsync = parseFsync(argv);" + (x ? "\nint slowMs = parseInt(argv, \"--slow-ms\");" : "") + "\nserver.run(fsync" + (x ? ", slowMs" : "") + ");", "uses"],
+        ["void run(FsyncPolicy fsync" + (x ? ", int slowMs" : "") + ");", "aware"],
+        ["void serve(FsyncPolicy fsync" + (x ? ", int slowMs" : "") + ");", "aware"],
+        ["void put(Key k, Val v, FsyncPolicy fsync" + (x ? ", int slowMs" : "") + ");" + (x ? "   // 用 slowMs，fsync 照样只是传" : ""), x ? "aware both" : "aware"],
+        ["void append(const Record& r, FsyncPolicy fsync);", "uses"]],
+      change: 3,
+      note: "中间每一层都用不到 fsync，却都得在签名里写上它。再加一个变量，路径上每个签名都要改一遍（包括它们的所有调用处）。" },
+    { name: "共享对象", multi: "可以",
+      rows: (x) => [
+        ["StoreOptions opts{parseFsync(argv)" + (x ? ", parseInt(argv, \"--slow-ms\")" : "") + "};\nserver.run(opts);", "uses"],
+        ["void run(StoreOptions& opts);", "aware"],
+        ["void serve(StoreOptions& opts);", "aware"],
+        ["void put(Key k, Val v, StoreOptions& opts);" + (x ? "   // 用 opts.slowMs，其余字段只是传" : ""), x ? "aware both" : "aware"],
+        ["void append(const Record& r, StoreOptions& opts);", "uses"]],
+      change: 0,
+      note: "如果上下两端本来就共享某个对象，把值放进去，新增变量就不必改签名。但要追问：最底层是怎么拿到这个对象的？像这里一样一路传下来，它自己就成了透传变量。" },
+    { name: "全局变量", multi: "不行",
+      rows: (x) => [
+        ["g_fsync = parseFsync(argv);" + (x ? "\ng_slowMs = parseInt(argv, \"--slow-ms\");" : "") + "\nserver.run();", "uses"],
+        ["void run();", "none"],
+        ["void serve();", "none"],
+        ["void put(Key k, Val v);" + (x ? "   // 读 g_slowMs" : ""), x ? "uses" : "none"],
+        ["void append(const Record& r);   // 读 g_fsync", "uses"]],
+      change: 0,
+      note: "签名都干净了，但同一进程里不能再有两个独立的实例：测试想起两个 Server，一个每次 fsync、一个批量 fsync，就做不到。这是作者反对全局变量的主要理由。另外，从签名上看不出谁依赖了它。" },
+    { name: "context 对象", multi: "可以",
+      rows: (x) => [
+        ["StoreContext ctx{parseFsync(argv)" + (x ? ", parseInt(argv, \"--slow-ms\")" : "") + "};\nServer server(ctx);  server.run();", "uses"],
+        ["Server(const StoreContext& ctx);\nvoid run();", "ctx"],
+        ["Connection(const StoreContext& ctx);\nvoid serve();", "ctx"],
+        ["Engine(const StoreContext& ctx);\nvoid put(Key k, Val v);" + (x ? "   // 读 ctx_.slowMs" : ""), x ? "uses" : "ctx"],
+        ["LogWriter(const StoreContext& ctx);\nvoid append(const Record& r);   // 读 ctx_.fsync", "uses"]],
+      change: 0,
+      note: "作者最常用的办法：每个实例一个 context，主要对象保存它的引用，它只出现在构造函数里。新增变量只改 context 的定义和赋值处。代价：看签名仍看不出谁用了哪个字段；容易变成杂物袋；字段最好只读，避免线程安全问题。" },
+  ];
+  const stratsEl = document.getElementById("pv-strats"), chain = document.getElementById("pv-chain"), narr = document.getElementById("pv-narrate"), extra = document.getElementById("pv-extra");
+  let cur = 0;
+  const btns = STRATS.map((st, i) => h("button", { onclick: () => { cur = i; draw(); } }, st.name));
+  stratsEl.append(...btns);
+  extra.onchange = draw;
+  function draw() {
+    const st = STRATS[cur], x = extra.checked, rows = st.rows(x);
+    btns.forEach((b, i) => b.classList.toggle("on", i === cur));
+    const kids = [];
+    rows.forEach(([code, role], i) => {
+      if (i) kids.push(h("div", { class: "pv-arrow" }, "↓"));
+      kids.push(h("div", { class: "pv-row " + role }, h("div", { class: "who" }, LAYERS[i][0], h("small", {}, LAYERS[i][1])), h("code", {}, code)));
+    });
+    chain.replaceChildren(...kids);
+    // main 负责创建/解析，不计入"用不到却得知道"
+    const aware = rows.slice(1).filter(([, r]) => r.split(" ")[0] === "aware").length;
+    document.getElementById("pv-aware").textContent = aware;
+    document.getElementById("pv-change").textContent = x ? st.change : "—";
+    document.getElementById("pv-multi").textContent = st.multi;
+    narr.textContent = st.note + (x ? (st.change ? ` 这次新增 slowMs，改了 ${st.change} 个方法签名。` : " 这次新增 slowMs，没有改任何方法签名。") : " 勾选上方的复选框，看看再加一个变量时要改多少地方。");
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

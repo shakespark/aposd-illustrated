@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 19 章 · 软件开发趋势</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch19.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.score td:nth-child(2) { white-space: nowrap; font-weight: 600; }
+.score .yes { color: var(--ok); }
+.score .no { color: var(--bad); }
+.score .mixed { color: var(--warn); }
+</style>
+</head>
+<body data-chapter="19">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>面对一个流行的做法（面向对象、敏捷、TDD、设计模式……），用什么标准判断它是在减少还是增加系统的复杂性？</strong></p>
+</div>
+<p>前 18 章建立了一套词汇：深模块、信息泄漏、战术与战略编程、通用与专用、一目了然。这一章是一次<strong>应用练习</strong>：作者拿这套词汇去评价几十年来流行的几种做法，结论有褒有贬，有些相当尖锐（比如对 TDD）。</p>
+<p>这一章最值得带走的不是某个具体结论，而是结尾那个方法：遇到任何新范式，都从复杂性的角度去质问它。所以读的时候，别急着同意或反对作者，而是看作者<strong>每一个判断引用了前面哪一条原则</strong>。如果你不同意某个结论，也试着用同样的词汇说出理由。本章的训练题里有不少"同意还是不同意"的判断题，就是为此准备的。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>19.1 节</strong>区分了两种继承。注意作者对实现继承的评价是两面的：它减少了什么复杂性（用第 2 章的哪个术语），又制造了什么复杂性（用第 5 章的哪个红旗）？</li>
+    <li><strong>19.2 节和 19.4 节</strong>都落到同一条原则上（原则 15）。读的时候想清楚"增量是功能"和"增量是抽象"的区别，作者对敏捷和 TDD 的批评都从这里来。</li>
+    <li><strong>19.4 节</strong>的最后一段：作者在什么情况下<strong>赞成</strong>先写测试？给的理由是什么？这个理由本身值得记住。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>OOP 的机制不保证好设计</h4><p>私有成员能帮助信息隐藏，但类如果浅、接口复杂、暴露内部状态，用了 OOP 照样复杂。</p></div>
+  <div class="card"><h4>接口继承：一个接口，多种实现</h4><p>实现越多，接口越深。为了容纳多种实现，接口必须抓住共同的本质、避开各自的差异，这正是抽象。</p></div>
+  <div class="card"><h4>实现继承：要谨慎</h4><p>它减少了重复（变更放大），却让父类和子类互相依赖；共享的成员变量造成信息泄漏。先考虑组合。<span data-flag="leakage"></span></p></div>
+  <div class="card"><h4>敏捷：增量是对的，功能导向有风险</h4><p>迭代式开发和本书的主张一致；但只盯着功能、推迟设计，容易滑向战术编程。</p></div>
+  <div class="card"><h4>增量应该是抽象</h4><p>可以等到某个功能需要时再考虑一个抽象；一旦需要，就花时间把它设计干净、做得适度通用。<span data-principle="15"></span></p></div>
+  <div class="card"><h4>单元测试：坚决支持</h4><p>好的测试套件让人敢重构；没有测试，人人只做最小改动，复杂性越积越多。</p></div>
+  <div class="card"><h4>TDD：不支持（修 bug 除外）</h4><p>它让注意力集中在"让下一个测试通过"，没有明显的时机做设计。但修 bug 时先写一个能复现它的测试，是最好的做法。</p></div>
+  <div class="card"><h4>设计模式与 getter/setter</h4><p>模式适合时很难做得更好，最大的风险是滥用。getter/setter 是浅方法，最好的做法是根本不暴露成员变量。<span data-flag="shallow"></span></p></div>
+</div>
+
+<h2>一张记分卡</h2>
+<p>先看全貌。每一行都试着用前面学过的原则说出理由，而不是只记结论：</p>
+<div class="table-wrap">
+<table class="score">
+  <thead><tr><th>做法</th><th>作者的判断</th><th>对应前文的概念（本站整理）</th></tr></thead>
+  <tbody>
+    <tr><td>接口继承</td><td class="yes">有帮助</td><td>深模块（第 4 章）：同一个接口服务多种实现，学一次用多处</td></tr>
+    <tr><td>实现继承</td><td class="mixed">谨慎使用</td><td>减少变更放大（第 2 章），但造成信息泄漏（第 5 章）和父子类之间的依赖</td></tr>
+    <tr><td>敏捷开发</td><td class="mixed">增量好，功能导向有风险</td><td>战术与战略编程（第 3 章）；通用模块更深（第 6 章）</td></tr>
+    <tr><td>单元测试</td><td class="yes">强烈支持</td><td>持续投资（第 3 章）、修改代码时保持战略（第 16 章）：测试让重构变得安全</td></tr>
+    <tr><td>测试驱动开发</td><td class="no">不支持（修 bug 除外）</td><td>战术编程（第 3 章）；设计两次（第 11 章）需要的"设计时间"在 TDD 里没有位置</td></tr>
+    <tr><td>设计模式</td><td class="mixed">适合时好，怕滥用</td><td>一致性（第 17 章）；过犹不及（17.3 节）</td></tr>
+    <tr><td>getter/setter</td><td class="no">尽量避免</td><td>浅模块（第 4 章）；信息隐藏（第 5 章）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>继承：两种继承，两种依赖结构</h2>
+<p>书中用"同一个 I/O 接口既能读写磁盘文件、也能读写网络套接字"说明接口继承的杠杆作用。用依赖关系画出来，两种继承的区别一目了然：</p>
+<figure class="fig">
+<svg viewBox="0 0 640 300" width="640" role="img" aria-label="接口继承与实现继承的依赖对比：接口继承中各实现只依赖接口，彼此独立；实现继承中父类与子类共享状态，形成双向依赖">
+  <defs><marker id="ar19" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <text x="160" y="22" text-anchor="middle" font-weight="700">接口继承</text>
+  <rect x="85" y="40" width="150" height="54" rx="6" class="ok-soft" stroke-width="1.5"/>
+  <text x="160" y="62" text-anchor="middle" class="mono" font-size="13">BlobBackend</text>
+  <text x="160" y="82" text-anchor="middle" font-size="11.5" class="t-muted">只有纯虚函数 + 契约</text>
+  <rect x="10" y="170" width="92" height="44" rx="6" class="box" stroke-width="1.2"/>
+  <text x="56" y="197" text-anchor="middle" font-size="12" class="mono">LocalDisk</text>
+  <rect x="114" y="170" width="92" height="44" rx="6" class="box" stroke-width="1.2"/>
+  <text x="160" y="197" text-anchor="middle" font-size="12" class="mono">S3Backend</text>
+  <rect x="218" y="170" width="92" height="44" rx="6" class="box" stroke-width="1.2"/>
+  <text x="264" y="197" text-anchor="middle" font-size="12" class="mono">InMemory</text>
+  <line x1="56" y1="170" x2="125" y2="96" class="arrow" marker-end="url(#ar19)"/>
+  <line x1="160" y1="170" x2="160" y2="96" class="arrow" marker-end="url(#ar19)"/>
+  <line x1="264" y1="170" x2="195" y2="96" class="arrow" marker-end="url(#ar19)"/>
+  <text x="160" y="244" text-anchor="middle" font-size="12.5">依赖只指向接口，实现之间互不相干</text>
+  <text x="160" y="264" text-anchor="middle" font-size="12" class="t-muted">改 S3Backend 不用看 LocalDisk</text>
+  <text x="160" y="284" text-anchor="middle" font-size="12" class="t-muted">实现越多，接口越"深"</text>
+
+  <line x1="320" y1="30" x2="320" y2="290" style="stroke:var(--border)" stroke-dasharray="4 4"/>
+
+  <text x="480" y="22" text-anchor="middle" font-weight="700">实现继承（共享状态）</text>
+  <rect x="385" y="40" width="190" height="64" rx="6" class="bad-soft" stroke-width="1.5"/>
+  <text x="480" y="60" text-anchor="middle" class="mono" font-size="13">Connection</text>
+  <text x="480" y="78" text-anchor="middle" font-size="11.5" class="mono t-muted">protected: rbuf_ state_</text>
+  <text x="480" y="94" text-anchor="middle" font-size="11.5" class="t-muted">默认实现 + 虚函数钩子</text>
+  <rect x="345" y="170" width="120" height="44" rx="6" class="box" stroke-width="1.2"/>
+  <text x="405" y="197" text-anchor="middle" font-size="12" class="mono">TlsConnection</text>
+  <rect x="495" y="170" width="130" height="44" rx="6" class="box" stroke-width="1.2"/>
+  <text x="560" y="197" text-anchor="middle" font-size="12" class="mono">HttpConnection</text>
+  <line x1="405" y1="170" x2="440" y2="106" class="arrow" marker-start="url(#ar19)" marker-end="url(#ar19)"/>
+  <line x1="560" y1="170" x2="525" y2="106" class="arrow" marker-start="url(#ar19)" marker-end="url(#ar19)"/>
+  <text x="410" y="140" text-anchor="end" font-size="11" class="t-muted">读写 rbuf_</text>
+  <text x="552" y="140" font-size="11" class="t-muted">改 state_</text>
+  <text x="480" y="244" text-anchor="middle" font-size="12.5">父子之间双向依赖</text>
+  <text x="480" y="264" text-anchor="middle" font-size="12" class="t-muted">改父类要检查所有子类；</text>
+  <text x="480" y="284" text-anchor="middle" font-size="12" class="t-muted">写子类要读父类的实现</text>
+</svg>
+<figcaption>左边的箭头只有一个方向；右边的双向箭头来自共享的 <code>protected</code> 成员变量。本站自绘示意。</figcaption>
+</figure>
+<p>作者对实现继承的评价是两面的：没有它，同一段方法实现可能要在几个子类里各写一份，改一处要改几处（变更放大）；有了它，父类的成员变量往往被父类和子类同时读写，这就是<strong>信息泄漏</strong>，最坏的情况是改任何一个类都要了解整棵继承树。作者的建议有两步：先看<strong>组合</strong>（用小的辅助类实现共享的功能）能不能达到同样效果；实在要用实现继承，就让父类完全管理自己的状态，子类只读或者只通过父类的方法访问。</p>
+
+<h2>原创例子一：从共享状态的继承树到组合</h2>
+<div class="ba">
+  <div data-label="改之前：子类直接动父类的状态">
+<pre class="numbered" data-mark="6,7,17,18,19"><code class="lang-cpp">class Connection {
+public:
+    void onReadable();             // 读入 rbuf_，然后调用 parse()
+    virtual ~Connection() = default;
+protected:
+    Buffer rbuf_;                  // 子类可以直接读写
+    State  state_ = State::Open;   // 子类可以直接改
+    virtual void parse() = 0;
+    int fd_;
+};
+
+class TlsConnection : public Connection {
+    SSL* ssl_;
+protected:
+    void parse() override {
+        // 必须知道：父类在 rbuf_ 尾部留了 4 字节哨兵，不能消费
+        auto plain = decrypt(ssl_, rbuf_.data(), rbuf_.size() - 4);
+        rbuf_.consume(rbuf_.size() - 4);
+        if (sslWantsClose(ssl_)) state_ = State::Closing;
+        deliver(plain);
+    }
+};</code></pre>
+    <p>第 17～19 行是信息泄漏：子类依赖父类缓冲区的内部约定（4 字节哨兵），还直接改父类的状态机。改 <code>Connection</code> 的人必须检查每一个子类；写子类的人必须读懂父类的实现。再加一层 <code>HttpsConnection : TlsConnection</code>，就要同时懂三个类。</p>
+  </div>
+  <div data-label="改之后：组合 + 接口继承">
+<pre class="numbered" data-mark="1,2,3,4,5,6,7"><code class="lang-cpp">// 把字节流转换成应用层消息。只看到输入的字节，不接触连接的状态。
+class Codec {
+public:
+    virtual ~Codec() = default;
+    // 消费 in 中能处理的前缀，返回消费的字节数；需要关闭时返回 Close。
+    virtual DecodeResult decode(std::span&lt;const std::byte&gt; in, MessageSink&amp; out) = 0;
+};
+
+class Connection final {
+public:
+    Connection(int fd, std::unique_ptr&lt;Codec&gt; codec);
+    void onReadable();   // 读入、调用 codec_-&gt;decode、按结果消费和关闭
+private:
+    Buffer rbuf_;        // 只有 Connection 自己碰
+    State  state_;
+    std::unique_ptr&lt;Codec&gt; codec_;
+    int fd_;
+};
+
+class TlsCodec : public Codec { /* 只管解密，不知道哨兵和状态机 */ };</code></pre>
+    <p>缓冲区的约定和状态机都留在 <code>Connection</code> 内部；<code>Codec</code> 是一个窄接口（接口继承），TLS、HTTP、测试用的假编解码器都实现它。TLS 套 HTTP 可以写成一个 <code>Codec</code> 包着另一个，不需要继承树。</p>
+  </div>
+</div>
+<p><strong>代价</strong>：<code>Codec</code> 的接口需要设计，<code>DecodeResult</code> 要能表达"消费了多少""要不要关闭"，这比直接改 <code>state_</code> 多想一步。但这一步就是在把父子类之间原来隐式的约定，变成一个写得出来的接口。</p>
+
+<h2>敏捷与原则 15：增量应该是抽象</h2>
+<p>作者赞同敏捷的核心：<strong>迭代式、增量式开发</strong>。第 1 章就说过，复杂系统在一开始不可能想清楚最好的设计。作者担心的是另一面：敏捷倾向于让开发者盯着<strong>功能</strong>，并鼓励推迟设计决定以尽快交付可运行的软件。书中特别点名反驳了一种敏捷建议：先实现一个最小的专用机制，等确认需要时再重构成通用的。作者认为这种论证有一定道理，但它反对的正是投资式的做法。</p>
+<blockquote class="quote">the increments of development should be abstractions, not features.<cite>— 第 19.2 节</cite></blockquote>
+<figure class="fig">
+<svg viewBox="0 0 640 230" width="640" role="img" aria-label="两种增量方式的对比：按功能增量，每个迭代加一个专用函数；按抽象增量，第一次需要时设计一个通用抽象，后续功能直接使用">
+  <text x="20" y="22" font-weight="700">需求：三个迭代分别要导出订单、用户、报表的 CSV</text>
+  <text x="20" y="56" font-size="13" font-weight="700" style="fill:var(--bad)">增量 = 功能</text>
+  <rect x="130" y="40" width="150" height="34" rx="5" class="bad-soft"/><text x="205" y="62" text-anchor="middle" font-size="11.5" class="mono">exportOrdersCsv()</text>
+  <rect x="295" y="40" width="150" height="34" rx="5" class="bad-soft"/><text x="370" y="62" text-anchor="middle" font-size="11.5" class="mono">exportUsersCsv()</text>
+  <rect x="460" y="40" width="160" height="34" rx="5" class="bad-soft"/><text x="540" y="62" text-anchor="middle" font-size="11.5" class="mono">exportReportCsv()</text>
+  <text x="130" y="92" font-size="12" class="t-muted">每次都"先写专用的、以后再抽象"；转义规则写了三份，</text><text x="130" y="108" font-size="12" class="t-muted">第三份漏了换行符。"以后"一直没来。</text>
+
+  <text x="20" y="146" font-size="13" font-weight="700" style="fill:var(--ok)">增量 = 抽象</text>
+  <rect x="130" y="128" width="150" height="40" rx="5" class="ok-soft"/><text x="205" y="146" text-anchor="middle" font-size="11.5" class="mono">CsvWriter</text><text x="205" y="161" text-anchor="middle" font-size="10.5" class="t-muted">第一次需要时设计好</text>
+  <rect x="295" y="128" width="150" height="40" rx="5" class="box"/><text x="370" y="152" text-anchor="middle" font-size="11.5" class="mono">用 CsvWriter 导出用户</text>
+  <rect x="460" y="128" width="160" height="40" rx="5" class="box"/><text x="540" y="152" text-anchor="middle" font-size="11.5" class="mono">用 CsvWriter 导出报表</text>
+  <text x="130" y="192" font-size="12" class="t-muted">第 1 迭代多花半天，把转义、表头、流式写出一次做对；</text>
+  <text x="130" y="210" font-size="12" class="t-muted">之后每个功能都只是"选哪些列"。增量仍然很小，只是每次加的是一个抽象。</text>
+</svg>
+<figcaption>注意下面一行并没有在第 1 迭代就做"支持 Excel、PDF 的导出框架"：抽象是在功能需要它时才引入的，但一引入就做干净。本站自绘示意。</figcaption>
+</figure>
+<p>这条原则有两半，常被只记住一半。前一半是"可以推迟"：在某个功能需要之前，完全不必考虑这个抽象，这和 YAGNI 并不冲突。后一半是"一旦需要就投资"：按第 6 章的建议把它做得<strong>适度通用</strong>，而不是先写一个专用版本、指望以后重构。</p>
+
+<h2>单元测试与 TDD：作者为什么态度不同</h2>
+<p>作者支持单元测试的理由和第 16 章一脉相承：没有测试，重构就很危险，于是大家只做最小改动，复杂性越积越多，设计错误得不到纠正；有了测试，人们才敢做结构性的改进。作者还认为单元测试比系统测试覆盖得更全，更可能发现 bug。书中举了 Tcl 把解释器换成字节码编译器的经历：一次几乎触及整个核心引擎的改动，靠原有的单元测试套件，发布 alpha 版后只冒出了一个 bug。</p>
+<p>但对 TDD（先写测试、再写刚好让测试通过的代码），作者的评价很尖锐：</p>
+<blockquote class="quote">This is tactical programming pure and simple, with all of its disadvantages.<cite>— 第 19.4 节</cite></blockquote>
+<p>理由是：TDD 太增量了，在任何时候，最省事的都是"再糊一点代码让下一个测试通过"，没有一个明显的时间点用来做设计。这和原则 15 是同一件事：一旦发现需要一个抽象，就应该<strong>一次设计完整</strong>（至少设计出一组足够全面的核心功能），而不是一点一点地长出来。</p>
+<p>作者赞成先写测试的一个场合是<strong>修 bug</strong>：先写一个因为这个 bug 而失败的测试，再修，再看它通过。理由很实在：如果先修再写测试，你没法确定这个测试真的触发了 bug，它通过了也说明不了问题。</p>
+<pre class="numbered" data-mark="1,2,6"><code class="lang-cpp">// 第 1 步：先写测试，确认它在修复前失败。
+// bug：路径里有连续的斜杠时，splitPath 会产生空的路径分量。
+TEST(SplitPath, CollapsesRepeatedSlashes) {
+    EXPECT_EQ(splitPath("/a//b/"), (std::vector&lt;std::string&gt;{"a", "b"}));
+}
+// 第 2 步：运行，看到它失败（得到 {"a", "", "b"}）。
+// 第 3 步：修复 splitPath，再运行，看到它通过。</code></pre>
+<p>第 6 行是关键的一步：亲眼看到测试<strong>因为这个 bug</strong>而失败，才证明它真的覆盖了这个 bug。</p>
+
+<h2>设计模式与 getter/setter</h2>
+<p>作者对设计模式的态度是"适合就用"：模式之所以流行，是因为它们干净地解决了常见问题；一个模式适合时，你很难想出更好的办法。最大的风险是<strong>滥用</strong>：把不适合的问题硬塞进某个模式。在 C++ 代码里，最常见的滥用形式是"只有一种实现的抽象工厂"：</p>
+<pre><code class="lang-cpp">// 整个项目里只有一种压缩算法，以后也没有计划换
+class CompressorFactory { public: virtual std::unique_ptr&lt;Compressor&gt; create() = 0; };
+class ZstdCompressorFactory : public CompressorFactory { /* return make_unique&lt;Zstd…&gt;() */ };
+class CompressionStrategyContext { /* 持有一个 Compressor，转发 compress() */ };
+
+// 调用者要先认识三个类，才能压缩一块数据。对比：
+std::vector&lt;std::byte&gt; compress(std::span&lt;const std::byte&gt; in);</code></pre>
+<p>每个类都是浅的，<code>CompressionStrategyContext</code> 还是一个透传类。用了三个模式名，没有隐藏任何东西。作者的话是：设计模式是好的，不等于设计模式越多越好。</p>
+<p><strong>getter/setter</strong> 是一个被模式化之后滥用的典型。支持它的理由是：以后可以在读写时顺带做别的事（更新相关的值、通知监听者、检查约束），而不用改接口。作者承认，<strong>如果必须暴露成员变量</strong>，用 getter/setter 比直接公开好；但更好的做法是根本不暴露，因为暴露的变量就是实现的一部分，违反信息隐藏，而 getter/setter 本身是只有一行的浅方法，只会把接口弄乱。</p>
+<div class="ba">
+  <div data-label="改之前：把数据交出去">
+<pre><code class="lang-cpp">class RetryPolicy {
+public:
+    int  getMaxAttempts() const;   void setMaxAttempts(int);
+    int  getBaseDelayMs() const;   void setBaseDelayMs(int);
+    double getMultiplier() const;  void setMultiplier(double);
+    int  getMaxDelayMs() const;    void setMaxDelayMs(int);
+};
+
+// 每个调用者自己算退避时间（三个调用者，三种写法）：
+int delay = std::min(p.getMaxDelayMs(),
+    int(p.getBaseDelayMs() * std::pow(p.getMultiplier(), attempt)));</code></pre>
+    <p>八个浅方法；真正的知识（怎么算退避）散落在调用者手里。</p>
+  </div>
+  <div data-label="改之后：把行为留在里面">
+<pre><code class="lang-cpp">class RetryPolicy {
+public:
+    static RetryPolicy standard();            // 绝大多数调用者用这个
+    // 第 attempt 次失败（从 1 开始）后应等待多久；
+    // 超过最大重试次数时返回 std::nullopt，表示放弃。
+    std::optional&lt;std::chrono::milliseconds&gt; nextDelay(int attempt) const;
+};
+
+if (auto d = policy.nextDelay(attempt)) sleepFor(*d);
+else return lastError;</code></pre>
+    <p>一个深方法替代了八个浅方法，退避公式和抖动只在一处。代价：需要"特殊策略"的少数调用者要通过构造参数定制，而不是随手 set。</p>
+  </div>
+</div>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="TDD 的支持者会怎么回应">
+  <p>TDD 的支持者会说：红—绿—<strong>重构</strong>这个循环里，第三步就是设计的时机，作者忽略了它。本站补充：这个争论的关键不在"测试先写还是后写"，而在<strong>设计发生在什么粒度</strong>。作者反对的是"抽象一个测试一个测试地长出来"；如果你在写第一个测试之前已经把接口想清楚（例如先写接口注释，见第 15 章），再用测试驱动实现，作者的批评就不太适用了。两种立场的完整对照见<a href="../topics/clean-code.html">专题：APOSD 与 Clean Code</a>。注意：作者在这一点上的立场本身就有争议，本站只负责把它讲准确。</p>
+</div>
+<div class="counter" data-title="实现继承不是禁区">
+  <p>作者说的是"谨慎使用"，并承认它能减少重复。本站补充两个合理的场景：框架提供的基类只暴露少量受保护的钩子方法、自己的状态全部私有（这正是作者说的"父类完全管理自己的状态"）；C++ 里用 CRTP 或混入（mixin）复用一小段无状态的逻辑。判断标准始终是：<strong>子类需要知道父类的多少实现细节？</strong></p>
+</div>
+<div class="counter" data-title="&quot;以后再抽象&quot;和 YAGNI">
+  <p>作者反对的不是"现在不做"，而是"现在做一个专用的，以后再改成通用的"。前者作者明确同意（功能需要之前可以完全不考虑这个抽象）；后者的问题在于"以后"往往不会来，专用代码一份份复制下去。本站补充：适度通用的标准见第 6 章，问"满足当前需求的最简单接口是什么"，而不是"未来所有可能的需求是什么"，这样就不会滑到另一个极端（过度设计）。</p>
+</div>
+<div class="counter" data-title="纯数据的 struct 也要藏起来吗？">
+  <p>作者反对的是暴露<strong>实现</strong>：类本来有自己的职责，成员变量是它实现职责的手段。本站补充：C++ 里一个只承载数据、没有不变式的聚合体（如 <code>struct Point { double x, y; }</code>、上一章的 <code>Location</code>），数据本身就是它的接口，直接用公开字段反而最诚实，给它套 getter/setter 只会增加浅方法。一旦字段之间出现了约束（比如 <code>begin &lt;= end</code>），就该把它变成有行为的类。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。判断题请先想清楚"作者会怎么说"，再想"我同不同意，为什么"。</p>
+<div class="drill-embed" data-ids="ch19-flag-01 ch19-ab-02 ch19-judge-01"></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="1"><div class="q">作者说"一个接口的实现越多，这个接口就越深"。原因是：</div>
+  <div class="opts"><button>A. 实现越多，接口的方法就越多</button><button>B. 为了容纳多种实现，接口必须抓住它们共同的本质、避开各自不同的细节；同一份知识可以用在多个地方</button><button>C. 实现越多，继承层次越深</button><button>D. 实现越多，总代码量越大</button></div>
+  <div class="explain">接口继承的杠杆在于复用同一个接口：学会用它操作一种实现，就会用它操作所有实现。能容纳多种实现，说明接口只保留了本质，这正是抽象的核心。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">关于实现继承，下列哪个说法符合作者的观点？</div>
+  <div class="opts"><button>A. 只要父类的成员变量是 protected 而不是 public，就不会有问题</button><button>B. 它没有任何好处，应该完全禁止</button><button>C. 它减少了重复，但造成父子类之间的依赖和信息泄漏；先考虑组合，必须用时让父类完全管理自己的状态</button><button>D. 它是 OOP 最有价值的特性，应该尽量多用</button></div>
+  <div class="explain">作者承认实现继承能减少变更放大，但共享的成员变量会在父子类之间泄漏信息。protected 变量恰恰是泄漏的通道。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">原则 15 说"软件开发的增量应该是抽象，而不是功能"。下列哪种做法最符合它？</div>
+  <div class="opts"><button>A. 某个功能第一次需要解析配置文件时，花时间设计一个干净、适度通用的配置模块，之后的功能直接使用</button><button>B. 每个迭代交付尽可能多的功能</button><button>C. 项目开始时，先花一个月设计好所有将来可能用到的抽象</button><button>D. 每个迭代只实现当前功能需要的最少代码，抽象等以后重构时再提炼</button></div>
+  <div class="explain">原则的两半：抽象可以等到功能需要时再引入（所以不是 C）；但一旦需要，就投入时间一次设计好（所以不是 D）。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">作者在什么情况下赞成先写测试？</div>
+  <div class="opts"><button>A. 团队人数较多时</button><button>B. 修 bug 时：先写一个因该 bug 而失败的测试，修好后看它通过</button><button>C. 开发任何新类时</button><button>D. 从不赞成</button></div>
+  <div class="explain">先写测试并看到它失败，才能确认这个测试真的触发了 bug；如果先修再写，测试通过可能只是因为它根本没碰到 bug。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">作者为什么认为单元测试对设计很重要？</div>
+  <div class="opts"><button>A. 因为写测试会自然而然地产生好的设计</button><button>B. 因为测试本身就是一种文档，可以替代注释</button><button>C. 因为测试覆盖率是衡量设计质量的指标</button><button>D. 因为它让重构变得安全；没有测试，开发者会尽量少改代码，复杂性不断累积</button></div>
+  <div class="explain">作者的论证是：测试让人敢做结构性改进。A 恰恰接近 TDD 支持者的说法，作者并不认同。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">关于 getter/setter，下列哪一项最准确地表达了作者的观点？</div>
+  <div class="opts"><button>A. getter/setter 和公开成员变量没有区别</button><button>B. getter/setter 是一种深方法</button><button>C. 必须暴露成员变量时，getter/setter 比公开变量好；但更好的是根本不暴露</button><button>D. 应该给每个成员变量都写 getter/setter，以便将来扩展</button></div>
+  <div class="explain">getter/setter 是浅方法，暴露的仍然是实现。作者认为它们被滥用，部分原因是人们以为"既然是模式，就应该尽量多用"。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">这一章结尾给出的、可以用于评价任何新范式的方法是：</div>
+  <div class="opts"><button>A. 从复杂性的角度质问它：它真的能减少大型系统的复杂性吗？</button><button>B. 看它能否提高开发速度</button><button>C. 先在小项目里试用一年</button><button>D. 看业界大公司是否采用</button></div>
+  <div class="explain">很多提议表面上听起来不错，深入看却可能让复杂性更糟。用复杂性（及前面各章的词汇）去检验，是作者希望读者带走的方法。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>OOP 的机制可以帮助好设计，但不保证好设计。</li>
+  <li>接口继承提供杠杆：实现越多，接口越深。实现继承减少重复但制造依赖和信息泄漏，先考虑组合。</li>
+  <li>敏捷的增量开发是对的，但增量应该是抽象而不是功能（原则 15）。</li>
+  <li>坚决支持单元测试（让重构安全）；不支持 TDD（战术编程），修 bug 时先写测试除外。</li>
+  <li>设计模式适合时就用，最大的风险是滥用；getter/setter 是浅方法，最好不暴露成员变量。</li>
+  <li>评价任何新范式：问它是否真的减少了复杂性。</li>
+</ul>
+<p>下一章（为性能而设计）讨论最常被拿来反对"简洁设计"的理由：性能。作者会论证，简洁的设计和高性能通常并不冲突。</p>
+<p><strong>读后一句话</strong>：选一个你团队里流行的做法（某个框架、某条规范、某种流程），用本书的词汇评价它：它在哪里减少了复杂性，又在哪里增加了复杂性？</p>
+<textarea class="note" data-key="ch19-oneline" placeholder="例如：我们要求所有类都通过 DI 容器注入，好处是……，但它让……变得不明显"></textarea>
+
+</main>
+</body>
+</html>

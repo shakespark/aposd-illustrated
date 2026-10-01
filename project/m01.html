@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务 m01 · 把日志做成深模块</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.mission-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.checklist li { list-style: none; margin-left: -1.2em; }
+.checklist li::before { content: "☐ "; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part1)"></span>minikv 重构项目 · 任务 1 / 8</div>
+  <h1>m01：把日志做成深模块</h1>
+  <p class="en">对应第 4 章（模块应该深）、第 5 章（信息隐藏与泄漏）</p>
+  <div class="mission-meta"><span data-flag="shallow"></span><span data-flag="leakage"></span><span data-flag="temporal"></span><span data-flag="overexposure"></span></div>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">背景与对应章节</a></li>
+  <li><a href="#find">你要找的问题</a></li>
+  <li><a href="#task">任务与约束</a></li>
+  <li><a href="#check">自查清单</a></li>
+  <li><a href="#hints">提示</a></li>
+  <li><a href="#answer">参考答案与讨论</a></li>
+</ol></nav>
+
+<h2 id="bg">背景与对应章节</h2>
+<div class="crux"><p><strong>"日志文件长什么样"这个设计决定，现在有几个类知道？改它要动几个文件？</strong></p></div>
+<p>minikv 把每次修改追加写到一个日志文件，启动时重放。负责这件事的代码是团队里一位同事"按职责拆分"写的：写一个类、读一个类、解析一个类，再加上文件描述符、字节编解码几个小工具类。每个类都很短，单看都挺整洁。</p>
+<p>这个任务练的是第 4、5 章的核心判断：<strong>模块的价值在于它替使用者藏住了多少东西</strong>，而不在于它有多小。做之前请读完 <a href="../chapters/04-deep-modules.html">第 4 章 · 模块应该深</a> 和 <a href="../chapters/05-information-hiding.html">第 5 章 · 信息隐藏（与泄漏）</a>，尤其是原书 4.6（类炎）、5.2～5.4（泄漏与按时间顺序分解）、5.7（默认值与过度暴露）。</p>
+
+<h2 id="find">你要找的问题</h2>
+<p>先别动手改，花 20 分钟只读代码，回答下面几个问题。需要看的文件：</p>
+<div class="table-wrap"><table>
+  <tr><th>文件</th><th>读的时候问自己</th></tr>
+  <tr><td><code>src/log_writer.*</code><br><code>src/log_reader.*</code><br><code>src/record_parser.*</code></td><td>如果要把记录头里的两个长度字段从 4 字节改成 varint，要改哪几个文件？每个文件里是哪几行"知道"头部布局？</td></tr>
+  <tr><td><code>src/store.cpp</code></td><td>搜一下 <code>kRecordHeaderSize</code>。<code>Store</code> 为什么需要知道头部有多少字节？</td></tr>
+  <tr><td><code>src/store.cpp</code> 的 <code>load()</code></td><td>这个函数里有多少行是在"搬运"：把一个类得到的信息交给另一个类？如果有人把两段代码的顺序调换，会出什么事？</td></tr>
+  <tr><td><code>src/file_handle.*</code><br><code>src/byte_buffer.h</code></td><td>这些类替使用者处理了哪些难点？哪些难点没处理，结果在调用方重复出现？</td></tr>
+  <tr><td><code>LogWriter::open</code> 的签名</td><td>最常见的调用者只想"打开日志往后追加"。它需要传哪些参数、知道哪些规则？哪些其实只有压缩那一处才用得到？</td></tr>
+</table></div>
+<p>把你的答案写下来（下面的笔记框会保存在本机浏览器里）。能说出"同一个知识出现在哪几处"，这个任务就完成了一半。</p>
+<textarea class="note" data-key="m01-findings" placeholder="例如：头部布局出现在 …… 三处；Store 知道 ……；open 的调用者必须知道 ……"></textarea>
+
+<div class="lab"><p>先确认基线能编译、测试全绿，再看看格式知识散落在哪里：</p>
+<pre><code>cd project/minikv
+make test
+grep -n "kRecordHeaderSize\|skip(5)\|putU32\|getU32" src/*.cpp src/*.h</code></pre></div>
+
+<h2 id="task">任务与约束</h2>
+<ol>
+  <li><strong>重新划分日志模块</strong>，让"记录在磁盘上的格式"只出现在<strong>一个</strong>源文件里。</li>
+  <li><strong>让最常见的用法最简单</strong>：<code>Store</code> 打开日志时不应该再接触 <code>open(2)</code> 标志、权限位、起始偏移、<code>errno</code>。</li>
+  <li><code>Store</code> 不再自己计算记录大小。</li>
+  <li>处理部分写、<code>EINTR</code> 的循环各只保留一份。</li>
+</ol>
+<p>约束：</p>
+<ul>
+  <li><code>make test</code> 必须全绿，<strong>不许修改 <code>tests/</code></strong>。测试只通过 <code>Server</code> 的命令接口和重新打开日志文件来检查行为，所以只要外部行为不变，你可以随意重组内部。</li>
+  <li>日志文件格式保持不变（用基线写出的旧日志，改完的程序要能读）。</li>
+  <li>只做本任务的事。<code>Store</code> 里那些看着重复的 <code>set/incr/append</code>、一路往下传的 <code>WriteOptions</code>、含糊的成员名，都是后面任务的题目，先别碰，免得改动混在一起没法对照。</li>
+  <li>更新 <code>README.md</code> 里的文件结构。</li>
+</ul>
+
+<h2 id="check">自查清单</h2>
+<ul class="checklist">
+  <li>在 <code>src/</code> 里搜头部大小（13）和各字段的偏移：它们只出现在一个 .cpp 文件里，而且不在任何头文件里。</li>
+  <li><code>store.cpp</code> 不再 include 任何与文件格式、<code>fcntl.h</code>、<code>errno</code>（打开文件相关）有关的东西。</li>
+  <li>新模块的公有接口，你能用 3～5 句话写完注释，而且注释里不需要提"头部""偏移""标志"。</li>
+  <li>不存在"必须先调 A 再调 B"的调用顺序约束；如果有，它被构造函数或类型系统强制了。</li>
+  <li>用基线程序写的日志文件，改完后的程序能正常打开（自己用 <code>./minikv</code> 试一次）。</li>
+  <li><code>make test</code> 全绿，编译零警告。</li>
+</ul>
+
+<h2 id="hints">提示</h2>
+<p>卡住了再一条一条打开。</p>
+<details class="reveal"><summary>提示 1：先数一数调用者要知道多少东西</summary><div>
+  <p>把 <code>Store::load()</code> 和 <code>Store::compact()</code> 里所有跟文件打交道的代码列出来，每一行问一句："<code>Store</code> 为什么要知道这个？"你会发现几乎每一行的答案都是"因为下层没替它做"。这份清单就是新模块该藏住的东西。</p>
+</div></details>
+<details class="reveal"><summary>提示 2：按知识分，不按时间分</summary><div>
+  <p>写、读、解析三个阶段用的是同一份知识（格式）。书里对按时间顺序分解给的建议是：把共享同一份知识的代码放到一起（原书 5.3 节）。试试一个类同时负责写和读。至于 <code>FileHandle</code>、<code>ByteWriter</code> 这些小类：把它们合进去以后，还有谁需要它们？</p>
+</div></details>
+<details class="reveal"><summary>提示 3：顺序约束怎么消失</summary><div>
+  <p>"必须先重放完才能追加"是现在接口里最隐蔽的一条规则。如果打开日志的那个操作<strong>本身就包含</strong>重放（比如构造时传一个回调，每读出一条记录就交给调用者），这条规则就不需要任何人记住了。压缩时的"写临时文件、rename、重新打开"同理：它们全是文件层面的知识，可以收进同一个模块，对外只露一个"用这些记录整体替换日志"的操作。</p>
+</div></details>
+
+<h2 id="answer">参考答案与讨论</h2>
+<div class="aside" data-title="先自己做"><p>先自己做完、测试全绿，再打开下面的内容。参考答案只是<strong>一种</strong>合理设计；你的方案不同不代表错，关键是能不能讲清楚"使用者要知道的东西变少了多少、代价是什么"。</p></div>
+
+<details class="reveal"><summary>打开参考答案</summary><div>
+
+<p>参考解法把 5 个类合并成一个 <code>LogFile</code>（<code>solutions/m01/src/log_file.h</code>）。先看 <code>Store</code> 打开日志的代码前后对比：</p>
+<div class="ba">
+  <div data-label="改之前：Store 打开日志">
+<pre><code class="lang-cpp">void Store::load() {
+    LogReader reader;
+    uint64_t end = 0;
+    if (reader.open(path_)) {
+        std::string raw;
+        while (reader.next(raw)) {
+            Record r;
+            try {
+                r = RecordParser::parse(raw);
+            } catch (const std::exception&amp; e) {
+                throw std::runtime_error(path_ + ": bad record at offset " +
+                    std::to_string(reader.offset() - raw.size()) + ": " + e.what());
+            }
+            handle(r);
+        }
+        end = reader.offset();
+    } else if (errno != ENOENT) {
+        throw std::runtime_error("cannot open " + path_ + ": " + std::strerror(errno));
+    }
+    if (!writer_.open(path_, O_WRONLY | O_CREAT | O_APPEND, 0644, end)) {
+        throw std::runtime_error("cannot open " + path_ + " for writing: " + std::strerror(errno));
+    }
+}</code></pre>
+    <p>三个类、一个 <code>errno</code> 判断、一组 open 标志、一个要从读端搬到写端的偏移，还有"先读后写"的顺序。</p>
+  </div>
+  <div data-label="改之后：一个构造函数">
+<pre><code class="lang-cpp">Store::Store(const std::string&amp; path, const Options&amp; options)
+    : index_(options.index_reserve),
+      log_(path, [this](const Record&amp; r, uint64_t size) { handle(r, size); }) {}
+
+// log_file.h
+class LogFile {
+public:
+    // Opens the log at `path`, creating an empty one if it does not exist,
+    // and passes every record already in it to `visit`, oldest first. ...
+    LogFile(const std::string&amp; path, const RecordVisitor&amp; visit);
+    uint64_t append(const Record&amp; rec, const WriteOptions&amp; options); // returns bytes used
+    void rewrite(const std::function&lt;void(const RecordSink&amp;)&gt;&amp; writeRecords);
+    uint64_t size() const;
+};</code></pre>
+    <p>格式、校验、重试、文件不存在、偏移、原子替换，全部在 <code>log_file.cpp</code> 里。<code>Store</code> 只看见记录和字节数。</p>
+  </div>
+</div>
+
+<div class="ba">
+  <div data-label="改之前：格式知识在 3 个文件里">
+<pre><code class="lang-cpp">// log_writer.cpp
+w.putU32(0);  // checksum, filled in below
+w.putU8(static_cast&lt;uint8_t&gt;(rec.type));
+w.putU32(static_cast&lt;uint32_t&gt;(rec.key.size()));
+...
+// log_reader.cpp
+ByteReader r(header, sizeof header);
+r.skip(5);                       // crc (4) + type (1)
+uint32_t keyLen = r.getU32();
+...
+// record_parser.cpp
+uint32_t storedCrc = r.getU32();
+uint8_t type = r.getU8();
+...
+// store.cpp（出现 5 次）
+uint64_t size = kRecordHeaderSize + key.size() + value.size();</code></pre>
+  </div>
+  <div data-label="改之后：只在 log_file.cpp">
+<pre><code class="lang-cpp">// log_file.cpp, anonymous namespace
+constexpr size_t kHeaderSize = 13;
+constexpr size_t kTypeOffset = 4;
+constexpr size_t kKeyLenOffset = 5;
+constexpr size_t kValueLenOffset = 9;
+
+std::string encode(const Record&amp; rec);   // used by append() and rewrite()
+uint64_t replay(int fd, const std::string&amp; path,
+                const LogFile::RecordVisitor&amp; visit);
+
+// store.cpp
+uint64_t size = log_.append(rec, wo);</code></pre>
+  </div>
+</div>
+
+<h3>使用者要知道的东西</h3>
+<div class="table-wrap"><table>
+  <tr><th></th><th>改之前，Store 需要知道</th><th>改之后</th></tr>
+  <tr><td>记录格式</td><td>头部 13 字节、记录大小的公式</td><td>不需要</td></tr>
+  <tr><td>打开文件</td><td>3 个 open 标志、权限位、ENOENT 的含义、起始偏移</td><td>只传路径</td></tr>
+  <tr><td>调用顺序</td><td>先 LogReader 读完，再 LogWriter 打开</td><td>构造即完成</td></tr>
+  <tr><td>压缩</td><td>临时文件名、O_TRUNC、fsync、rename、重新打开、新文件大小</td><td>交出记录即可</td></tr>
+</table></div>
+<p>日志相关代码从 9 个文件 421 行变成 3 个文件 258 行，<code>store.cpp</code> 从 205 行变成 151 行。行数不是目标，但"浅类合并后总代码变少"很常见：浅类之间的胶水代码（搬偏移、转错误信息、重复的重试循环）随着接口一起消失了。</p>
+<p>顺带修掉一个潜在 bug：基线的 <code>compact()</code> 先关写端再 <code>rename</code>，rename 失败后写端已经关了，之后所有写都会失败。<code>rewrite()</code> 先 rename 成功再切换描述符。</p>
+
+<h3>代价与取舍</h3>
+<div class="counter" data-title="构造函数里带回调">
+  <p>也可以设计成 <code>open(path)</code> + <code>forEach(visit)</code> 两步，更"常规"。但那样"必须先重放再追加"的顺序约束又回到了接口上。参考答案选择让构造一次做完，代价是 <code>Store</code> 的成员声明顺序变得重要（重放时要写 <code>index_</code>，所以 <code>log_</code> 必须最后声明），代码里为此留了一句注释。这是一个真实的权衡，你选两步式也说得过去，只要把顺序约束写进接口注释。</p>
+</div>
+<div class="counter" data-title="rewrite 的参数有点绕">
+  <p><code>rewrite</code> 接收"一个接收 sink 的函数"，读起来不如 <code>rewrite(const std::vector&lt;Record&gt;&amp;)</code> 直观。vector 版的代价是压缩时多一份全部数据的内存拷贝。小项目里选 vector 版完全合理；这里选回调，是因为 minikv 本来就把全部数据放在内存里，再翻一倍就太多了。</p>
+</div>
+<div class="counter" data-title="别把它推得太远">
+  <p>书中在 5.5 节也提醒过：类变大能改善信息隐藏，但不是越大越好。<code>LogFile</code> 只收了"同一份知识"（文件格式和文件生命周期）相关的代码；内存索引、垃圾统计、压缩<em>时机</em>都留在外面，因为它们用的是另一份知识。</p>
+</div>
+
+<h3>审稿人仍会指出的问题</h3>
+<ul>
+  <li><code>Store</code> 的 <code>set/incr/append/del</code> 仍然各自重复"组记录 → 追加 → 记垃圾 → 更新索引"：这是 <a href="m02.html">m02</a> 的题目。</li>
+  <li><code>WriteOptions</code> 仍然一层层透传到 <code>LogFile::append</code>：<a href="m03.html">m03</a>。</li>
+  <li><code>Store::compact()</code> 的注释还在讲实现步骤，<code>total_</code>、<code>dead_</code> 这样的名字仍然含糊：<a href="m07.html">m07</a>。</li>
+  <li><code>rewrite()</code> 只保证进程崩溃时旧日志完好；要扛住掉电，rename 之后还得 fsync 所在目录。好在现在加这几行只需要改 <code>log_file.cpp</code>，这正是深模块的回报。</li>
+</ul>
+
+<p>完整的讨论在 <code>solutions/m01/DISCUSSION.md</code>。对照自己的改动：</p>
+<pre><code>cd project            # 仓库里 minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m01 clean
+diff -ru minikv solutions/m01
+make -C solutions/m01 test</code></pre>
+
+</div></details>
+
+<nav class="chapter-nav">
+  <a class="prev" href="index.html"><small>← 项目总览</small>minikv 重构项目</a>
+  <a class="next" href="m02.html"><small>下一个任务 →</small>m02：专用方法 → 通用核心</a>
+</nav>
+
+</main>
+</body>
+</html>

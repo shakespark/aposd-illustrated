@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 21 章 · 判断什么是重要的</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch21.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.sort-list { list-style: none; padding: 0; margin: 0; }
+.sort-list li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+@media (min-width: 680px) { .sort-list li { grid-template-columns: minmax(0, 1fr) auto; align-items: center; } }
+.sort-list .item { font-size: 14.5px; }
+.sort-list .why { grid-column: 1 / -1; font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--border); padding-left: 10px; }
+.sort-list .why.ok { border-color: var(--ok); }
+.sort-list .why.bad { border-color: var(--bad); }
+.pick { justify-self: start; display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.pick button { border: 0; border-radius: 0; font-size: 13px; padding: 4px 10px; }
+.pick button + button { border-left: 1px solid var(--border); }
+.pick button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body data-chapter="21">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>一个模块牵涉的因素那么多，哪些应该放在设计的中心、哪些应该藏起来？拿不准的时候怎么办？</strong></p>
+</div>
+<p>这是全书最短的几章之一，但它的位置很特别：它不提出新技巧，而是把前面的很多章收拢到同一个动作上，就是<strong>把重要的和不重要的分开</strong>。接口只放使用者在意的东西（第 4、5 章），名字挑信息量最大的几个词（第 14 章），性能要紧时就围绕关键路径组织代码（第 20 章），这些都是这个动作的具体形式。</p>
+<p>所以读这一章的最好方式是"回头看"：每读到一个观点，就想想前面哪一章其实在讲同一件事。作者最后给这种能力起了一个名字：<strong>好品味</strong>（good taste）。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>开头两段与 21.1 节</strong>：作者举了抽象、命名、性能三个例子，说明前面各章都在"分开重要与不重要"。读完试着自己再补两个（提示：第 8 章的配置参数、第 10 章的异常）。21.1 节的关键词是<strong>杠杆</strong>（leverage），留意作者举的两种杠杆有什么不同。</li>
+    <li><strong>21.1 节后半</strong>：作者给经验不足的开发者一个具体建议：先立一个假设。注意作者强调的不是"猜对"，而是事后怎么复盘。</li>
+    <li><strong>21.3～21.4 节</strong>：三种突出方式之后有一句"反过来也成立"，它把"突出"变成了一个诊断工具。21.4 节的两种错误，各自对应前面哪些红旗？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>围绕重要的东西组织系统</h4><p>重要的东西要突出、要显眼；不重要的东西尽量藏起来，把它对系统其余部分的影响降到最小。<span data-principle="16"></span></p></div>
+  <div class="card"><h4>找杠杆</h4><p>一个问题的解法能顺带解决许多问题，或者知道一条信息就能理解许多事（例如一个不变量），那里通常就是重要的东西。</p></div>
+  <div class="card"><h4>拿不准就先立假设</h4><p>说出"我认为这个最重要"，按它去建，然后复盘它为什么对、为什么错，下一次会判断得更好。</p></div>
+  <div class="card"><h4>让重要的东西尽量少</h4><p>能给默认值就给，能自动算出来的配置就别让人填，能在底层处理掉的异常就别往上抛。确实重要的，也要减少它起作用的地方。</p></div>
+  <div class="card"><h4>突出的三种方式</h4><p><strong>显眼</strong>（prominence）：放在接口文档、名字、常用方法的参数里；<strong>重复</strong>（repetition）：关键概念反复出现；<strong>居中</strong>（centrality）：放在系统核心，决定周围的结构。</p></div>
+  <div class="card"><h4>两种错误</h4><p>把太多东西当成重要的（杂乱、认知负担、浅类）；没认出真正重要的东西（信息被藏、功能缺失、未知的未知）。<span data-flag="overexposure"></span></p></div>
+</div>
+
+<blockquote class="quote">The phrase "good taste" describes the ability to distinguish what is important from what isn't important.<cite>— 第 21.5 节</cite></blockquote>
+
+<h2>心智模型：两条轴、四个格子</h2>
+<p>把"这件事实际上重不重要"和"设计里有没有突出它"当成两条独立的轴，就得到四种情况。两条对角线分别是做对了和做错了；第 21.4 节的两种错误正好是两个错的格子。</p>
+<figure class="fig">
+<svg viewBox="0 0 640 400" width="640" role="img" aria-label="二乘二矩阵：实际重要且被突出为正确，实际不重要且被隐藏为正确，不重要却被突出是错误一，重要却被隐藏是错误二">
+  <defs><marker id="ar21" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <text x="330" y="22" text-anchor="middle" font-weight="700" font-size="13.5">设计里怎么对待它</text>
+  <text x="230" y="44" text-anchor="middle" font-size="12.5" class="t-muted">突出（接口、名字、核心结构）</text>
+  <text x="470" y="44" text-anchor="middle" font-size="12.5" class="t-muted">隐藏（实现内部、默认值）</text>
+  <text x="24" y="210" text-anchor="middle" font-weight="700" font-size="13.5" transform="rotate(-90 24 210)">它实际上</text>
+  <text x="62" y="130" text-anchor="middle" font-size="12.5" class="t-muted">重要</text>
+  <text x="62" y="280" text-anchor="middle" font-size="12.5" class="t-muted">不重要</text>
+  <rect x="110" y="56" width="240" height="150" rx="8" class="ok-soft"/>
+  <text x="230" y="84" text-anchor="middle" font-weight="700" font-size="14">✓ 突出它</text>
+  <text x="230" y="110" text-anchor="middle" font-size="12.5">必填参数、写进接口注释</text>
+  <text x="230" y="130" text-anchor="middle" font-size="12.5">起进名字里</text>
+  <text x="230" y="150" text-anchor="middle" font-size="12.5">让周围的结构围着它转</text>
+  <rect x="350" y="56" width="240" height="150" rx="8" class="bad-soft"/>
+  <text x="470" y="84" text-anchor="middle" font-weight="700" font-size="14">✗ 错误二：没认出来</text>
+  <text x="470" y="110" text-anchor="middle" font-size="12.5">虚假的抽象（第 4 章）</text>
+  <text x="470" y="130" text-anchor="middle" font-size="12.5">使用者被迫反复重造功能</text>
+  <text x="470" y="150" text-anchor="middle" font-size="12.5">未知的未知（第 2 章）</text>
+  <rect x="110" y="206" width="240" height="150" rx="8" class="bad-soft"/>
+  <text x="230" y="234" text-anchor="middle" font-weight="700" font-size="14">✗ 错误一：当成重要</text>
+  <text x="230" y="260" text-anchor="middle" font-size="12.5">多数调用者不关心的参数</text>
+  <text x="230" y="280" text-anchor="middle" font-size="12.5">过度暴露、浅类（第 4、5 章）</text>
+  <text x="230" y="300" text-anchor="middle" font-size="12.5">认知负担上升</text>
+  <rect x="350" y="206" width="240" height="150" rx="8" class="ok-soft"/>
+  <text x="470" y="234" text-anchor="middle" font-weight="700" font-size="14">✓ 藏起来</text>
+  <text x="470" y="260" text-anchor="middle" font-size="12.5">信息隐藏（第 5 章）</text>
+  <text x="470" y="280" text-anchor="middle" font-size="12.5">默认值、自动计算（第 8 章）</text>
+  <text x="470" y="300" text-anchor="middle" font-size="12.5">在底层处理掉（第 10 章）</text>
+  <path d="M600 120 C 630 160, 630 250, 600 290" class="arrow" marker-end="url(#ar21)"/>
+  <text x="350" y="384" text-anchor="middle" font-size="12" class="t-muted">右侧箭头：先让重要的东西尽量少，把能变得不重要的挪到下一行（21.2 节）</text>
+</svg>
+<figcaption>判断"实际重不重要"需要品味；判断之后怎么做，前面各章已经给了工具。本站自绘示意。</figcaption>
+</figure>
+
+<h2>练一下手感：一个上传客户端</h2>
+<p>假设你要给团队写一个"把本地文件上传到对象存储"的客户端库。下面是设计时会碰到的十个因素。先替每一个选一个位置，再点"对照"看本站的看法。没有唯一正确答案，重要的是理由。</p>
+<section class="sim" id="sim-sort">
+  <div class="sim-head"><span class="tag">交互</span><h3>重要还是不重要？</h3>
+    <div class="desc"><b>突出</b> = 必填参数、名字或接口注释里写明；<b>可选</b> = 提供，但不挡在常用路径上；<b>藏起来</b> = 库自己决定，使用者不需要知道。</div></div>
+  <div class="sim-body">
+    <ul class="sort-list" id="sort-list"></ul>
+    <div class="controls" style="margin-top:12px"><button class="primary" id="sort-check">对照本站的看法</button><button id="sort-reset">重来</button></div>
+    <div class="narrate" id="sort-narrate">还没有选择。</div>
+  </div>
+</section>
+
+<h2>原创例子：同一个上传接口，两种重点</h2>
+<div class="ba">
+  <div data-label="改之前：什么都一样重要">
+<pre class="numbered" data-mark="9"><code class="lang-cpp">struct UploadOptions {
+    size_t chunkSize;          // 分块大小
+    int threads;               // 并发数
+    int retryCount;
+    int backoffMs;
+    std::string checksumAlgo;  // "md5" / "crc32c"
+    std::string tmpDir;
+    bool verifyAfterUpload;
+    bool overwrite;
+};
+
+Status upload(const std::string&amp; localPath, const std::string&amp; bucket,
+              const std::string&amp; key, const UploadOptions&amp; opt);</code></pre>
+    <p>调用者必须给每个字段都填一个值，于是大家从别处复制一份配置过来。真正危险的 <code>overwrite</code>（第 9 行）混在一堆调优参数中间，和"分块大小"看起来一样重要；"返回成功是否意味着对象已完整可读"这一点则根本没写。两种错误同时出现了：调优参数被当成了重要的东西，覆盖语义和完成保证却没被突出。</p>
+  </div>
+  <div data-label="改之后：重点只有两个">
+<pre class="numbered" data-mark="1,2,6"><code class="lang-cpp">// 把本地文件上传为 dst。返回 OK 时，对象已完整写入并通过校验，可以立即读取。
+// 目标已存在时怎么办由 ifExists 决定：这是唯一需要调用者想清楚的选项。
+enum class IfExists { Fail, Replace };
+
+Status upload(const std::string&amp; localPath, const ObjectName&amp; dst,
+              IfExists ifExists);
+
+// 分块、并发、重试和校验由库根据文件大小和网络状况自动决定。
+// 极少数需要干预的场景（例如压测）才用这个重载。
+Status upload(const std::string&amp; localPath, const ObjectName&amp; dst,
+              IfExists ifExists, const UploadTuning&amp; tuning);</code></pre>
+    <p>重要的东西被突出了：覆盖语义成了没有默认值的必填参数（显眼），完成保证写在接口注释的第一句。不重要的东西被藏了起来，或者自动决定（让重要的东西尽量少）。代价是库的实现变复杂了：它要自己根据文件大小选分块、自己处理重试。这正是第 8 章说的"把复杂性往下拉"。</p>
+  </div>
+</div>
+
+<h2>边界与反方：什么时候别生搬硬套</h2>
+<div class="counter" data-title="&quot;重要&quot;取决于谁在用">
+  <p>同一个细节，对一类使用者不重要，对另一类可能至关重要。上面的 <code>UploadTuning</code> 对普通业务方无关紧要，对做压测的团队却是核心。所以"藏起来"不等于"删掉"：罕见但真实的需求要有入口，只是不挡在常用路径上。藏过了头就会落到第二种错误，第 10 章"做过头"那一节说的也是这件事：真正重要的东西必须暴露出来。</p>
+</div>
+<div class="counter" data-title="把&quot;反过来也成立&quot;当诊断工具">
+  <p>作者说，一个想法如果到处都看得见、反复出现、影响系统结构，那它就是重要的。<em>本站补充：</em>这句话也可以用来查问题。如果某个你认为无关紧要的细节（某个内部格式、某个魔法常量）出现在几十个文件里，那么不管你怎么想，它<strong>已经</strong>变重要了，因为改它的代价很大。这时该做的是把它收回一个模块里（第 5 章的信息隐藏），而不是给它补更多文档。</p>
+</div>
+<div class="counter" data-title="与&quot;一切都可配置&quot;的冲突">
+  <p>很多团队把"可配置"当成美德，觉得参数越多越灵活。按这一章的标准，每多一个必须由人决定的参数，就多一件"重要的事"。作者在 21.2 节的建议正相反：能自动算出来的配置，就不要再让管理员去管。<em>本站补充：</em>判断标准不是"有没有人可能想调"，而是"大多数使用者需不需要想这件事"。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。先自己判断再看解析，答题记录会进入间隔复习。</p>
+<div class="drill-embed" data-ids="ch21-flag-01 ch21-judge-01 ch21-write-02"></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">作者说，判断什么重要时可以找"杠杆"。下列哪一项最符合作者说的杠杆？</div>
+  <div class="opts"><button>A. 一个不变量：知道了它，就能预测某个数据结构在许多情况下的行为</button><button>B. 代码量最大的模块</button><button>C. 最近改动最频繁的文件</button><button>D. 产品经理最关心的功能</button></div>
+  <div class="explain">杠杆有两种：一个解法能顺带解决许多问题（例如通用的文本区间插入、删除接口），或者一条信息能让人理解许多事（例如不变量）。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">一位新人不确定新模块里哪件事最重要。作者的建议是？</div>
+  <div class="opts"><button>A. 让资深同事来决定</button><button>B. 先立一个假设并按它去建，事后复盘它为什么对或错</button><button>C. 等积累了足够经验再做设计</button><button>D. 先把所有可能重要的东西都做成可配置的</button></div>
+  <div class="explain">作者认为猜错也没关系，关键是事后思考：当初有哪些线索本可以让你判断得更好。这样一次次积累，判断会越来越准。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">"操作系统的设备驱动接口有成百上千个驱动依赖它"，这是在说明哪种突出方式？</div>
+  <div class="opts"><button>A. 显眼（prominence）：重要的东西出现在名字和文档里</button><button>B. 重复（repetition）：关键概念反复出现</button><button>C. 杠杆（leverage）</button><button>D. 居中（centrality）：重要的东西位于系统核心，决定周围的结构</button></div>
+  <div class="explain">驱动接口处在系统中心，大量代码的结构由它决定。这也说明了为什么这类接口一旦定下就很难改，值得投入最多的设计精力。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">书中讨论的 Java I/O 接口要求使用者自己区分并显式加上缓冲。按本章的说法，这属于？</div>
+  <div class="opts"><button>A. 正确地突出了重要的东西</button><button>B. 没认出重要的东西</button><button>C. 把不重要的区分当成了重要的，增加了认知负担</button><button>D. 和"什么重要"无关，只是性能问题</button></div>
+  <div class="explain">使用者几乎总是想要缓冲，"带不带缓冲"这个区分对他们几乎从不重要，却被强加给每个人。作者还指出，浅类常常就是把太多东西当成重要的结果。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">一个库没有说明写入何时真正落盘，结果每个团队都自己包一层"写完立刻全部刷盘"的函数。这是哪种错误？</div>
+  <div class="opts"><button>A. 没认出真正重要的东西：重要信息被藏起来，使用者只好反复自己补</button><button>B. 把太多东西当成重要的</button><button>C. 重复只是代码风格问题</button><button>D. 不是错误，持久化时机是实现细节</button></div>
+  <div class="explain">第二种错误的典型后果就是：重要信息被隐藏，或者缺少重要的功能，开发者只好一遍遍自己重造，还会带来未知的未知。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>好设计的核心之一是分开重要和不重要：围绕重要的东西组织系统，不重要的尽量藏起来。</li>
+  <li>判断方法：找杠杆；准备多个选项来比较；拿不准就立假设、事后复盘。</li>
+  <li>先让重要的东西尽量少（默认值、自动计算、在底层处理掉），再减少它起作用的地方。</li>
+  <li>突出的三种方式：显眼、重复、居中。反过来，到处出现的东西就是重要的。</li>
+  <li>两种错误：把太多东西当成重要的；没认出真正重要的。区分两者的能力就是"好品味"。</li>
+</ul>
+<p>第 22 章是全书的结语。本站把它做成了一张全书复习页：用一张图把前面所有章节串起来，并指向速查、训练和项目。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你正在做的某个模块：它最重要的是什么？</p>
+<textarea class="note" data-key="ch21-oneline" placeholder="例如：我们的支付模块最重要的是幂等，但现在它只写在一个 wiki 页面上……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h } = APOSD;
+  // [因素, 本站建议(0 突出 / 1 可选 / 2 藏起来), 理由]
+  const ITEMS = [
+    ["目标位置（桶名和对象名）", 0, "每次调用都必须给出，是这个操作的核心参数。"],
+    ["目标已存在时：覆盖还是失败", 0, "选错会悄悄覆盖别人的数据。应该是没有默认值的必填参数，逼调用者想清楚。"],
+    ["返回成功时，对象是否已完整、可读", 0, "这是接口的保证，决定调用者之后能不能马上读。必须写在接口注释第一句，否则就是虚假的抽象。"],
+    ["分块大小", 2, "库可以按文件大小自己选。让每个调用者填，就是把不重要的东西当成重要的。"],
+    ["并发线程数", 2, "同上：自动决定，罕见的调优需求放进单独的 Tuning 重载。"],
+    ["重试次数与退避间隔", 2, "临时网络错误应该在库内部处理掉（第 10 章：在底层屏蔽异常），给一个合理的默认策略。"],
+    ["校验算法（md5 / crc32c）", 2, "调用者只关心\"有没有校验\"，不关心用哪种算法。"],
+    ["本地临时目录", 2, "用系统默认即可。真需要改的场景极少。"],
+    ["上传进度回调", 1, "对带界面的程序很重要，对后台任务无所谓：提供可选参数，不挡在常用路径上。"],
+    ["服务端单次上传有大小上限，超过要分段", 2, "库可以自动改用分段上传。这是\"让重要的东西尽量少\"的典型：把一条使用者必须记住的规则变成库内部的事。"],
+  ];
+  const NAMES = ["突出", "可选", "藏起来"];
+  const listEl = document.getElementById("sort-list"), narr = document.getElementById("sort-narrate");
+  let picks = ITEMS.map(() => -1), checked = false;
+  function draw() {
+    listEl.replaceChildren(...ITEMS.map(([text, best, why], i) => {
+      const pick = h("span", { class: "pick" }, NAMES.map((n, k) => h("button", { class: picks[i] === k ? "on" : "", onclick: () => { picks[i] = k; draw(); } }, n)));
+      const li = h("li", {}, h("span", { class: "item" }, text), pick);
+      if (checked) {
+        const ok = picks[i] === best;
+        li.append(h("div", { class: "why" + (picks[i] < 0 ? "" : ok ? " ok" : " bad") }, (picks[i] < 0 ? "未选。" : ok ? "和本站看法一致。" : `本站看法：${NAMES[best]}。`) + why));
+      }
+      return li;
+    }));
+    const done = picks.filter((p) => p >= 0).length;
+    if (!checked) { narr.textContent = done ? `已选 ${done} / ${ITEMS.length} 项。` : "还没有选择。"; return; }
+    const same = picks.filter((p, i) => p === ITEMS[i][1]).length;
+    const over = picks.filter((p, i) => p === 0 && ITEMS[i][1] === 2).length, under = picks.filter((p, i) => p === 2 && ITEMS[i][1] === 0).length;
+    narr.textContent = `${same} / ${ITEMS.length} 项和本站看法一致。` + (over ? ` 有 ${over} 项你选择了突出、本站认为应藏起来：这是第一种错误的方向（把不重要的当成重要的）。` : "") + (under ? ` 有 ${under} 项你选择了藏起来、本站认为必须突出：这是第二种错误的方向，后果通常更严重。` : "") + (!over && !under ? " 没有落进两种错误的格子，很好。" : "");
+  }
+  document.getElementById("sort-check").onclick = () => { checked = true; draw(); };
+  document.getElementById("sort-reset").onclick = () => { picks = ITEMS.map(() => -1); checked = false; draw(); };
+  draw();
+})();
+</script>
+</body>
+</html>

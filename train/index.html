@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>训练场 · APOSD 精读</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="data/index.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.tr-hero h1 { font-size: clamp(28px, 5vw, 38px); margin: 8px 0 6px; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 18px 0; }
+.mode { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.mode h4 { margin: 0 0 4px; font-size: 15.5px; }
+.mode p { margin: 0 0 8px; font-size: 13.5px; color: var(--muted); }
+.mode select { width: 100%; margin-bottom: 8px; }
+.session-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; position: sticky; top: 45px; z-index: 5; background: var(--bg); padding: 8px 0; border-bottom: 1px solid var(--border); }
+.session-bar .track { flex: 1; min-width: 140px; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.session-bar .fill { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.bank td .bar { display: inline-block; height: 8px; border-radius: 99px; background: var(--ok); vertical-align: middle; }
+.bank td .bar.lrn { background: var(--warn); }
+.boxes { display: flex; gap: 4px; align-items: flex-end; height: 70px; margin: 8px 0 4px; }
+.boxes div { flex: 1; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
+.boxes div span { position: absolute; top: -18px; left: 0; right: 0; text-align: center; font-size: 11.5px; color: var(--muted); }
+.box-labels { display: flex; gap: 4px; font-size: 11.5px; color: var(--muted); }
+.box-labels span { flex: 1; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+<section class="tr-hero">
+  <div class="kicker muted small" style="letter-spacing:.08em">判断力训练 · 间隔复习</div>
+  <h1>训练场</h1>
+  <p class="muted">这本书讲的是判断力，读懂了不等于写代码时认得出来。这里的题都是原创的 C/C++ 代码片段：认红旗、比较两种设计、先自己写再对照参考。每道题答完会按掌握程度安排下次复习：答对的隔得越来越久，答错的很快会再出现。</p>
+</section>
+
+<div class="stats" id="overview"></div>
+<div id="box-chart"></div>
+
+<h2 id="h-start">开始练习</h2>
+<div class="modes">
+  <div class="mode"><h4>今日复习</h4><p>先做所有到期的题，再补几道新题（按章节顺序，优先你已读完的章节）。每天来一次就够了。</p><button class="primary" id="go-review">开始</button></div>
+  <div class="mode"><h4>按章节</h4><p>刚读完一章？把这一章的题做一遍。</p><select id="sel-ch"></select><button id="go-ch">开始</button></div>
+  <div class="mode"><h4>按红旗</h4><p>集中练一种红旗，包括后面章节里出现的同类例子。</p><select id="sel-flag"></select><button id="go-flag">开始</button></div>
+  <div class="mode"><h4>按题型</h4><p>比如只做"先写后对照"，适合有整块时间的时候。</p><select id="sel-type"></select><button id="go-type">开始</button></div>
+</div>
+
+<section id="session" hidden>
+  <div class="session-bar"><b id="sess-title"></b><div class="track"><div class="fill" id="sess-fill"></div></div><span class="muted small" id="sess-count"></span><button id="sess-quit">结束</button></div>
+  <div id="sess-host"></div>
+  <div class="actions" style="display:flex;gap:8px;margin:12px 0"><button class="primary" id="sess-next" hidden>下一题 →</button><button id="sess-skip">跳过这题</button></div>
+</section>
+
+<h2>题库</h2>
+<p class="muted small">各章题数和掌握情况。"已掌握"指升到第 4 盒及以上（至少连续答对 4 次、间隔拉长到 8 天以上）。</p>
+<div class="table-wrap"><table class="bank" id="bank"></table></div>
+<p class="small"><button id="reset">清空我的答题记录</button> <span class="muted">记录只保存在这台设备的浏览器里。</span></p>
+</main>
+
+<script>
+(function () {
+  const { h, LS } = APOSD;
+  const D = APOSD_DRILL, SRS = D.SRS;
+  const CH = APOSD_CHAPTERS, FL = APOSD_FLAGS;
+  const items = D.all();
+  const now = () => Date.now();
+  const done = (n) => !!LS.get("done-" + n, false);
+
+  function overview() {
+    const st = SRS.load();
+    const seen = items.filter((d) => st[d.id]);
+    const due = seen.filter((d) => st[d.id].d <= now()).length;
+    const mastered = seen.filter((d) => st[d.id].b >= 4).length;
+    const stat = (v, l) => h("div", { class: "stat" }, h("div", { class: "v" }, v), h("div", { class: "l" }, l));
+    document.getElementById("overview").replaceChildren(stat(items.length, "题库总数"), stat(items.length - seen.length, "没做过的新题"), stat(due, "现在到期待复习"), stat(mastered, "已掌握"));
+    // 盒子分布
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    seen.forEach((d) => counts[st[d.id].b]++);
+    const max = Math.max(1, ...counts);
+    const chart = document.getElementById("box-chart");
+    if (!seen.length) { chart.replaceChildren(); return; }
+    chart.replaceChildren(h("p", { class: "small muted", style: { margin: "14px 0 18px" } }, "做过的题在各个盒子里的分布（盒子越靠右，下次复习隔得越久）："),
+      h("div", { class: "boxes" }, counts.slice(1).map((c) => h("div", { style: { height: (100 * c / max) + "%" } }, h("span", {}, c)))),
+      h("div", { class: "box-labels" }, D.INTERVAL.slice(1).map((d, i) => h("span", {}, `第 ${i + 1} 盒 · ${d} 天`))));
+  }
+  function bank() {
+    const st = SRS.load();
+    const rows = CH.map((c) => {
+      const mine = items.filter((d) => d.ch === c.n);
+      if (!mine.length) return null;
+      const m = mine.filter((d) => st[d.id] && st[d.id].b >= 4).length, l = mine.filter((d) => st[d.id] && st[d.id].b < 4).length;
+      const types = Object.entries(mine.reduce((a, d) => ((a[d.type] = (a[d.type] || 0) + 1), a), {})).map(([t, n]) => `${D.TYPE_NAME[t]} ${n}`).join(" · ");
+      return h("tr", {}, h("td", {}, h("a", { href: `../chapters/${c.slug}.html` }, `${c.n}. ${c.title}`)), h("td", { class: "small muted" }, types), h("td", { class: "num" }, mine.length),
+        h("td", {}, h("span", { class: "bar", style: { width: (60 * m / mine.length) + "px" } }), h("span", { class: "bar lrn", style: { width: (60 * l / mine.length) + "px" } }), h("span", { class: "small muted" }, ` ${m}/${mine.length}`)),
+        h("td", {}, h("button", { onclick: () => start(`第 ${c.n} 章`, mine) }, "练")));
+    }).filter(Boolean);
+    document.getElementById("bank").replaceChildren(h("tr", {}, h("th", {}, "章节"), h("th", {}, "题型"), h("th", { class: "num" }, "题数"), h("th", {}, "掌握（绿）/ 学习中（黄）"), h("th", {}, "")), ...rows);
+  }
+
+  // ---------- 选择器 ----------
+  const selCh = document.getElementById("sel-ch"), selFlag = document.getElementById("sel-flag"), selType = document.getElementById("sel-type");
+  CH.forEach((c) => { const n = items.filter((d) => d.ch === c.n).length; if (n) selCh.append(h("option", { value: c.n }, `${c.n}. ${c.title}（${n}）`)); });
+  FL.forEach((f) => { const n = flagItems(f.id).length; selFlag.append(h("option", { value: f.id }, `${f.zh}（${n}）`)); });
+  Object.entries(D.TYPE_NAME).forEach(([t, name]) => selType.append(h("option", { value: t }, `${name}（${items.filter((d) => d.type === t).length}）`)));
+  function flagItems(id) { return items.filter((d) => (d.type === "flag" && d.answer.includes(id)) || (d.flags && d.flags.includes(id)) || d.id === "card-flag-" + id); }
+  const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  document.getElementById("go-review").onclick = () => {
+    const st = SRS.load();
+    const due = shuffle(items.filter((d) => st[d.id] && st[d.id].d <= now()));
+    const fresh = items.filter((d) => !st[d.id]).sort((a, b) => (done(b.ch) - done(a.ch)) || (a.ch - b.ch));
+    const queue = due.concat(fresh.slice(0, Math.max(5, 15 - due.length)));
+    start("今日复习", queue);
+  };
+  document.getElementById("go-ch").onclick = () => { const n = Number(selCh.value); start(`第 ${n} 章`, items.filter((d) => d.ch === n)); };
+  document.getElementById("go-flag").onclick = () => { const f = FL.find((x) => x.id === selFlag.value); start(`红旗：${f.zh}`, shuffle(flagItems(f.id))); };
+  document.getElementById("go-type").onclick = () => start(D.TYPE_NAME[selType.value], shuffle(items.filter((d) => d.type === selType.value)));
+  document.getElementById("reset").onclick = () => { if (confirm("确定清空全部答题记录？")) { SRS.reset(); overview(); bank(); } };
+
+  // ---------- 练习会话 ----------
+  const sess = document.getElementById("session"), host = document.getElementById("sess-host"), nextBtn = document.getElementById("sess-next"), skipBtn = document.getElementById("sess-skip");
+  let queue = [], pos = 0, results = [];
+  function start(title, list) {
+    if (!list.length) { alert("这里暂时没有题。"); return; }
+    queue = list; pos = 0; results = [];
+    document.getElementById("sess-title").textContent = title;
+    sess.hidden = false;
+    show();
+    sess.scrollIntoView({ behavior: "smooth" });
+  }
+  function show() {
+    document.getElementById("sess-count").textContent = `${Math.min(pos + 1, queue.length)} / ${queue.length}`;
+    document.getElementById("sess-fill").style.width = (100 * pos / queue.length) + "%";
+    host.replaceChildren();
+    nextBtn.hidden = true; skipBtn.hidden = false;
+    if (pos >= queue.length) return summary();
+    D.render(queue[pos], host, { onDone: (q) => { results.push(q); nextBtn.hidden = false; skipBtn.hidden = true; overview(); } });
+  }
+  function summary() {
+    skipBtn.hidden = true;
+    const r = [0, 1, 2].map((q) => results.filter((x) => x === q).length);
+    document.getElementById("sess-fill").style.width = "100%";
+    host.append(h("div", { class: "drill" }, h("div", { class: "drill-head" }, h("h4", {}, "本轮结束")), h("div", { class: "drill-body" },
+      h("div", { class: "summary-grid" }, [["答对", r[2]], ["部分", r[1]], ["答错", r[0]], ["跳过", queue.length - results.length]].map(([l, v]) => h("div", { class: "stat" }, h("div", { class: "v" }, v), h("div", { class: "l" }, l)))),
+      h("p", { class: "small muted", style: { marginTop: "12px" } }, "答错的题 10 分钟后到期，明天再来做\"今日复习\"时会再见到它们。"))));
+    bank();
+  }
+  nextBtn.onclick = () => { pos++; show(); window.scrollTo({ top: sess.offsetTop - 50, behavior: "smooth" }); };
+  skipBtn.onclick = () => { pos++; show(); };
+  document.getElementById("sess-quit").onclick = () => { sess.hidden = true; bank(); };
+
+  // 链接 #ch=4 / #flag=shallow / #review 直接开始
+  function fromHash() {
+    const m = location.hash.match(/^#(ch|flag|type)=([\w-]+)|^#review/);
+    if (!m) return;
+    if (location.hash === "#review") return document.getElementById("go-review").click();
+    if (m[1] === "ch") { selCh.value = m[2]; document.getElementById("go-ch").click(); }
+    if (m[1] === "flag") { selFlag.value = m[2]; document.getElementById("go-flag").click(); }
+    if (m[1] === "type") { selType.value = m[2]; document.getElementById("go-type").click(); }
+  }
+  overview(); bank(); fromHash();
+  window.addEventListener("hashchange", fromHash);
+})();
+</script>
+</body>
+</html>

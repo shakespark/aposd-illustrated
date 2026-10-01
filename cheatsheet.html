@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>速查 · 红旗信号与设计原则 · APOSD 精读</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/chapters.js"></script>
+<script src="assets/aposd.js"></script>
+<style>
+.cs-head { margin: 8px 0 22px; }
+.cs-head .kicker { font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+.cs-head h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.2; margin: 6px 0 6px; }
+.cs-head .en { color: var(--muted); margin: 0; }
+[id^="flag-"], [id^="p-"], #flags, #principles, #checklist { scroll-margin-top: 64px; }
+
+/* 顶部导航网格 */
+.jump { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin: 18px 0 8px; }
+.jump h4 { margin: 8px 0 6px; font-size: 13px; letter-spacing: .06em; color: var(--muted); }
+.jump h4:first-child { margin-top: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; gap: 6px; align-items: baseline; font-size: 13.5px; line-height: 1.4; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); }
+.chip:hover { border-color: var(--accent); text-decoration: none; }
+.chip .n { font: 11.5px var(--mono); color: var(--muted); }
+.chip.f { border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); }
+.chip.p { border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
+.chip.ck { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* 每个条目 */
+.item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px 12px; margin: 18px 0; box-shadow: var(--shadow); }
+.item-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px; }
+.item-head .no { font: 700 13px var(--mono); color: var(--on-accent); background: var(--bad); border-radius: 5px; padding: 0 6px; }
+.pr-item .item-head .no { background: var(--ok); }
+.item-head h3 { margin: 0; font-size: 18px; flex: 1 1 auto; min-width: 0; }
+.item-head h3 .en { font-weight: 500; color: var(--muted); font-size: 14.5px; }
+.item-head .where { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.item .def { font-size: 15.5px; margin: 0 0 10px; }
+.item h4 { font-size: 13px; letter-spacing: .06em; color: var(--muted); margin: 12px 0 4px; }
+.item ul { margin: 0 0 8px; font-size: 14.5px; }
+.item li { margin: 2px 0; }
+.item .ba { margin: 10px 0; }
+.item .ba pre { font-size: 12.8px; }
+.fix-over { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 6px; }
+@media (min-width: 760px) { .fix-over { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.fix-over > div { border-radius: 8px; padding: 8px 12px; border: 1px solid var(--border); border-left-width: 4px; font-size: 14.5px; }
+.fix-over > div > h4 { margin-top: 0; }
+.fix-over ul { margin: 0; }
+.fix-over p { margin: 0; }
+.fix-over .fix { border-left-color: var(--ok); background: var(--ok-soft); }
+.fix-over .fix h4 { color: var(--ok); }
+.fix-over .over { border-left-color: var(--warn); background: var(--warn-soft); }
+.fix-over .over h4 { color: var(--warn); }
+.item .links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; margin: 10px 0 0; }
+.pr-item .why { margin: 0 0 8px; font-size: 14.5px; }
+.pr-item .why b, .pr-item .but b { color: var(--muted); font-size: 13px; letter-spacing: .04em; margin-right: 6px; }
+.pr-item .but { margin: 0 0 8px; font-size: 14.5px; border-left: 3px solid var(--warn); padding-left: 10px; }
+.pr-item .links { margin-top: 4px; }
+.pr-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 14px; }
+@media (min-width: 860px) { .pr-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .pr-grid .item { margin: 9px 0; } }
+
+/* 评审清单 */
+.ck-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+.ck-groups { columns: 2; column-gap: 18px; }
+@media (max-width: 760px) { .ck-groups { columns: 1; } }
+.ck-group { break-inside: avoid; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin: 0 0 14px; }
+.ck-group h3 { margin: 0 0 6px; font-size: 16px; }
+.ck-group ul { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.ck-group li { break-inside: avoid; padding: 4px 0; border-top: 1px dashed var(--border); }
+.ck-group li:first-child { border-top: 0; }
+.ck-group label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.ck-group input { margin-top: 5px; accent-color: var(--ok); flex: none; }
+.ck-group .badge { font-size: 11.5px; }
+
+@media print {
+  .topbar, .ba-tabs, pre .copy, .jump, .ck-tools, .no-print { display: none !important; }
+  body { font-size: 11pt; }
+  main { max-width: none; padding: 0; }
+  h2 { margin-top: 18px; }
+  .item, .ck-group { box-shadow: none; break-inside: avoid; }
+  .item .ba-pane[hidden] { display: block !important; }
+  .item .ba-pane::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 700; margin: 6px 0 2px; }
+  .item .ba-pane > pre { margin-top: 0; }
+  pre { white-space: pre-wrap; overflow: visible; }
+  .ck-group li { break-inside: avoid; }
+  #checklist { break-before: page; }
+  body.print-checklist main > :not(#checklist) { display: none !important; }
+  body.print-checklist #checklist { break-before: auto; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<div class="cs-head">
+  <div class="kicker">速查 · CHEATSHEET</div>
+  <h1>红旗信号与设计原则</h1>
+  <p class="en">A Philosophy of Software Design, 2nd ed. · 14 Red Flags &amp; 16 Design Principles</p>
+</div>
+
+<p>原书书末有两份清单：14 个红旗信号（red flags）和 16 条设计原则。这一页把它们整理成写代码、做评审时能直接翻的形式。所有定义、例子和代码都由本站重写，不是原书译文；原书的论证、作者自己的例子和边界讨论，请回到对应章节去读。</p>
+<div class="tip">
+  <p><strong>写代码时</strong>：觉得哪里别扭，先在下面的导航里找一个最像的红旗，对照"怎么察觉"确认，再看"常见改法"。<strong>做评审时</strong>：用页尾的<a href="#checklist">设计评审清单</a>逐项过一遍，每一项都链接到对应的红旗或原则。<strong>想打印</strong>：清单可以单独打印成一页贴在工位上，整页打印时改前/改后两个面板都会印出来。</p>
+  <p>每个红旗都附了"别过度"：红旗只是<strong>症状</strong>，提示"这里可能有设计问题"，不是必须执行的规则。作者在书里反复提醒，任何原则推到极端都会出问题；判断的最终标准是<strong>系统整体的复杂性有没有下降</strong>。</p>
+</div>
+
+<nav class="jump" aria-label="速查导航">
+  <h4>14 个红旗信号（数字是首次提出的章）</h4>
+  <div class="chips">
+    <a class="chip f" href="#flag-shallow"><span class="n">4</span>浅模块</a>
+    <a class="chip f" href="#flag-leakage"><span class="n">5</span>信息泄漏</a>
+    <a class="chip f" href="#flag-temporal"><span class="n">5</span>按时间顺序分解</a>
+    <a class="chip f" href="#flag-overexposure"><span class="n">5</span>过度暴露</a>
+    <a class="chip f" href="#flag-passthrough"><span class="n">7</span>透传方法</a>
+    <a class="chip f" href="#flag-repetition"><span class="n">9</span>重复</a>
+    <a class="chip f" href="#flag-special-general"><span class="n">9</span>通用与专用混杂</a>
+    <a class="chip f" href="#flag-conjoined"><span class="n">9</span>连体方法</a>
+    <a class="chip f" href="#flag-comment-repeats"><span class="n">13</span>注释重复代码</a>
+    <a class="chip f" href="#flag-impl-contaminates"><span class="n">13</span>实现细节污染接口注释</a>
+    <a class="chip f" href="#flag-vague-name"><span class="n">14</span>名字含糊</a>
+    <a class="chip f" href="#flag-hard-name"><span class="n">14</span>名字难起</a>
+    <a class="chip f" href="#flag-hard-describe"><span class="n">15</span>难以描述</a>
+    <a class="chip f" href="#flag-nonobvious"><span class="n">18</span>代码不明显</a>
+  </div>
+  <h4>16 条设计原则</h4>
+  <div class="chips">
+    <a class="chip p" href="#p-1"><span class="n">1</span>复杂性是累积的</a>
+    <a class="chip p" href="#p-2"><span class="n">2</span>能跑还不够</a>
+    <a class="chip p" href="#p-3"><span class="n">3</span>持续小投资</a>
+    <a class="chip p" href="#p-4"><span class="n">4</span>模块应该深</a>
+    <a class="chip p" href="#p-5"><span class="n">5</span>常见用法最简单</a>
+    <a class="chip p" href="#p-6"><span class="n">6</span>接口简单优先</a>
+    <a class="chip p" href="#p-7"><span class="n">7</span>通用的更深</a>
+    <a class="chip p" href="#p-8"><span class="n">8</span>通用与专用分开</a>
+    <a class="chip p" href="#p-9"><span class="n">9</span>不同层不同抽象</a>
+    <a class="chip p" href="#p-10"><span class="n">10</span>复杂性往下拉</a>
+    <a class="chip p" href="#p-11"><span class="n">11</span>把错误定义掉</a>
+    <a class="chip p" href="#p-12"><span class="n">12</span>设计两次</a>
+    <a class="chip p" href="#p-13"><span class="n">13</span>注释写看不出的</a>
+    <a class="chip p" href="#p-14"><span class="n">14</span>为易读而设计</a>
+    <a class="chip p" href="#p-15"><span class="n">15</span>增量是抽象</a>
+    <a class="chip p" href="#p-16"><span class="n">16</span>突出重要的</a>
+  </div>
+  <h4>评审</h4>
+  <div class="chips"><a class="chip ck" href="#checklist">设计评审清单（可打印）</a></div>
+</nav>
+
+<h2 id="flags">14 个红旗信号</h2>
+<p>每一项的结构相同：一句话定义 → 评审时你会看到的症状 → 一对原创 C++ 例子（点标签切换改前/改后）→ 常见改法 → 什么时候不算问题。</p>
+
+<!-- ============ 1 浅模块 ============ -->
+<section class="item flag-item" id="flag-shallow">
+  <div class="item-head"><span class="no">01</span><h3>浅模块 <span class="en">Shallow Module</span></h3><span class="where">第 4 章 · 4.5 节</span></div>
+  <p class="def">接口几乎和实现一样复杂：学会怎么调用它，花的力气跟自己把那几行写出来差不多。它没替使用者藏住任何东西。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>方法体只有一两行，名字和参数基本就是实现的复述；</li>
+    <li>类主要由 getter/setter 组成，真正的逻辑要调用者自己拼；</li>
+    <li>把接口注释写完整，发现比实现还长；</li>
+    <li>直接写底层代码反而比调用它更短。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：调用者自己算令牌">
+<pre><code class="lang-cpp">class TokenBucket {              // 只是把几个字段包了一层
+public:
+    double tokens() const;
+    void   setTokens(double t);
+    double ratePerSec() const;
+    Clock::time_point lastRefill() const;
+    void   setLastRefill(Clock::time_point t);
+};
+
+// 每个调用点都要重复这套算法：
+auto now = Clock::now();
+double t = b.tokens() + b.ratePerSec() * secondsBetween(b.lastRefill(), now);
+b.setTokens(std::min(t, kBurst));  b.setLastRefill(now);
+if (b.tokens() &gt;= 1) { b.setTokens(b.tokens() - 1); handle(req); }</code></pre>
+    </div>
+    <div data-label="改之后：一个深的限流器">
+<pre><code class="lang-cpp">// 令牌桶限流器：每秒补充 ratePerSec 个令牌，最多攒 burst 个。线程安全。
+class RateLimiter {
+public:
+    RateLimiter(double ratePerSec, double burst);
+    // 有令牌就扣掉一个并返回 true；否则立即返回 false（不阻塞）。
+    bool tryAcquire();
+};
+
+if (limiter.tryAcquire()) handle(req);
+else reply429(req);</code></pre>
+      <p>补充算法、时钟、并发保护都藏进了类里，调用者只需要知道一个方法。</p>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>把调用者那边拼装的逻辑收进模块，提供一个更高层的操作；</li>
+      <li>合并几个总是一起用的浅类或浅方法；</li>
+      <li>实在没有价值的包装就删掉，让调用者直接用底层。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>深度是<strong>比值</strong>，不是行数。作者承认链表这类数据结构天生就浅，接口没法比实现简单多少，但它们仍然有用（4.5 节）。别为了"变深"硬塞功能，也别走向另一个极端：把整个应用塞进一个类（5.5 节、8.3 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/04-deep-modules.html">第 4 章 · 模块应该深 →</a><a href="train/index.html#flag=shallow">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 2 信息泄漏 ============ -->
+<section class="item flag-item" id="flag-leakage">
+  <div class="item-head"><span class="no">02</span><h3>信息泄漏 <span class="en">Information Leakage</span></h3><span class="where">第 5 章 · 5.2 节</span></div>
+  <p class="def">同一个设计决定（文件格式、协议细节、某个常量的含义）同时被好几个模块"知道"；它一变，这几处就必须一起改。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>改一个格式、协议或常量，要在多个文件里同步修改，漏一处就出错；</li>
+    <li>两个模块之间没有调用关系，却都在拼装或解析同一种字符串、字节布局（"后门泄漏"，最隐蔽）；</li>
+    <li>接口直接暴露内部表示：返回内部容器的引用、要求调用者传入格式串。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：两个文件都懂日志格式">
+<pre><code class="lang-cpp">// audit_writer.cpp
+void AuditWriter::append(const Event&amp; e) {
+    out_ &lt;&lt; e.ts &lt;&lt; '|' &lt;&lt; e.user &lt;&lt; '|' &lt;&lt; e.action &lt;&lt; '\n';
+}
+
+// audit_report.cpp（另一个人写的）
+Event parseLine(const std::string&amp; line) {
+    auto f = split(line, '|');       // 也得知道分隔符和字段顺序
+    return Event{std::stoll(f[0]), f[1], f[2]};
+}
+// action 里哪天出现了 '|'，或者要加一个字段：两边都得改</code></pre>
+    </div>
+    <div data-label="改之后：格式只在一个类里">
+<pre><code class="lang-cpp">// 审计日志。磁盘上的格式（分隔、转义、字段顺序、版本）只有这个类知道。
+class AuditLog {
+public:
+    explicit AuditLog(const std::string&amp; path);
+    void append(const Event&amp; e);
+    // 按写入顺序回放每条事件；损坏的行跳过，并计入 corruptLines()。
+    void forEach(const std::function&lt;void(const Event&amp;)&gt;&amp; fn) const;
+    size_t corruptLines() const;
+};
+// 报表模块只和 Event 打交道</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>问自己：怎样重组，才能让这份知识只影响一个模块？</li>
+      <li>几个小类都紧贴这份知识时，把它们合并；</li>
+      <li>或者把这份知识抽成一个新类，由它独占格式细节。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>抽出来的新类如果在接口上把细节又全暴露出来，只是把"后门泄漏"换成了"接口泄漏"（5.2 节）。另外，有些信息本来就该让外部知道：不同场景需要不同取值的性能参数就必须放在接口里（5.9 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/05-information-hiding.html">第 5 章 · 信息隐藏（与泄漏）→</a><a href="train/index.html#flag=leakage">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 3 按时间顺序分解 ============ -->
+<section class="item flag-item" id="flag-temporal">
+  <div class="item-head"><span class="no">03</span><h3>按时间顺序分解 <span class="en">Temporal Decomposition</span></h3><span class="where">第 5 章 · 5.3 节</span></div>
+  <p class="def">按"先做什么、后做什么"来切模块，而不是按"谁掌握哪部分知识"来切；结果同一份知识被拆散到好几个阶段的模块里。它是信息泄漏最常见的成因之一。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>模块名就是步骤：<code>Step1…</code>、<code>Loader / Processor / Writer</code>、<code>…Phase</code>；</li>
+    <li>第一步和最后一步都要懂同一种格式或协议；</li>
+    <li>调用者必须按固定顺序调用几个方法，中间还要传递半成品数据。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：一步一个类">
+<pre><code class="lang-cpp">class FetchStep {     // 第 1 步：拉取远端变更
+    // 要懂：URL 拼法、鉴权头、分页游标、JSON 字段名
+    std::vector&lt;Record&gt; run(const std::string&amp; sinceCursor);
+};
+class MergeStep {     // 第 2 步：和本地数据合并
+    std::vector&lt;Record&gt; run(std::vector&lt;Record&gt; remote, LocalDb&amp; db);
+};
+class UploadStep {    // 第 3 步：推送本地变更
+    // 又要懂：URL 拼法、鉴权头、JSON 字段名、每批最多 500 条
+    void run(const std::vector&lt;Record&gt;&amp; changes);
+};</code></pre>
+    </div>
+    <div data-label="改之后：按知识切分">
+<pre><code class="lang-cpp">// 远端存储：协议细节（URL、鉴权、分页、批量上限、JSON）全在这里。
+class RemoteStore {
+public:
+    std::vector&lt;Record&gt; changesSince(Cursor&amp; cursor);  // 内部自动翻页
+    void push(const std::vector&lt;Record&gt;&amp; changes);      // 内部自动分批
+};
+
+// 顺序仍然存在，只是变成了一个函数里的三行
+void sync(RemoteStore&amp; remote, LocalDb&amp; db) {
+    auto incoming = remote.changesSince(db.cursor());
+    auto outgoing = db.merge(incoming);
+    remote.push(outgoing);
+}</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>先问"完成这件事需要哪些知识"，按知识划分模块；</li>
+      <li>多个阶段都用到的知识（格式、协议）收进一个模块，各阶段都调用它；</li>
+      <li>执行顺序留在一个高层函数里，几行就能看清。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>顺序本身是真实的，总要在某处体现。如果各个阶段用到的信息确实完全不同，按阶段切分并不违反信息隐藏，这样切没有问题（5.3 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/05-information-hiding.html">第 5 章 · 信息隐藏（与泄漏）→</a><a href="train/index.html#flag=temporal">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 4 过度暴露 ============ -->
+<section class="item flag-item" id="flag-overexposure">
+  <div class="item-head"><span class="no">04</span><h3>过度暴露 <span class="en">Overexposure</span></h3><span class="where">第 5 章 · 5.7 节</span></div>
+  <p class="def">只想用最常见的功能，却被迫先弄懂很少用到的功能或参数。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>最简单的用法也要填一长串参数，而大多数调用点填的都是同样的值；</li>
+    <li>调用点上到处是 <code>/*xxx=*/</code> 注释和 <code>0</code>、<code>false</code>、<code>nullptr</code> 占位；</li>
+    <li>"快速开始"文档就得先解释罕用选项。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：写一行日志先答 7 个问题">
+<pre><code class="lang-cpp">auto log = Logger::create(
+    "app.log",
+    /*maxBytes=*/64 &lt;&lt; 20,
+    /*maxFiles=*/5,
+    /*flushEveryN=*/1,
+    /*async=*/false,
+    /*queueCapacity=*/0,
+    Encoding::Utf8);
+log.write(Level::Info, "server started", /*tags=*/{});</code></pre>
+    </div>
+    <div data-label="改之后：默认值做对，罕用选项另走一条路">
+<pre><code class="lang-cpp">// 默认：按 64 MB 轮转、保留 5 份、同步写。大多数程序只需要这两行。
+auto log = Logger::open("app.log");
+log.info("server started");
+
+// 少数人才需要的调优，放进单独的选项结构
+LoggerOptions opt;
+opt.async = true;
+opt.queueCapacity = 1 &lt;&lt; 16;
+auto trace = Logger::open("trace.log", opt);</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>默认值就是大多数人想要的行为，常见用法零配置；</li>
+      <li>罕用选项放进选项结构、重载或单独的方法；</li>
+      <li>模块能自己算出合适取值的，就别做成参数（第 8 章）。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>不是要砍掉罕用功能。给使用者留选择是好的，只要罕用的选择不挡在常用路径上（4.7 节）。真正需要调用者决定的参数也必须暴露（5.9 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/05-information-hiding.html">第 5 章 · 信息隐藏（与泄漏）→</a><a href="train/index.html#flag=overexposure">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 5 透传方法 ============ -->
+<section class="item flag-item" id="flag-passthrough">
+  <div class="item-head"><span class="no">05</span><h3>透传方法 <span class="en">Pass-Through Method</span></h3><span class="where">第 7 章 · 7.1 节</span></div>
+  <p class="def">方法几乎什么都不做，只是把参数原样交给另一个签名相近的方法。它让所在的类变浅，也说明两个类之间的职责划分不清楚。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>方法体只有一行：<code>return other_.sameName(args…);</code></li>
+    <li>一个类的大多数公开方法都在转发给同一个成员；</li>
+    <li>加一个功能，要在上下两层各加一个同名方法。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：上下两层一模一样">
+<pre><code class="lang-cpp">class UserService {
+public:
+    std::optional&lt;User&gt; findById(UserId id) { return repo_.findById(id); }
+    std::vector&lt;User&gt; findByEmail(const std::string&amp; e) { return repo_.findByEmail(e); }
+    void save(const User&amp; u) { repo_.save(u); }
+    void remove(UserId id)   { repo_.remove(id); }
+    // ……还有 9 个，长得都一样
+private:
+    UserRepository repo_;
+};</code></pre>
+    </div>
+    <div data-label="改之后：这一层提供不同的抽象">
+<pre><code class="lang-cpp">// 没有额外价值时：调用者直接用 UserRepository，删掉这一层。
+// 需要这一层时：让它承担存储层不该管的事，接口自然就不同了。
+class AccountService {
+public:
+    // 注册：校验邮箱格式与唯一性、哈希密码、写库、发欢迎邮件。
+    // 邮箱已被占用时返回 RegisterError::EmailTaken。
+    Result&lt;UserId, RegisterError&gt; registerUser(const SignupForm&amp; form);
+    // 注销：删除用户并吊销其全部会话；用户不存在时什么也不做。
+    void closeAccount(UserId id);
+};</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>让调用者直接使用下层类；</li>
+      <li>重新分配两个类的职责，让每一层提供不同的东西；</li>
+      <li>两个类实在分不开，就合并成一个。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>签名相同本身不是问题，关键看有没有贡献实质功能：分派器（根据参数决定交给谁）、同一接口的多种实现都合理（7.2 节）；为了适配一个你改不了的外部类而写的包装，也属于少数合理的情况（7.3 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/07-layers.html">第 7 章 · 不同的层，不同的抽象 →</a><a href="train/index.html#flag=passthrough">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 6 重复 ============ -->
+<section class="item flag-item" id="flag-repetition">
+  <div class="item-head"><span class="no">06</span><h3>重复 <span class="en">Repetition</span></h3><span class="where">第 9 章 · 9.3 节</span></div>
+  <p class="def">同一段（或几乎一样的）不算简单的代码一再出现，说明还没找到合适的抽象。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>修一个 bug 要在好几处改同样的几行，而且其中一份已经悄悄走样；</li>
+    <li>复制粘贴后只改了一两个变量名；</li>
+    <li>好几个函数的出错路径上都有同一套清理、日志或回滚。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：重试循环抄了一遍又一遍">
+<pre><code class="lang-cpp">for (int i = 0; i &lt; 3; ++i) {                       // 拉取配置
+    if (auto r = http.get(cfgUrl); r.ok()) { cfg = r.body(); break; }
+    std::this_thread::sleep_for(100ms * (1 &lt;&lt; i));
+}
+for (int i = 0; i &lt; 3; ++i) {                       // 上报指标
+    if (http.post(metricsUrl, m).ok()) break;
+    std::this_thread::sleep_for(100ms * (1 &lt;&lt; i));
+}
+// 下单、发通知……又各抄一遍；其中一份写成了 10ms * i</code></pre>
+    </div>
+    <div data-label="改之后：变化的部分作为参数">
+<pre><code class="lang-cpp">// 反复调用 op，直到它返回 true 或已试满 attempts 次；两次之间按指数退避
+// （100ms、200ms、400ms……）。返回最后一次 op 的结果。
+bool retryWithBackoff(int attempts, const std::function&lt;bool()&gt;&amp; op);
+
+retryWithBackoff(3, [&amp;] {
+    auto r = http.get(cfgUrl);
+    if (r.ok()) cfg = r.body();
+    return r.ok();
+});
+retryWithBackoff(3, [&amp;] { return http.post(metricsUrl, m).ok(); });</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>提取成一个签名简单的函数，把变化的部分作为参数（C++ 里常用 lambda）；</li>
+      <li>重组控制流，让这段代码只需要在一个地方执行（如统一出口、RAII 清理）；</li>
+      <li>重复的是一组概念时，可能缺的是一个类而不是一个函数。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>只有一两行的片段，换成函数调用收益不大；片段和周围很多局部变量纠缠在一起时，提取出的函数签名会很复杂（一堆引用参数），反而不划算（9.3 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/09-together-apart.html">第 9 章 · 合在一起还是分开？→</a><a href="train/index.html#flag=repetition">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 7 通用与专用混杂 ============ -->
+<section class="item flag-item" id="flag-special-general">
+  <div class="item-head"><span class="no">07</span><h3>通用与专用混杂 <span class="en">Special-General Mixture</span></h3><span class="where">第 9 章 · 9.4～9.5 节</span></div>
+  <p class="def">通用机制里掺进了只服务某个具体用途的代码，两者没有干净地分开。通用部分因此变复杂，机制和用途之间也开始互相泄漏信息。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>通用容器、框架或工具类里出现了具体业务的类型名、<code>if (kind == …)</code>；</li>
+    <li>每多一个使用者，就要改一次通用模块；</li>
+    <li>给通用模块写单元测试，得先构造一堆业务对象。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：LRU 缓存里有缩略图的规矩">
+<pre><code class="lang-cpp">template &lt;class K, class V&gt;
+class LruCache {
+public:
+    void put(const K&amp; key, V value) {
+        if constexpr (std::is_same_v&lt;V, Thumbnail&gt;) {   // 缩略图特判
+            if (value.width &gt; 2048) return;              // 太大的不缓存
+            metrics::thumbnailsCached.inc();
+        }
+        insertFront(key, std::move(value));
+        if (size_ &gt; capacity_) evictOldest();
+    }
+};</code></pre>
+    </div>
+    <div data-label="改之后：机制归机制，规矩归用途">
+<pre><code class="lang-cpp">template &lt;class K, class V&gt;
+class LruCache {            // 通用：满了就淘汰最久没被访问的条目
+public:
+    void put(const K&amp; key, V value);
+    std::optional&lt;V&gt; get(const K&amp; key);
+};
+class ThumbnailStore {      // 专用：缩略图的规矩放在缩略图模块
+    LruCache&lt;std::string, Thumbnail&gt; cache_;
+public:
+    void remember(const std::string&amp; url, Thumbnail t) {
+        if (t.width &gt; kMaxCachedWidth) return;
+        cache_.put(url, std::move(t));
+        metrics::thumbnailsCached.inc();
+    }
+};</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>通用模块只提供机制（存取、淘汰、调度……）；</li>
+      <li>专用规则移到使用它的模块，或通过回调、子类注入；</li>
+      <li>专用化往上推到应用层，或往下推到各个具体实现里（6.6 节）。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>这条说的是<strong>同一个机制</strong>的通用部分和专用部分。作者明确说，某个机制的专用代码，和另一个与它密切相关的机制的通用代码放在一起是可以的（6.7 节末尾的附注）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/09-together-apart.html">第 9 章 · 合在一起还是分开？→</a><a href="chapters/06-general-purpose.html">第 6 章 · 通用的模块更深 →</a><a href="train/index.html#flag=special-general">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 8 连体方法 ============ -->
+<section class="item flag-item" id="flag-conjoined">
+  <div class="item-head"><span class="no">08</span><h3>连体方法 <span class="en">Conjoined Methods</span></h3><span class="where">第 9 章 · 9.7 节</span></div>
+  <p class="def">两段代码互相依赖得太紧：不读懂其中一段的实现，就看不懂另一段。不只是方法，任何物理上分开、却必须对照着读的代码都算。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>注释写着"调用前必须先调 X"，或某个成员变量只是在两个方法之间偷偷传数据；</li>
+    <li>读一个函数时要不停跳到另一个函数，去看它留下了什么状态；</li>
+    <li>两个方法总在同一处、按固定顺序一起被调用。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：靠成员变量传话">
+<pre><code class="lang-cpp">// 前置条件：先调用 prepareRow()
+void Importer::prepareRow(const std::string&amp; line) {
+    fields_ = split(line, ',');
+    if (fields_.size() == 3)                      // 旧格式没有 region 列
+        fields_.insert(fields_.begin() + 2, "");
+    pos_ = 0;
+}
+Order Importer::buildOrder() {
+    Order o;
+    o.id     = fields_[pos_++];
+    o.user   = fields_[pos_++];
+    o.region = fields_[pos_++];   // 为什么会是空串？得回去看 prepareRow
+    o.amount = parseAmount(fields_[pos_++]);
+    return o;
+}</code></pre>
+    </div>
+    <div data-label="改之后：一件事在一个地方做完整">
+<pre><code class="lang-cpp">// 把一行 CSV 解析成订单。新格式 4 列：id,user,region,amount；
+// 也接受旧格式 3 列（没有 region，此时 region 为空串）。
+// 列数不对或金额不是数字时抛 ImportError，消息里带原始行。
+Order parseOrderLine(const std::string&amp; line) {
+    auto f = split(line, ',');
+    if (f.size() == 3) f.insert(f.begin() + 2, "");
+    if (f.size() != 4) throw ImportError("bad column count: " + line);
+    return Order{f[0], f[1], f[2], parseAmount(f[3])};
+}</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>合并成一个把事情做完整的方法；</li>
+      <li>用参数和返回值显式传递数据，代替隐式共享的成员状态；</li>
+      <li>确实要拆时，拆出一个能独立理解的子任务。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>不是说函数越长越好。拆出一个父、子都能单独读懂的子任务，是作者认可的拆法（9.7 节）。反过来，这个红旗常常正是"函数越短越好"拆过了头造成的（9.8 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/09-together-apart.html">第 9 章 · 合在一起还是分开？→</a><a href="train/index.html#flag=conjoined">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 9 注释重复代码 ============ -->
+<section class="item flag-item" id="flag-comment-repeats">
+  <div class="item-head"><span class="no">09</span><h3>注释重复代码 <span class="en">Comment Repeats Code</span></h3><span class="where">第 13 章 · 13.2 节</span></div>
+  <p class="def">注释里的所有信息，看一眼旁边的代码就已经知道了。这样的注释占地方、要维护，却不提供任何新东西。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>注释用的词和名字几乎一样（"获取连接"写在 <code>acquire</code> 上面）；</li>
+    <li>注释逐行把代码翻译成中文（"i 加一"）；</li>
+    <li>测试：一个从没见过这段代码的人，只看旁边那行，能不能写出同样的注释？能，就是重复。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：换个说法再说一遍">
+<pre><code class="lang-cpp">class ConnPool {
+    int maxIdle_;                        // 最大空闲数
+    std::chrono::seconds idleTimeout_;   // 空闲超时
+
+    // 获取连接
+    Conn acquire();
+    // 归还连接
+    void release(Conn c);
+};</code></pre>
+    </div>
+    <div data-label="改之后：写代码里看不出的东西">
+<pre><code class="lang-cpp">class ConnPool {
+    // 归还时若空闲连接已达此数，直接关闭归还的连接；0 表示不保留空闲连接。
+    int maxIdle_;
+    // 空闲超过此时长的连接，会在下次 acquire 时被关闭而不是交出去，
+    // 以免调用者拿到已被服务端断开的连接。
+    std::chrono::seconds idleTimeout_;
+
+    // 返回一个可用连接：优先复用空闲连接，否则新建。活跃连接数已达上限时
+    // 阻塞等待，最多等 acquireTimeout_，超时抛 PoolExhausted。
+    Conn acquire();
+    // 把 c 交还给池。c 之后不得再使用；归还已断开的连接是安全的。
+    void release(Conn c);
+};</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>补上代码表达不了的东西：单位、边界是否包含、特殊值的含义、谁负责释放、调用前提、为什么这样做；</li>
+      <li>换用和名字不同的词来描述；</li>
+      <li>写在和代码不同的层次上：更低（精确语义）或更高（意图）。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>作者的结论不是"少写注释"，而是"写有用的"。书中主张每个类、成员变量、方法都写接口注释，显然到无话可说的（如某些 getter/setter）很少（13.1 节）。短方法内部通常不需要实现注释（13.6 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/13-comments.html">第 13 章 · 注释应描述代码里看不出来的东西 →</a><a href="train/index.html#flag=comment-repeats">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 10 实现细节污染接口注释 ============ -->
+<section class="item flag-item" id="flag-impl-contaminates">
+  <div class="item-head"><span class="no">10</span><h3>实现细节污染接口注释 <span class="en">Implementation Documentation Contaminates Interface</span></h3><span class="where">第 13 章 · 13.5 节</span></div>
+  <p class="def">接口注释写了调用者根本不需要知道的实现细节。读者被迫了解内部结构，实现一换，注释也得重写。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>接口注释里出现内部数据结构、私有成员名、锁、内部常量；</li>
+    <li>注释在讲"怎么做"，而不是"做什么、返回什么、有什么副作用"；</li>
+    <li>换一种实现方式，接口注释就得跟着重写。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：接口注释在讲内部">
+<pre><code class="lang-cpp">// 内部用 unordered_map&lt;string, list::iterator&gt; 加一条双向链表维护
+// 访问顺序。get 时把节点 splice 到表头；put 超容量时从表尾 pop_back。
+// mu_ 保护上述两个结构。返回 key 对应的值。
+std::optional&lt;std::string&gt; get(const std::string&amp; key);</code></pre>
+    </div>
+    <div data-label="改之后：只写调用者视角">
+<pre><code class="lang-cpp">// 返回 key 当前缓存的值；不存在（从未写入或已被淘汰）时返回 nullopt。
+// 命中会让该条目成为"最近使用"，因而最晚被淘汰。线程安全，O(1)。
+std::optional&lt;std::string&gt; get(const std::string&amp; key);
+
+// 链表与 splice 的说明放进 .cpp 里函数体内的实现注释。</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>接口注释只写调用者视角：行为、参数与返回值、副作用、异常、前置条件；</li>
+      <li>实现细节挪进函数体内的实现注释；</li>
+      <li>不提实现就说不清接口时，说明模块是浅的，回头重新考虑设计。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>调用者在乎的性能特征可以写进接口注释，比如是否线程安全、能否并发、是否阻塞，只要用高层的话说（13.5 节、13.9 节）。对用法不显然的深类，在类注释里放一个使用示例也有帮助（13.5 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/13-comments.html">第 13 章 · 注释应描述代码里看不出来的东西 →</a><a href="train/index.html#flag=impl-contaminates">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 11 名字含糊 ============ -->
+<section class="item flag-item" id="flag-vague-name">
+  <div class="item-head"><span class="no">11</span><h3>名字含糊 <span class="en">Vague Name</span></h3><span class="where">第 14 章 · 14.3 节</span></div>
+  <p class="def">名字宽泛得可以指很多东西，读者从中得不到多少信息，甚至会猜错它的含义，进而用错。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li><code>data</code>、<code>info</code>、<code>tmp</code>、<code>flag</code>、<code>status</code>、<code>count</code>、<code>time</code>、<code>process</code>、<code>Manager</code> 单独出现；</li>
+    <li>要看声明或注释才知道单位、"什么的个数"、true 代表什么；</li>
+    <li>布尔变量不是谓词形式。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：每个名字都得去猜">
+<pre><code class="lang-cpp">struct Session {
+    int64_t     time;     // 创建时间？最后活跃？过期时刻？秒还是毫秒？
+    bool        flag;
+    int         count;
+    std::string data;
+};
+void process(Session&amp; s);
+
+if (s.flag &amp;&amp; now - s.time &gt; limit) process(s);</code></pre>
+    </div>
+    <div data-label="改之后：名字本身就带着关键信息">
+<pre><code class="lang-cpp">struct Session {
+    int64_t     lastActiveMs;    // 最后一次收到请求的时刻，Unix 毫秒
+    bool        loggedIn;
+    int         failedLogins;    // 连续登录失败次数，成功后清零
+    std::string csrfToken;
+};
+void expire(Session&amp; s);
+
+if (s.loggedIn &amp;&amp; nowMs - s.lastActiveMs &gt; idleLimitMs) expire(s);</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>自问：别人单独看到这个名字，能猜对它指什么、不指什么吗？</li>
+      <li>补上最关键的信息：对象、单位、状态；</li>
+      <li>布尔量写成谓词（<code>isX</code>、<code>hasX</code>、<code>xEnabled</code>）。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>循环只有几行、整个使用范围一眼看得见时，<code>i</code>、<code>j</code> 这样的短名字没问题；<code>result</code> 在它确实就是返回值时也可以（14.3 节）。名字也可能过于具体：一个能处理任意区间的参数不该叫 <code>selection</code>（14.3 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/14-names.html">第 14 章 · 起名字 →</a><a href="train/index.html#flag=vague-name">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 12 名字难起 ============ -->
+<section class="item flag-item" id="flag-hard-name">
+  <div class="item-head"><span class="no">12</span><h3>名字难起 <span class="en">Hard to Pick Name</span></h3><span class="where">第 14 章 · 14.3 节</span></div>
+  <p class="def">怎么也想不出一个精确、直观、又不太长的名字。这往往说明被命名的东西本身设计得不干净，而不是你词汇量不够。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>候选名字里带 <code>And</code>、<code>Or</code>、<code>Maybe</code>、<code>Misc</code>、<code>Helper</code>；</li>
+    <li>团队里对它该叫什么争论不休，每个名字都只说对了一半；</li>
+    <li>一个变量用特殊值编码了几种不同的状态。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：一个变量身兼两职">
+<pre><code class="lang-cpp">// 该叫什么？pending？sendState？offsetOrStatus？……
+// -1：还没连上；0：连上了但还没发数据；&gt;0：已发送的字节数
+int64_t sendInfo = -1;
+
+void onConnected()    { sendInfo = 0; }
+void onSent(size_t n) { sendInfo += n; }
+bool canSend() const  { return sendInfo &gt;= 0; }</code></pre>
+    </div>
+    <div data-label="改之后：拆开以后名字自然就有了">
+<pre><code class="lang-cpp">bool     connected = false;
+uint64_t bytesSent = 0;      // 本连接累计发送的字节数
+
+void onConnected()    { connected = true; }
+void onSent(size_t n) { bytesSent += n; }
+bool canSend() const  { return connected; }</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>先怀疑设计，而不是去找一个更长的名字；</li>
+      <li>一个变量表示了几件事，就拆成几个；一个方法做了几件不相关的事，就拆开；</li>
+      <li>列出几个候选词，挑信息量最大的那个（21.1 节）。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>"难"指的是找不到能让人一眼看明白的名字，不是"想了五分钟"。在名字上多花一点时间本来就是值得的投资，熟练以后几乎不额外花时间（14.7 节）。本站补充：拆分是为了让每个部分概念清楚，别为了好起名把一个完整的概念切碎。</p></div>
+  </div>
+  <p class="links"><a href="chapters/14-names.html">第 14 章 · 起名字 →</a><a href="train/index.html#flag=hard-name">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 13 难以描述 ============ -->
+<section class="item flag-item" id="flag-hard-describe">
+  <div class="item-head"><span class="no">13</span><h3>难以描述 <span class="en">Hard to Describe</span></h3><span class="where">第 15 章 · 15.3 节</span></div>
+  <p class="def">想把一个方法或变量完整地说清楚，注释就得写很长。注释是复杂度的早期探测器：说不简单，往往是因为抽象本身不简单。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>接口注释里满是"如果……则……但当……时"；</li>
+    <li>参数之间有组合约束：某些组合无效，或者一个会覆盖另一个；</li>
+    <li>返回值要用一段话解释几种特殊编码；</li>
+    <li>先写注释时写不下去。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：一个函数，三个开关">
+<pre><code class="lang-cpp">// 把 buf 写入 path。append 为 true 时追加，否则覆盖；但 atomic 为 true 时
+// 忽略 append，改为先写临时文件再 rename。fsync 为 true 时写完刷盘，但在
+// atomic 模式下刷的是临时文件，rename 后目录项不刷。返回值：&gt;=0 为写入
+// 字节数；-1 打开失败（看 errno）；-2 部分写入，文件可能处于半写状态
+// （atomic 模式下不会出现 -2）。
+int writeFile(const std::string&amp; path, std::string_view buf,
+              bool append, bool atomic, bool fsync);</code></pre>
+    </div>
+    <div data-label="改之后：按调用者的意图拆成两个操作">
+<pre><code class="lang-cpp">// 用 data 原子地替换 path 的全部内容：要么完整写入新内容，要么保留旧内容，
+// 崩溃或断电后不会出现半个文件。失败时抛 IoError。
+void replaceFileAtomically(const std::string&amp; path, std::string_view data);
+
+// 把 data 追加到 path 末尾，文件不存在则创建。失败时抛 IoError。
+void appendToFile(const std::string&amp; path, std::string_view data);</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>先写接口注释、再写代码（第 15 章），趁还没投入实现时改设计；</li>
+      <li>按"调用者真正想做的事"拆成几个各自好描述的操作；</li>
+      <li>去掉模式开关，让每个函数只有一种语义；用异常或类型代替魔法返回值。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>只有<strong>完整而清楚</strong>的注释才能拿来衡量复杂度：漏了信息或写得晦涩的注释，短也不说明设计好（15.3 节）。深类的类注释带上用法示例、因而偏长，也是正常的。</p></div>
+  </div>
+  <p class="links"><a href="chapters/15-comments-first.html">第 15 章 · 先写注释 →</a><a href="train/index.html#flag=hard-describe">去训练场专练这个红旗 →</a></p>
+</section>
+
+<!-- ============ 14 代码不明显 ============ -->
+<section class="item flag-item" id="flag-nonobvious">
+  <div class="item-head"><span class="no">14</span><h3>代码不明显 <span class="en">Nonobvious Code</span></h3><span class="where">第 18 章 · 18.2 节</span></div>
+  <p class="def">快速读一遍看不出代码在做什么、为什么这样做。通常是有重要信息没放在读者看得见的地方。</p>
+  <h4>怎么察觉</h4>
+  <ul>
+    <li>调用点上的魔法数字和裸 <code>true</code> / <code>false</code>；</li>
+    <li>看名字以为只是读一下，实际却有副作用；</li>
+    <li>用 <code>std::pair</code>、<code>std::tuple</code> 之类的通用容器装着有具体含义的数据；</li>
+    <li>评审时有人问"这里为什么要……"。</li>
+  </ul>
+  <div class="ba">
+    <div data-label="有味道：读者只能去翻定义">
+<pre><code class="lang-cpp">schedule(job, 3, true, false);          // 3？true？false？
+if ((job.state &amp; 0x4) &amp;&amp; !(job.state &amp; 0x10))
+    retry(job);
+
+// 看起来只是读一下长度
+size_t n = queue.size();   // 实际上会先把缓冲的批次刷到磁盘</code></pre>
+    </div>
+    <div data-label="改之后：信息出现在用到它的地方">
+<pre><code class="lang-cpp">schedule(job, Priority::High, Placement::AnyWorker, Retry::Never);
+if (job.failed() &amp;&amp; !job.cancelled())
+    retry(job);
+
+// 有副作用的操作在名字上说出来；查询就只查询
+queue.flushPending();
+size_t n = queue.size();</code></pre>
+    </div>
+  </div>
+  <div class="fix-over">
+    <div class="fix"><h4>常见改法</h4><ul>
+      <li>用枚举或具名类型代替裸布尔和魔法数字；用有字段名的 struct 代替 pair；</li>
+      <li>有副作用就在名字上说出来，别违背读者的预期；</li>
+      <li>不得不用的间接手段（回调、事件驱动），在注释里写清何时被调用；</li>
+      <li>用空行和块注释把代码分段。</li>
+    </ul></div>
+    <div class="over"><h4>别过度</h4><p>"明显"由读者判断，而不是作者：评审说看不懂，就改代码或补注释，不要争辩（13.8 节、第 18 章）。有些天然不那么明显的技术（如事件驱动）仍然值得用，用注释补偿即可（18.2 节）。</p></div>
+  </div>
+  <p class="links"><a href="chapters/18-obvious.html">第 18 章 · 代码应该一目了然 →</a><a href="train/index.html#flag=nonobvious">去训练场专练这个红旗 →</a></p>
+</section>
+
+<h2 id="principles">16 条设计原则</h2>
+<p>红旗告诉你"哪里可能有问题"，原则告诉你"往哪个方向改"。每条都写了它为什么能降低复杂性，以及作者自己承认的限度。编号与原书书末清单一致，措辞是本站的转述。</p>
+
+<div class="pr-grid">
+<section class="item pr-item" id="p-1">
+  <div class="item-head"><span class="no">1</span><h3>复杂性是一点点累积的：小事也要较真</h3><span class="where">第 2 章 · 2.4 节</span></div>
+  <p class="why"><b>为什么</b>系统变复杂，很少是因为某个大错误，而是上百个"就这一次"的小依赖、小含糊叠起来的。每一个单独看都无伤大雅，所以只有每一个都不放过，才挡得住。</p>
+  <p class="but"><b>注意</b>较真不等于一次性大重写，作者同样反对前期一次性做完设计；它要和原则 3 的"持续小投资"配合使用。</p>
+  <p class="links"><a href="chapters/02-complexity.html">第 2 章 →</a><a href="chapters/03-strategic.html">第 3 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-2">
+  <div class="item-head"><span class="no">2</span><h3>能跑的代码还不够</h3><span class="where">第 3 章 · 3.2 节</span></div>
+  <p class="why"><b>为什么</b>能跑只说明今天的功能做对了；结构有没有让下一次改动更容易，才决定长期的开发速度。只求"先跑起来"的战术式编程，会把复杂性一笔一笔记在以后的账上。</p>
+  <p class="but"><b>注意</b>作者建议把大约 10%～20% 的时间投在设计上，但也说明这是经验判断，没有数据支撑（3.3 节）。</p>
+  <p class="links"><a href="chapters/03-strategic.html">第 3 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-3">
+  <div class="item-head"><span class="no">3</span><h3>持续地做小投资来改善设计</h3><span class="where">第 3 章 · 第 16 章</span></div>
+  <p class="why"><b>为什么</b>每次改动都顺手把设计改好一点，复杂性就不会利滚利；"等忙完这阵子再整理"通常意味着永远不整理，因为忙完之后还有下一阵子。</p>
+  <p class="but"><b>注意</b>作者承认现实约束（死线、改动会影响很多团队）有时逼人妥协（16.1 节）。这时先找一个几乎同样干净、但只需几天的方案，或者事后争取时间补上。</p>
+  <p class="links"><a href="chapters/03-strategic.html">第 3 章 →</a><a href="chapters/16-modifying-code.html">第 16 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-4">
+  <div class="item-head"><span class="no">4</span><h3>模块应该深</h3><span class="where">第 4 章 · 4.4 节</span></div>
+  <p class="why"><b>为什么</b>使用者只为接口付出学习成本，却能得到实现的全部功能。接口越窄、背后的功能越多，系统其他部分需要知道的就越少。</p>
+  <p class="but"><b>注意</b>深度是比值不是规模；有些模块天生就浅（4.5 节）；也别把整个应用塞进一个类（8.3 节）。</p>
+  <p class="links"><span data-flag="shallow"></span><a href="chapters/04-deep-modules.html">第 4 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-5">
+  <div class="item-head"><span class="no">5</span><h3>接口要让最常见的用法尽可能简单</h3><span class="where">第 4 章 · 4.7 节</span></div>
+  <p class="why"><b>为什么</b>大多数人只用到常用的那几项，接口的"有效复杂度"就由它们决定。默认值做对了，多数使用者根本不必知道其余选项存在。</p>
+  <p class="but"><b>注意</b>不是砍掉罕用功能：罕用选项可以有，放在单独的入口即可（4.7 节）；真正需要使用者决定的参数仍要暴露（5.9 节）。</p>
+  <p class="links"><span data-flag="overexposure"></span><a href="chapters/04-deep-modules.html">第 4 章 →</a><a href="chapters/05-information-hiding.html">第 5 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-6">
+  <div class="item-head"><span class="no">6</span><h3>模块的接口简单，比实现简单更重要</h3><span class="where">第 8 章 · 第 9 章</span></div>
+  <p class="why"><b>为什么</b>模块的使用者远多于开发者。复杂性留在实现里，只由开发者承受一次；放到接口上，会被每个调用者各承受一次。</p>
+  <p class="but"><b>注意</b>只有当这份复杂性和模块已有功能密切相关、能简化别处的代码、并能让模块接口更简单时，才值得收进来（8.3 节）。否则只是把无关的东西塞进一个类。</p>
+  <p class="links"><a href="chapters/08-pull-down.html">第 8 章 →</a><a href="chapters/09-together-apart.html">第 9 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-7">
+  <div class="item-head"><span class="no">7</span><h3>通用的模块更深</h3><span class="where">第 6 章</span></div>
+  <p class="why"><b>为什么</b>不绑定某个具体用途的接口，往往方法更少、每个更有力，也自然藏住了用途相关的信息。作者发现即使最后没被复用，这样做也更划算（6.1 节）。</p>
+  <p class="but"><b>注意</b>关键词是"<strong>稍微</strong>通用"：功能按今天的需要做，接口别只为今天的一个调用者写。过度通用（例如只提供逐字符操作）会让今天的调用者很难用（6.5 节）。</p>
+  <p class="links"><a href="chapters/06-general-purpose.html">第 6 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-8">
+  <div class="item-head"><span class="no">8</span><h3>把通用代码和专用代码分开</h3><span class="where">第 6 章 · 第 9 章</span></div>
+  <p class="why"><b>为什么</b>通用机制只管机制，专用规则放在使用它的地方。两边都能被单独理解、单独修改，新增一种用途也不必改动机制。</p>
+  <p class="but"><b>注意</b>说的是同一个机制的两部分。一个机制的专用代码和另一个相关机制的通用代码放在一起，是可以的（6.7 节附注）。</p>
+  <p class="links"><span data-flag="special-general"></span><a href="chapters/06-general-purpose.html">第 6 章 →</a><a href="chapters/09-together-apart.html">第 9 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-9">
+  <div class="item-head"><span class="no">9</span><h3>不同的层应该提供不同的抽象</h3><span class="where">第 7 章</span></div>
+  <p class="why"><b>为什么</b>每穿过一层，抽象就应该变一次。相邻两层的抽象差不多，说明这一层没有替上层藏住什么，只多了一套要学的接口。</p>
+  <p class="but"><b>注意</b>签名相同不一定是问题：分派器、同一接口的多种实现都合理（7.2 节）。消除透传变量的常用办法是 context 对象，但作者也承认它远非理想（7.5 节）。</p>
+  <p class="links"><span data-flag="passthrough"></span><a href="chapters/07-layers.html">第 7 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-10">
+  <div class="item-head"><span class="no">10</span><h3>把复杂性往下拉</h3><span class="where">第 8 章</span></div>
+  <p class="why"><b>为什么</b>无法消除的复杂性，由模块自己消化，而不是通过抛异常、加配置参数推给每一个调用者。一个能自动算出合适取值的模块，胜过一个让人去猜参数的模块。</p>
+  <p class="but"><b>注意</b>判断条件同原则 6（8.3 节）。使用者确实比模块更懂的东西（例如请求优先级），做成参数是正当的（8.2 节）。</p>
+  <p class="links"><a href="chapters/08-pull-down.html">第 8 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-11">
+  <div class="item-head"><span class="no">11</span><h3>把错误定义为不存在</h3><span class="where">第 10 章 · 10.3 节</span></div>
+  <p class="why"><b>为什么</b>异常是接口的一部分。每多一种，就多一批调用者要写、却很少被执行（因而很少被测到）的处理代码。调整语义让它不再是错误，这些处理代码就整片消失。</p>
+  <p class="but"><b>注意</b>只有调用者确实不需要这个信息时，才能把它定义掉或屏蔽掉；外部必须知道的失败（如网络故障）要暴露（10.9 节）。"直接崩溃"是否可以接受，取决于应用（10.8 节）。</p>
+  <p class="links"><a href="chapters/10-define-errors-out.html">第 10 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-12">
+  <div class="item-head"><span class="no">12</span><h3>设计两次</h3><span class="where">第 11 章</span></div>
+  <p class="why"><b>为什么</b>第一个想法很少是最好的。做出两三个差别很大的草案再比较，各自的代价才看得清，还常常能合成出比任何一个都好的方案。</p>
+  <p class="but"><b>注意</b>草图就够，只需列出最重要的几个方法，不必实现。小模块花不了多少时间；越大的模块越值得多探索。</p>
+  <p class="links"><a href="chapters/11-design-twice.html">第 11 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-13">
+  <div class="item-head"><span class="no">13</span><h3>注释应该描述代码里看不出来的东西</h3><span class="where">第 13 章</span></div>
+  <p class="why"><b>为什么</b>设计意图、单位、边界、前置条件、"为什么这样做"，代码表达不出来，只能靠注释。有了好的接口注释，使用者不读实现也能用对，抽象才真正成立。</p>
+  <p class="but"><b>注意</b>短方法内部通常不需要实现注释（13.6 节）；但作者主张每个类、成员变量和方法都写接口注释，"太显然不用写"的情况很少（13.1 节）。</p>
+  <p class="links"><span data-flag="comment-repeats"></span><span data-flag="impl-contaminates"></span><a href="chapters/13-comments.html">第 13 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-14">
+  <div class="item-head"><span class="no">14</span><h3>软件应该为易读而设计，而不是为易写而设计</h3><span class="where">第 18 章 · 18.2 节</span></div>
+  <p class="why"><b>为什么</b>代码被读的次数远多于被写的次数。为写的人省下几秒钟的捷径（通用容器、裸布尔参数、隐藏的副作用），会让之后每个读的人多花时间，甚至读错。</p>
+  <p class="but"><b>注意</b>是否明显由读者判断，作者自己说了不算；评审者说看不懂就是看不懂（13.8 节）。不那么明显但有用的技术可以用，用注释补偿（18.2 节）。</p>
+  <p class="links"><span data-flag="nonobvious"></span><a href="chapters/18-obvious.html">第 18 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-15">
+  <div class="item-head"><span class="no">15</span><h3>开发的增量应该是抽象，而不是功能</h3><span class="where">第 19 章 · 19.2 节</span></div>
+  <p class="why"><b>为什么</b>按功能一点点往上堆，抽象就永远是"顺手凑出来的"。当某个功能需要一个新抽象时，把这个抽象完整地、稍微通用地设计好，后面的功能才有可靠的地基。</p>
+  <p class="but"><b>注意</b>作者认可敏捷的迭代思想，也认为等到真正需要时再做抽象是可以的；作者反对的是把一个抽象拆成碎片、随功能零敲碎打地长出来（19.2 节）。</p>
+  <p class="links"><a href="chapters/19-trends.html">第 19 章 →</a></p>
+</section>
+
+<section class="item pr-item" id="p-16">
+  <div class="item-head"><span class="no">16</span><h3>把重要的和不重要的分开，并突出重要的</h3><span class="where">第 21 章</span></div>
+  <p class="why"><b>为什么</b>抽象、命名、性能设计其实都在做同一件事：把注意力引向少数关键因素，把其余的藏起来或减少。重要的东西应该出现在显眼处，并决定周围代码的结构。</p>
+  <p class="but"><b>注意</b>两个方向都会出错：把太多东西当成重要的（接口臃肿、类变浅），或者没认出真正重要的东西（该暴露的被藏起来）（21.4 节）。拿不准时，先提出一个假设，做完再回头反思（21.1 节）。</p>
+  <p class="links"><a href="chapters/21-decide-what-matters.html">第 21 章 →</a></p>
+</section>
+</div>
+
+<section id="checklist">
+<h2>设计评审清单</h2>
+<p>按"你正在做什么"分组。每一项都是一个可以在几秒内回答的问题；回答"否"或"说不准"时，点旁边的徽章去看对应的红旗或原则。勾选只是方便当场使用，不会被保存。</p>
+<div class="ck-tools">
+  <button class="primary" id="print-ck">只打印这份清单</button>
+  <button id="print-all">打印整页</button>
+  <button id="ck-clear">清空勾选</button>
+</div>
+<div class="ck-groups">
+  <div class="ck-group"><h3>设计接口时</h3><ul>
+    <li><label><input type="checkbox"><span>最常见的用法一两行就能写完吗？罕用选项是否挡在路上？ <span data-flag="overexposure"></span><span data-principle="5"></span></span></label></li>
+    <li><label><input type="checkbox"><span>接口比实现简单得多吗？能一句话说清这个模块做什么吗？ <span data-flag="shallow"></span><span data-principle="4"></span></span></label></li>
+    <li><label><input type="checkbox"><span>每个格式、协议、常量的含义，是不是只有一个模块知道？ <span data-flag="leakage"></span></span></label></li>
+    <li><label><input type="checkbox"><span>模块是按"掌握哪部分知识"切的，还是按"第几步"切的？ <span data-flag="temporal"></span></span></label></li>
+    <li><label><input type="checkbox"><span>接口是不是只为眼前这一个调用者写的？能否稍微通用一点？ <span data-principle="7"></span></span></label></li>
+    <li><label><input type="checkbox"><span>有没有可以通过调整语义直接消失的异常或错误码？ <span data-principle="11"></span></span></label></li>
+    <li><label><input type="checkbox"><span>认真比较过至少两个差别很大的方案吗？ <span data-principle="12"></span></span></label></li>
+  </ul></div>
+  <div class="ck-group"><h3>写实现时</h3><ul>
+    <li><label><input type="checkbox"><span>有没有只是把参数转交出去的方法？这一层和下一层的抽象一样吗？ <span data-flag="passthrough"></span><span data-principle="9"></span></span></label></li>
+    <li><label><input type="checkbox"><span>同一段不算简单的代码，是不是第二次、第三次出现了？ <span data-flag="repetition"></span></span></label></li>
+    <li><label><input type="checkbox"><span>通用机制里有没有混进某个具体用途的特判？ <span data-flag="special-general"></span><span data-principle="8"></span></span></label></li>
+    <li><label><input type="checkbox"><span>有没有两个方法必须对照着读才看得懂？ <span data-flag="conjoined"></span></span></label></li>
+    <li><label><input type="checkbox"><span>遇到不好处理的情况，是自己消化了，还是用配置参数、抛异常推给了调用者？ <span data-principle="10"></span><span data-principle="6"></span></span></label></li>
+  </ul></div>
+  <div class="ck-group"><h3>写注释与命名时</h3><ul>
+    <li><label><input type="checkbox"><span>接口注释能写得既短又完整吗？（最好在写实现之前写） <span data-flag="hard-describe"></span></span></label></li>
+    <li><label><input type="checkbox"><span>注释有没有提供代码之外的信息：单位、边界、特殊值、前置条件、为什么？ <span data-flag="comment-repeats"></span><span data-principle="13"></span></span></label></li>
+    <li><label><input type="checkbox"><span>接口注释里有没有调用者不需要知道的实现细节？ <span data-flag="impl-contaminates"></span></span></label></li>
+    <li><label><input type="checkbox"><span>名字单独拿出来，别人能猜对它指什么吗（单位、true 的含义）？ <span data-flag="vague-name"></span></span></label></li>
+    <li><label><input type="checkbox"><span>起不出好名字时，先怀疑设计了吗？ <span data-flag="hard-name"></span></span></label></li>
+  </ul></div>
+  <div class="ck-group"><h3>修改已有代码时</h3><ul>
+    <li><label><input type="checkbox"><span>改完之后，代码看起来像是一开始就为这个改动设计的吗？ <span data-principle="2"></span><span data-principle="3"></span></span></label></li>
+    <li><label><input type="checkbox"><span>这次顺手修掉了一个小问题吗，还是又留下了一个"就这一次"？ <span data-principle="1"></span></span></label></li>
+    <li><label><input type="checkbox"><span>提交前看过一遍 diff，相关注释都跟着改了吗？ <a href="chapters/16-modifying-code.html">第 16 章</a></span></label></li>
+    <li><label><input type="checkbox"><span>新代码遵循了周围已有的命名和写法约定吗？ <a href="chapters/17-consistency.html">第 17 章</a></span></label></li>
+  </ul></div>
+  <div class="ck-group"><h3>代码评审时</h3><ul>
+    <li><label><input type="checkbox"><span>快速读一遍，能看懂它在做什么、为什么这样做吗？ <span data-flag="nonobvious"></span><span data-principle="14"></span></span></label></li>
+    <li><label><input type="checkbox"><span>评审者说"看不懂"时，作者是改代码或补注释，而不是解释一遍了事？ <span data-flag="nonobvious"></span></span></label></li>
+    <li><label><input type="checkbox"><span>这次改动是建立了一个抽象，还是又堆上了一个功能？ <span data-principle="15"></span></span></label></li>
+    <li><label><input type="checkbox"><span>这段代码里最重要的东西是什么？它够显眼吗？ <span data-principle="16"></span></span></label></li>
+    <li><label><input type="checkbox"><span>把 <a href="#flags">14 个红旗</a>挨个过了一遍吗？</span></label></li>
+  </ul></div>
+</div>
+</section>
+
+<script>
+(function () {
+  // 打印时临时切到浅色主题（深色 token 印在白纸上看不清），打印完恢复
+  const root = document.documentElement;
+  let saved = null;
+  window.addEventListener("beforeprint", () => { saved = root.getAttribute("data-theme"); root.setAttribute("data-theme", "light"); });
+  window.addEventListener("afterprint", () => {
+    if (saved) root.setAttribute("data-theme", saved); else root.removeAttribute("data-theme");
+    document.body.classList.remove("print-checklist");
+  });
+  document.getElementById("print-ck").onclick = () => { document.body.classList.add("print-checklist"); window.print(); };
+  document.getElementById("print-all").onclick = () => window.print();
+  document.getElementById("ck-clear").onclick = () => document.querySelectorAll("#checklist input[type=checkbox]").forEach((c) => (c.checked = false));
+})();
+</script>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 9 章 · 合在一起还是分开？</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch09.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.cj-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.cj-modes button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+#cj-stage svg { display: block; margin: 0 auto; width: 100%; max-width: 500px; height: auto; }
+.cj-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.cj-legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: 4px; margin-right: 5px; }
+.cj-legend .l-in { border-color: var(--faint); }
+.cj-legend .l-x { border-color: var(--bad); }
+.cj-legend .l-call { border-color: var(--ok); border-top-style: dashed; }
+</style>
+</head>
+<body data-chapter="9">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>给定两段功能，应该放在同一个地方实现，还是分开？什么时候该拆一个方法，什么时候该把两个方法合起来？</strong></p>
+</div>
+<p>这是软件设计里最基本、也最天天碰到的问题：缓冲该不该放进文件流类里？一个请求解析函数该不该拆成十个？它在函数、类、服务各个层次上都会出现。前面几章其实已经零散地回答过一部分：第 5 章说共享知识的代码该放在一起，第 6 章说通用和专用要分开，第 7 章说没有新抽象的层不该存在。第 9 章把这些标准收拢起来，再补上"方法该多长"这个最容易引起争论的问题。</p>
+<p>这一章也是全书最直接和流行建议唱反调的地方：作者认为<strong>开发者普遍把方法拆得太碎了</strong>，并在 9.8 节点名反驳了《Clean Code》关于函数长度的主张。读这一章时，你很可能会发现自己团队的代码规范站在作者的对面。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>章首的两个清单</strong>：一个列出"拆分本身带来的复杂性"，一个列出"两段代码相关的迹象"。第二个清单里"一起使用"那一条有一个限定条件，作者用块缓存和哈希表举例说明，别漏掉。</li>
+    <li><strong>9.5、9.6 节是一对正反例</strong>：一个是"合起来反而更糟"，一个是"拆开反而更糟"。读的时候对照章首的清单，看作者是用哪几条判断出来的。</li>
+    <li><strong>9.7 节的图 9.3</strong>：除了原方法，图里画了三种拆法，只有两种是合理的，其中一种作者说"不常见"。记住"抽出子任务"成立的两个条件，它们正是"连体方法"这面红旗的反面。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>拆分不是免费的</h4><p>更多组件、更多接口、更多协调代码，相关代码被分开，有时还得复制。组件越小，单个越简单，整体未必越简单。</p></div>
+  <div class="card"><h4>相关的才放在一起</h4><p>共享信息、双向地一起使用、概念上同属一类、看一个离不开另一个：满足这些，合起来往往更好。</p></div>
+  <div class="card"><h4>合并的三个理由</h4><p>共享信息；合并后接口更简单（甚至能把某些事自动做掉）；能消除重复。</p></div>
+  <div class="card"><h4>重复是缺抽象的信号</h4><p>一段不算简单的代码反复出现，说明你还没找到合适的抽象。<span data-flag="repetition"></span></p></div>
+  <div class="card"><h4>通用和专用要分开</h4><p>通用机制只提供那一个机制；为某个用途定制的代码放到那个用途的模块里。<span data-flag="special-general"></span><span data-principle="8"></span></p></div>
+  <div class="card"><h4>方法：做一件事，并做完整</h4><p>接口简单、实现深，长一点没关系。长度本身很少是拆分的理由。</p></div>
+  <div class="card"><h4>两种合理的拆法</h4><p>抽出能独立读懂的子任务（最好）；或把做了几件无关之事的方法拆成几个接口更简单的方法（少见）。</p></div>
+  <div class="card"><h4>连体方法</h4><p>不读另一个方法的实现就看不懂这一个，说明拆错了。深度比长度重要。<span data-flag="conjoined"></span></p></div>
+</div>
+
+<h2>先算账：拆分的成本和"相关"的迹象</h2>
+<p>很多人默认"小就是好"：组件越小，每个越简单。作者提醒，<strong>拆分这个动作本身</strong>就会带来原来没有的复杂性：</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>拆分的成本</th><th>具体表现</th></tr></thead>
+  <tbody>
+    <tr><td>数量</td><td>组件越多越难记住、越难找到想要的那个；每个新组件通常还带来一个新接口。</td></tr>
+    <tr><td>管理代码</td><td>原来用一个对象就够了，现在要创建、连接、协调好几个。</td></tr>
+    <tr><td>分离</td><td>相关的代码被放进不同的类、不同的文件，看不到彼此。组件真正独立时这是好事；有依赖时，读代码的人只能来回翻，甚至意识不到依赖存在而写出 bug。</td></tr>
+    <tr><td>重复</td><td>原来只有一份的代码，拆开后可能每个组件都需要一份。</td></tr>
+  </tbody>
+</table></div>
+<p>所以合并的收益取决于两段代码<strong>有多相关</strong>。书中给了四个迹象，用自己的话记：</p>
+<ol>
+  <li><strong>共享信息</strong>：比如两段代码都依赖同一种文件格式的语法。</li>
+  <li><strong>一起使用</strong>：用了一个几乎一定会用另一个。但这条<strong>只有双向成立才有说服力</strong>。作者的反例是块缓存和哈希表：块缓存几乎总会用到哈希表，可哈希表在无数和块缓存无关的场合都会用，所以它们应该分开。</li>
+  <li><strong>概念重叠</strong>：能被一个简单的上层类别同时概括，例如子串查找和大小写转换都属于"字符串处理"。</li>
+  <li><strong>离开另一个就看不懂</strong>：读一段时总要去看另一段。</li>
+</ol>
+
+<h2>什么时候合在一起</h2>
+<h3>共享信息：合（9.1、9.2 节）</h3>
+<p>书中回到第 5 章的 HTTP 服务器项目：读取请求和解析请求被放在两个类里，可"读取"为了知道请求在哪结束，不得不做掉大半解析工作。合并后代码更短，中间那个"把原始字符串从一个方法交给另一个方法"的接口也消失了。9.2 节再加一个 Java 的例子：如果文件流和缓冲流合成一个类、默认带缓冲，大多数使用者根本不必知道缓冲的存在。下面是同一类问题的一个常见版本：</p>
+<div class="ba">
+  <div data-label="改之前：读写各懂一半规则">
+<pre><code class="lang-cpp">// report_export.cpp
+std::string toCsvField(std::string_view s);          // 含 , " \n 时加引号，" 写两遍
+
+// data_import.cpp（另一个团队写的）
+std::vector&lt;std::string&gt; splitCsvLine(std::string_view line);
+// 以引号开头的字段读到单独的引号为止；不支持字段内换行
+
+// 调用方必须自己保证：先按行切，再调用 splitCsvLine
+for (auto&amp; line : splitLines(text)) rows.push_back(splitCsvLine(line));</code></pre>
+    <p>"什么字符要加引号、引号如何转义、字段里能否换行"是<strong>同一份知识</strong>，却分在两个文件里，而且已经不一致：导出会给带换行的字段加引号，导入却按行切分，一读就错。调用方还要知道"先按行切"这条规则。</p>
+  </div>
+  <div data-label="改之后：一个 CSV 模块">
+<pre><code class="lang-cpp">// csv.h —— 引号、转义、换行规则只在 csv.cpp 里定义一次
+class CsvWriter {
+public:
+    explicit CsvWriter(std::ostream&amp; out, char sep = ',');
+    void writeRow(std::span&lt;const std::string_view&gt; fields);
+};
+class CsvReader {
+public:
+    explicit CsvReader(std::istream&amp; in, char sep = ',');
+    // 读下一条记录；字段内可以有换行。到达末尾返回 false。
+    bool readRow(std::vector&lt;std::string&gt;&amp; fields);
+};</code></pre>
+    <p>读和写放在同一个模块里，规则只定义一次，两边不会再走样。接口也更简单了：调用方不用再自己按行切，"一条记录可能跨行"这件事被藏了起来。代价是两个团队要共用一个模块，修改要更小心。</p>
+  </div>
+</div>
+
+<h3>消除重复：合（9.3 节）</h3>
+<p>同一段代码反复出现时，有两种合法的去重方式。第一种是把它抽成一个方法：<strong>片段越长、新方法的签名越简单</strong>，收益越大；如果片段只有一两行，或者和周围的一堆局部变量纠缠在一起（抽出来要传一串引用参数），收益就很小，甚至得不偿失。第二种是调整结构，让这段代码<strong>只需要在一个地方执行</strong>。书中的例子是按类型处理网络包、多处重复同一条日志语句，用 <code>goto</code> 跳到函数末尾统一处理。下面是 C 程序员最熟悉的版本：出错时的清理代码。</p>
+<div class="ba">
+  <div data-label="改之前：清理代码写了 5 遍">
+<pre class="numbered" data-mark="5,7,10,12,14"><code class="lang-c">int copyFile(const char *src, const char *dst) {
+    int in = open(src, O_RDONLY);
+    if (in &lt; 0) return -1;
+    int out = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (out &lt; 0) { close(in); return -1; }
+    char *buf = malloc(BUFSZ);
+    if (!buf) { close(out); close(in); return -1; }
+    for (;;) {
+        ssize_t n = read(in, buf, BUFSZ);
+        if (n &lt; 0) { free(buf); close(out); close(in); return -1; }
+        if (n == 0) break;
+        if (writeAll(out, buf, n) &lt; 0) { free(buf); close(out); close(in); return -1; }
+    }
+    free(buf); close(out); close(in);
+    return 0;
+}</code></pre>
+    <p>每多一种资源，之前的每个出错分支都要补一句释放；漏一处就是泄漏。</p>
+  </div>
+  <div data-label="改法一：goto 到统一出口">
+<pre><code class="lang-c">int copyFile(const char *src, const char *dst) {
+    int rc = -1, in = -1, out = -1;
+    char *buf = NULL;
+    if ((in = open(src, O_RDONLY)) &lt; 0) goto done;
+    if ((out = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644)) &lt; 0) goto done;
+    if (!(buf = malloc(BUFSZ))) goto done;
+    for (;;) {
+        ssize_t n = read(in, buf, BUFSZ);
+        if (n &lt; 0) goto done;
+        if (n == 0) break;
+        if (writeAll(out, buf, n) &lt; 0) goto done;
+    }
+    rc = 0;
+done:
+    free(buf);
+    if (out &gt;= 0) close(out);
+    if (in &gt;= 0) close(in);
+    return rc;
+}</code></pre>
+    <p>清理只写一次。作者承认 <code>goto</code> 名声不好、滥用会让代码没法读，但用来<strong>跳出嵌套代码、汇合到统一的清理</strong>正合适。（本站补充：Linux 内核里大量使用这种写法。）</p>
+  </div>
+  <div data-label="改法二：C++ 的 RAII" data-tone="neutral">
+<pre><code class="lang-cpp">// UniqueFd：析构时 close；openOrThrow 失败时抛 std::system_error
+void copyFile(const std::string&amp; src, const std::string&amp; dst) {
+    UniqueFd in  = openOrThrow(src, O_RDONLY);
+    UniqueFd out = openOrThrow(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    std::vector&lt;char&gt; buf(kBufSize);
+    while (size_t n = readOrThrow(in, buf)) writeAllOrThrow(out, {buf.data(), n});
+}</code></pre>
+    <p>本站补充：在 C++ 里，"清理只在一处执行"由析构函数在语言层面保证，连出口标签都不需要了。思路和 <code>goto done</code> 相同：把重复的代码变成只执行一次的代码。</p>
+  </div>
+</div>
+
+<h2>什么时候分开：通用与专用</h2>
+<p>9.4 节重申了第 6 章的原则：如果一个模块提供的是一个可用于多种用途的机制，它就<strong>只应该提供这个机制</strong>：既不该包含为某个具体用途定制的代码，也不该再塞进别的通用机制。为特定用途写的代码，应该放到和那个用途相关的模块里。违反它的代码，就是"通用与专用混杂"：</p>
+<div class="ba">
+  <div data-label="改之前：缓存认识了&quot;会话&quot;">
+<pre class="numbered" data-mark="5,6,7,8"><code class="lang-cpp">const std::string* TtlCache::get(std::string_view key) {
+    auto it = map_.find(key);
+    if (it == map_.end() || it-&gt;second.expiresAt &lt; clock_.now())
+        return nullptr;
+    // 登录会话每次访问续期 30 分钟，管理员会话不续期
+    if (key.starts_with("sess:") &amp;&amp; !looksLikeAdmin(it-&gt;second.value))
+        it-&gt;second.expiresAt = clock_.now() + 30min;
+    return &amp;it-&gt;second.value;
+}</code></pre>
+    <p>十几个服务共用的缓存里，混进了只属于登录会话的规则：键前缀、角色判断、续期时长。会话规则每改一次，都得改这个公共模块。</p>
+  </div>
+  <div data-label="改之后：机制归机制，规则归用途">
+<pre><code class="lang-cpp">// ttl_cache.h —— 只提供通用机制
+class TtlCache {
+public:
+    const std::string* get(std::string_view key);
+    void put(std::string key, std::string value, Duration ttl);
+    bool extend(std::string_view key, Duration ttl);   // 给已有条目续期
+};
+
+// session_store.cpp —— 会话的规则都在这里
+std::optional&lt;Session&gt; SessionStore::lookup(std::string_view id) {
+    const std::string* raw = cache_.get(sessionKey(id));
+    if (!raw) return std::nullopt;
+    Session s = Session::decode(*raw);
+    if (!s.isAdmin) cache_.extend(sessionKey(id), kIdleTimeout);
+    return s;
+}</code></pre>
+    <p>缓存只多了一个通用的 <code>extend</code>，别的用途（比如滑动过期的限流记录）也能用；"谁续期、续多久"留在会话模块。改会话规则不再碰缓存。</p>
+  </div>
+</div>
+<p>书中用两个学生项目的例子说明"合"与"分"都可能做错。<strong>9.5 节</strong>：编辑器的插入光标和选区看似总是一起被操作，有个团队把它们合进一个对象，结果上层仍然得分别对待两者，实现反而更绕；拆开后（用一个通用的"位置"类表示两者）使用和实现都更简单。<strong>9.6 节</strong>：一个项目把每种错误日志都抽成一个专门类里的单行方法，每个方法只被调用一次、却要配一大段注释，读的人得在调用处和日志方法之间来回翻；直接把日志写在发现错误的地方更好。前者是"不够相关却合在一起"，后者是"紧密相关却被拆开"。</p>
+
+<h2>方法：拆还是合</h2>
+<p>同样的问题落到方法层面，就是最常见的争论：长方法要不要拆？作者的立场很明确：长方法通常确实更难懂，但<strong>长度本身很少是拆分的好理由</strong>，开发者普遍拆得太多。一个方法如果做了一件事并且做完整、接口简单、实现深，长一点没关系。比如一个方法由五段各 20 行的代码依次组成：如果各段相对独立，可以一段一段读，拆开没多大好处；如果各段之间交互复杂，就更应该放在一起，让读者一次看全。</p>
+<p>拆分只有在<strong>整体抽象变得更干净</strong>时才值得。下图把方法画成第 4 章的矩形（顶边是接口，面积是功能），上方是调用者：</p>
+<figure class="fig">
+<svg viewBox="0 0 640 330" width="640" role="img" aria-label="方法拆分的四种情形：原方法；抽出子任务（好）；拆成两个调用者可见的方法（偶尔合适）；拆成一串浅方法（不好）">
+  <defs><marker id="ar9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <g font-size="12">
+    <!-- (a) -->
+    <rect x="45" y="20" width="70" height="26" rx="6" class="box"/><text x="80" y="37" text-anchor="middle">调用者</text>
+    <line x1="80" y1="46" x2="80" y2="76" class="arrow" marker-end="url(#ar9)"/>
+    <rect x="55" y="80" width="50" height="140" class="accent-soft"/>
+    <line x1="55" y1="80" x2="105" y2="80" style="stroke:var(--accent)" stroke-width="5"/>
+    <text x="80" y="252" text-anchor="middle" font-weight="700">原方法</text>
+    <text x="80" y="272" text-anchor="middle" class="t-muted">接口窄，功能多</text>
+
+    <!-- (b) -->
+    <rect x="205" y="20" width="70" height="26" rx="6" class="box"/><text x="240" y="37" text-anchor="middle">调用者</text>
+    <line x1="240" y1="46" x2="240" y2="76" class="arrow" marker-end="url(#ar9)"/>
+    <rect x="215" y="80" width="50" height="95" class="ok-soft"/>
+    <line x1="215" y1="80" x2="265" y2="80" style="stroke:var(--ok)" stroke-width="5"/>
+    <text x="240" y="132" text-anchor="middle" font-size="11" class="t-muted">父</text>
+    <line x1="255" y1="175" x2="270" y2="186" class="arrow" marker-end="url(#ar9)"/>
+    <rect x="258" y="190" width="36" height="34" class="ok-soft"/>
+    <line x1="258" y1="190" x2="294" y2="190" style="stroke:var(--ok)" stroke-width="4"/>
+    <text x="276" y="212" text-anchor="middle" font-size="11" class="t-muted">子</text>
+    <text x="240" y="252" text-anchor="middle" font-weight="700" style="fill:var(--ok)">✓ 抽出子任务</text>
+    <text x="240" y="272" text-anchor="middle" class="t-muted">调用者接口不变</text>
+    <text x="240" y="290" text-anchor="middle" class="t-muted">父、子能各自读懂</text>
+
+    <!-- (c) -->
+    <rect x="345" y="20" width="50" height="26" rx="6" class="box"/><text x="370" y="37" text-anchor="middle">调用者</text>
+    <rect x="410" y="20" width="50" height="26" rx="6" class="box"/><text x="435" y="37" text-anchor="middle">调用者</text>
+    <line x1="370" y1="46" x2="375" y2="76" class="arrow" marker-end="url(#ar9)"/>
+    <line x1="435" y1="46" x2="430" y2="76" class="arrow" marker-end="url(#ar9)"/>
+    <rect x="360" y="80" width="30" height="85" class="warn-soft"/>
+    <line x1="360" y1="80" x2="390" y2="80" style="stroke:var(--warn)" stroke-width="4"/>
+    <rect x="415" y="80" width="30" height="85" class="warn-soft"/>
+    <line x1="415" y1="80" x2="445" y2="80" style="stroke:var(--warn)" stroke-width="4"/>
+    <text x="402" y="252" text-anchor="middle" font-weight="700" style="fill:var(--warn)">△ 拆成两个方法</text>
+    <text x="402" y="272" text-anchor="middle" class="t-muted">各自接口更简单，</text>
+    <text x="402" y="290" text-anchor="middle" class="t-muted">多数调用者只用其一</text>
+
+    <!-- (d) -->
+    <rect x="525" y="20" width="70" height="26" rx="6" class="box"/><text x="560" y="37" text-anchor="middle">调用者</text>
+    <line x1="545" y1="46" x2="512" y2="96" class="arrow" marker-end="url(#ar9)"/>
+    <line x1="560" y1="46" x2="560" y2="96" class="arrow" marker-end="url(#ar9)"/>
+    <line x1="575" y1="46" x2="608" y2="96" class="arrow" marker-end="url(#ar9)"/>
+    <rect x="495" y="100" width="34" height="20" class="bad-soft"/>
+    <rect x="543" y="100" width="34" height="20" class="bad-soft"/>
+    <rect x="591" y="100" width="34" height="20" class="bad-soft"/>
+    <line x1="495" y1="100" x2="529" y2="100" style="stroke:var(--bad)" stroke-width="4"/>
+    <line x1="543" y1="100" x2="577" y2="100" style="stroke:var(--bad)" stroke-width="4"/>
+    <line x1="591" y1="100" x2="625" y2="100" style="stroke:var(--bad)" stroke-width="4"/>
+    <path d="M512,122 C512,150 560,150 560,124" class="arrow" stroke-dasharray="4 3" marker-end="url(#ar9)"/>
+    <path d="M560,122 C560,150 608,150 608,124" class="arrow" stroke-dasharray="4 3" marker-end="url(#ar9)"/>
+    <text x="560" y="168" text-anchor="middle" font-size="11" class="t-muted">状态来回传</text>
+    <text x="560" y="252" text-anchor="middle" font-weight="700" style="fill:var(--bad)">✗ 一串浅方法</text>
+    <text x="560" y="272" text-anchor="middle" class="t-muted">调用者要依次调用</text>
+    <text x="560" y="290" text-anchor="middle" class="t-muted">接口总量变大</text>
+  </g>
+</svg>
+<figcaption>从左到右：原方法；抽出子任务（作者认为最好的拆法）；拆成调用者可见的两个方法（只在原方法做了几件不相关的事时才合适）；拆成一串必须依次调用的浅方法（不该这样拆）。本站自绘示意。</figcaption>
+</figure>
+<ul>
+  <li><strong>抽出子任务</strong>（最好的方式）：父方法调用子方法，调用者看到的接口不变。成立的条件是子任务能<strong>干净地分开</strong>：读子方法的人不需要知道父方法，读父方法的人不需要理解子方法的实现。通常这意味着子方法比较通用，别处也可能用得上。</li>
+  <li><strong>拆成两个调用者可见的方法</strong>：原方法同时做了几件不太相关的事，接口因此过于复杂。拆完后每个方法的接口都应该比原来简单，而且<strong>大多数调用者只需调用其中一个</strong>。作者说这种拆法并不常见。</li>
+  <li><strong>反例</strong>：拆完后调用者必须把几个方法全部调一遍，还要在它们之间传递状态。这只是把复杂性推给了调用者。</li>
+</ul>
+<p>反过来，合并方法也常常让系统更简单：把两个浅方法换成一个深方法、消除重复、去掉方法之间的依赖或中间数据结构、把分散在几处的知识收到一处、或者得到更简单的接口。判断拆错了的信号就是第三面红旗：</p>
+<blockquote class="quote">It should be possible to understand each method independently.<cite>— 第 9.7 节</cite></blockquote>
+<p>"连体"不只发生在方法之间：任何两段物理上分开、却只能对照着读的代码，都属于这种情况。下面的交互把同一个"导入订单"功能写成三种结构，并把代码行之间的依赖画出来：某一行用到的值是在哪一行产生的。</p>
+
+<section class="sim" id="sim-cj">
+  <div class="sim-head"><span class="tag">交互</span><h3>依赖线：连体方法长什么样</h3>
+    <div class="desc">同一个功能的三种写法。右侧弧线连接"产生某个值的行"和"用到它的行"。红线跨越了函数边界，而且走的是成员变量这种看不见的通道：读其中一个函数时，你必须同时打开另一个。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <div class="cj-modes" id="cj-modes"></div>
+      <label><input type="checkbox" id="cj-cross"> 只看跨函数的依赖</label>
+    </div>
+    <div class="stage" id="cj-stage"></div>
+    <div class="cj-legend"><span><i class="l-in"></i>函数内部的依赖</span><span><i class="l-x"></i>跨函数的隐藏依赖（成员变量）</span><span><i class="l-call"></i>调用（参数进、结果出）</span></div>
+    <div class="narrate" id="cj-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="cj-fn">0</div><div class="l">函数个数（接口数）</div></div>
+      <div class="stat"><div class="v" id="cj-x">0</div><div class="l">跨函数的隐藏依赖</div></div>
+      <div class="stat"><div class="v" id="cj-read">0</div><div class="l">读懂一个函数最多要连带读几个</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">代码是本站为说明结构而写的简化版。注意第三种写法也拆出了一个函数，但它和第二种的区别不在函数个数，而在于<strong>函数之间只通过参数和返回值交流</strong>：<code>parseCents</code> 可以完全不看调用者就读懂，调用者也不需要知道它的实现。</p>
+
+<h3>一张随身清单</h3>
+<p>把本章的标准压成几个问题，下次想拆或想合时逐条过一遍（括号里是对应的小节）：</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>问自己</th><th>答"是"时倾向于</th></tr></thead>
+  <tbody>
+    <tr><td>两段代码依赖同一个设计决定（格式、协议、规则）吗？（9.1）</td><td>合</td></tr>
+    <tr><td>合起来以后，调用者要学的接口会变少，或者某件事能自动完成吗？（9.2）</td><td>合</td></tr>
+    <tr><td>同一段不短的代码出现了好几次，而抽出来的签名会很简单吗？（9.3）</td><td>合（抽成方法，或让它只在一处执行）</td></tr>
+    <tr><td>"一起使用"只在一个方向上成立吗？（章首）</td><td>分</td></tr>
+    <tr><td>某段代码只为通用机制的某一种用途服务吗？（9.4）</td><td>分（放到那个用途的模块）</td></tr>
+    <tr><td>想抽出的那段，能不看父方法就读懂，父方法也不必看它的实现吗？（9.7）</td><td>可以抽出子任务</td></tr>
+    <tr><td>拆完后调用者得依次调用好几个方法、来回传状态吗？（9.7）</td><td>别拆</td></tr>
+    <tr><td>拆的唯一理由是"太长了"吗？（9.7、9.8）</td><td>先别拆，看它是否深、是否好读</td></tr>
+  </tbody>
+</table></div>
+
+<h2>与 Clean Code 的分歧</h2>
+<p>9.8 节是全书少有的点名反驳。Robert Martin 在《Clean Code》里主张函数要非常短：短到十行都算长，<code>if</code>、<code>else</code>、<code>while</code> 的块体最好只有一行（通常是一次函数调用），因此函数里不该出现嵌套结构，缩进不超过一两层。作者的回应可以概括为三点：</p>
+<ol>
+  <li>作者<strong>同意</strong>短函数一般比长函数好懂。但函数缩到几十行以内之后，再缩短对可读性的帮助就很小了。</li>
+  <li>真正该问的是：拆分有没有降低<strong>系统整体</strong>的复杂性？读几个短函数并弄清它们怎么配合，真的比读一个长一点的函数容易吗？函数越多，要写文档、要学的接口就越多。</li>
+  <li>函数拆得太小就失去了独立性，变成必须放在一起读的连体函数。这时还不如保留那个大一点的函数，让相关代码待在一处。</li>
+</ol>
+<blockquote class="quote">Depth is more important than length: first make functions deep, then try to make them short enough to be easily read.<cite>— 第 9.8 节</cite></blockquote>
+<p>这场争论远不止函数长度（两本书在注释上也有分歧，见第 12 章）。本站的<a href="../topics/clean-code.html">专题：APOSD 与 Clean Code</a> 做了完整对照，包括两本书各自的论据和你在团队里可以怎么取舍。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="合并也有尽头">
+  <p>这一章不是"越大越好"的许可证。作者在章首就说了：组件真正独立时，分离是好事，它让人一次只关注一件事。9.5 节的光标与选区就是"合错了"的例子。判断标准始终是那四个相关迹象，而不是哪种结构看起来更整洁。最后一节的结论是：选择信息隐藏最好、依赖最少、接口最深的结构。</p>
+</div>
+<div class="counter" data-title="消除重复也可能适得其反">
+  <p>作者只在"片段长、签名简单"时推荐抽方法。本站补充：业界常说"错误的抽象比重复更糟"。两段代码今天长得一样，背后可能是两个以后会各自演变的需求；硬抽成一个函数，再给它加上几个布尔参数来区分调用者，就同时得到了复杂签名和通用专用混杂。先确认它们<strong>共享的是同一个设计决定</strong>，再合并。</p>
+</div>
+<div class="counter" data-title="goto 的有限辩护">
+  <p>作者为 <code>goto</code> 辩护的范围很窄：用来跳出嵌套代码、汇合到统一的清理。这不是"goto 没问题"的一般结论。本站补充：在 C++ 里优先用 RAII，它从语言层面保证了"清理只执行一次"，并且对异常也成立。</p>
+</div>
+<div class="counter" data-title="与&quot;函数要短&quot;规范的冲突">
+  <p>很多团队的静态检查会限制函数行数或圈复杂度。本章的观点并不要求你删掉这些检查，而是把它们当成<strong>提示</strong>而不是目标：超标时先问"这个函数是不是做了几件事""有没有能独立读懂的子任务"，答案是否定的，就接受它长。另一方面，几百行的函数只有在"签名简单、容易读"时才算好，这个前提别忘了。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道连体方法、一道"看起来重复其实没问题"、一道拆成浅方法的接口对比。</p>
+<div class="drill-embed" data-ids="ch09-flag-02 ch09-flag-05 ch09-ab-04"></div>
+
+<h2>动手：项目任务</h2>
+<p>minikv 里正好集齐了本章的三面红旗：几个命令处理函数里反复出现同一段参数检查和错误回复的代码；一个切词函数把结果写进成员变量，几个命令处理函数再从这些成员变量里读，不看前者就看不懂后者；还有一个通用的组件里夹带了只服务某一条命令的特殊逻辑。这个任务要你先用依赖线的眼光找出它们，再决定哪里该合、哪里该分，并说明每个决定依据的是本章的哪一条标准。</p>
+<div class="lab"><p>任务 m05：消除 minikv 中的重复代码、连体方法和通用/专用混杂。详见 <a href="../project/m05.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="2"><div class="q">下列哪一项<strong>不是</strong>作者列出的"拆分本身带来的复杂性"？</div>
+  <div class="opts"><button>A. 原来只有一份的代码可能要复制到多个组件里</button><button>B. 需要额外的代码来管理多个组件</button><button>C. 每个组件的单元测试变难写</button><button>D. 组件和接口的数量变多</button></div>
+  <div class="explain">书中列的是数量（含接口）、管理代码、分离、重复四项。测试难度不在其中。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">块缓存几乎总要用哈希表。按本章的标准，它们应该：</div>
+  <div class="opts"><button>A. 合并，因为它们总是一起使用</button><button>B. 分开，因为"一起使用"只在双向成立时才有说服力，而哈希表在很多与块缓存无关的地方都会用</button><button>C. 合并，因为合并后的类更深</button><button>D. 取决于哪个类的代码更多</button></div>
+  <div class="explain">这正是作者在章首用的反例。单向的"一起使用"不足以说明两者该合并。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">三处代码都有一段 2 行的相同片段，而且都要读写调用处的 4 个局部变量。按 9.3 节，最可能的结论是：</div>
+  <div class="opts"><button>A. 抽成方法的收益很小：片段太短，而且签名会很复杂</button><button>B. 抽成函数，用 4 个引用参数传递局部变量</button><button>C. 必须抽成函数，任何重复都是红旗</button><button>D. 抽成宏，避免函数调用开销</button></div>
+  <div class="explain">抽方法最有效的情况是片段长、签名简单。片段只有一两行，或和很多局部变量纠缠时，替换成方法调用没有多大好处。（本站补充：如果这几个变量本来就是一个整体，更好的做法可能是把它们变成一个类型。）</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">一个通用的 HTTP 客户端库里有这么一段：<code>if (host == "payments.internal") timeout = 30s;</code>。这属于：</div>
+  <div class="opts"><button>A. 连体方法</button><button>B. 透传方法</button><button>C. 通用与专用混杂</button><button>D. 没有问题，只是一个默认值</button></div>
+  <div class="explain">通用机制里出现了只服务某个具体用途的代码。支付服务的超时要求应该由支付相关的代码在调用时指定（客户端提供通用的"按请求设置超时"即可）。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">你从一个方法里抽出了一个子方法。下面哪种情况说明这次拆分<strong>多半是个错误</strong>？</div>
+  <div class="opts"><button>A. 为了看懂父方法在做什么，你总要跳进子方法看它改了哪些成员变量</button><button>B. 子方法的名字很好起</button><button>C. 子方法在别处也被调用了</button><button>D. 父方法变短了</button></div>
+  <div class="explain">需要在父子之间来回翻才能看懂，就是"连体方法"。好的子任务应该让两边各自独立可读；被别处复用反而是好迹象。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">关于"把一个方法拆成两个调用者可见的方法"，哪项说法正确？</div>
+  <div class="opts"><button>A. 只要每个新方法都比原方法短就值得</button><button>B. 调用者需要依次调用两个方法也没关系，接口更细更灵活</button><button>C. 这是作者最推荐的拆法</button><button>D. 只有在原方法做了几件不相关的事、拆后每个接口都更简单、且多数调用者只需其一时才合适</button></div>
+  <div class="explain">作者最推荐的是"抽出子任务"。拆成调用者可见的多个方法并不常见，如果调用者得把它们全调一遍、还要传状态，就是拆坏了。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">作者对《Clean Code》"函数要非常短"的回应，下列哪项最准确？</div>
+  <div class="opts"><button>A. 函数长短无所谓</button><button>B. 同意短函数一般更好懂，但几十行以内再缩短帮助不大；拆分要看是否降低整体复杂性，深度比长度重要</button><button>C. 完全同意，并建议把阈值定为 20 行</button><button>D. 函数应该至少 100 行</button></div>
+  <div class="explain">作者没有走向另一个极端，顺序是：先把函数做深，再设法让它短到容易读；不要为了长度牺牲深度。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>拆分有成本：数量、接口、管理代码、分离、重复。目标是系统整体的复杂性更低，而不是每个组件更小。</li>
+  <li>相关的迹象：共享信息、双向地一起使用、概念重叠、离开另一个就看不懂。</li>
+  <li>该合：共享信息、合并后接口更简单、能消除重复（片段长且签名简单时抽方法，或让代码只在一处执行）。</li>
+  <li>该分：通用机制和专用代码；真正互相独立的部分。</li>
+  <li>方法：做一件事并做完整；长度很少是拆分的理由。合理的拆法是抽出能独立读懂的子任务，或（少见地）拆成几个接口更简单的方法。</li>
+  <li>三面红旗：重复、通用与专用混杂、连体方法。深度比长度重要。</li>
+</ul>
+<p>全书"模块设计"这一部分到这里结束。第 10 章进入一个具体而常被忽视的复杂性来源：<strong>异常</strong>。异常也是接口的一部分，作者会给出一个听起来很激进的建议：把错误定义为不存在。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段代码。</p>
+<textarea class="note" data-key="ch09-oneline" placeholder="例如：我们为了过行数检查拆出来的那几个 handleXxx，其实是连体方法，因为……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, s } = APOSD;
+  // 每种写法：函数列表（每个函数是若干行，行可带 id），依赖边 [from, to, kind]；kind: "in"（同函数，自动判定）/ "x"（跨函数，自动判定）/ "call"
+  const MODES = [
+    { name: "一个深函数",
+      fns: [[
+        ["Result importOrders(Path p) {"],
+        ["  Csv f = openCsv(p);", "f"],
+        ["  int line = 0, bad = 0;", "cnt"],
+        ["  vector<Order> out;", "out"],
+        ["  for (Row& r : f.rows()) {", "r"],
+        ["    ++line;", "inc"],
+        ["    auto s = trim(r[2]);", "s"],
+        ["    auto dot = s.find('.');", "dot"],
+        ["    auto amt = toCents(s, dot);", "amt"],
+        ["    if (!amt) { ++bad; continue; }", "chk"],
+        ["    out.push_back({r[0], *amt});", "push"],
+        ["  }"],
+        ["  db.insertAll(out);", "ins"],
+        ["  return {out.size(), bad, line};", "ret"],
+        ["}"]]],
+      edges: [["f", "r"], ["cnt", "inc"], ["r", "s"], ["s", "dot"], ["dot", "amt"], ["amt", "chk"], ["out", "push"], ["amt", "push"], ["push", "ins"], ["cnt", "ret"]],
+      note: "所有依赖都在一个函数内部，读者一屏就能看全：line、bad、out 在哪里产生、在哪里被用。这个函数签名简单（一个路径进，一个结果出），虽然不短，但它是深的。唯一的遗憾是中间三行解析金额的细节打断了主流程。" },
+    { name: "切成碎片（连体）",
+      fns: [
+        [["void Importer::run(Path p) {"], ["  open(p);", "c1"], ["  while (next())", "c2"], ["    handleRow();", "c3"], ["  commit();", "c4"], ["}"]],
+        [["void Importer::open(Path p) {", "open"], ["  f_ = openCsv(p);", "wf"], ["  line_ = bad_ = 0;", "wcnt"], ["  out_.clear();", "wout"], ["}"]],
+        [["bool Importer::next() {", "next"], ["  if (!f_.read(row_))", "rrow"], ["    return false;"], ["  ++line_;", "inc"], ["  return true;"], ["}"]],
+        [["void Importer::handleRow() {", "handle"], ["  auto amt = cents(row_[2]);", "amt"], ["  if (!amt) { ++bad_; return; }", "chk"], ["  out_.push_back({row_[0],*amt});", "push"], ["}"]],
+        [["void Importer::commit() {", "commit"], ["  db.insertAll(out_);", "ins"], ["}"]]],
+      edges: [["c1", "open", "call"], ["c2", "next", "call"], ["c3", "handle", "call"], ["c4", "commit", "call"],
+        ["wf", "rrow"], ["wcnt", "inc"], ["wcnt", "chk"], ["wout", "push"], ["rrow", "amt"], ["rrow", "push"], ["push", "ins"], ["amt", "chk"], ["amt", "push"]],
+      note: "每个函数都很短，但它们通过 f_、row_、line_、bad_、out_ 这些成员变量交换数据，而且依赖调用顺序：handleRow 默认 next 刚把下一行读进了 row_，next 默认 open 已经初始化了 f_。这些约定哪个签名里都看不到。读 handleRow 时你得同时打开 next 和 open：这就是连体方法。" },
+    { name: "深函数 + 通用子函数",
+      fns: [
+        [["Result importOrders(Path p) {"], ["  Csv f = openCsv(p);", "f"], ["  int line = 0, bad = 0;", "cnt"], ["  vector<Order> out;", "out"], ["  for (Row& r : f.rows()) {", "r"], ["    ++line;", "inc"], ["    auto amt = parseCents(r[2]);", "amt"], ["    if (!amt) { ++bad; continue; }", "chk"], ["    out.push_back({r[0], *amt});", "push"], ["  }"], ["  db.insertAll(out);", "ins"], ["  return {out.size(), bad, line};", "ret"], ["}"]],
+        [["// \"12.30\" → 1230；非法 → nullopt"], ["optional<int64_t>"], ["parseCents(string_view s) {", "pc"], ["  s = trim(s);", "ts"], ["  auto dot = s.find('.');", "dot"], ["  return toCents(s, dot);", "tc"], ["}"]]],
+      edges: [["f", "r"], ["cnt", "inc"], ["r", "amt"], ["amt", "chk"], ["out", "push"], ["amt", "push"], ["push", "ins"], ["cnt", "ret"], ["amt", "pc", "call"], ["ts", "dot"], ["dot", "tc"]],
+      note: "这是 9.7 节说的\"抽出子任务\"：parseCents 只看参数、只交回结果，完全不知道谁在调用它；importOrders 也不需要知道它的实现，只要读一行注释。两者之间唯一的连线是一次调用。主流程比第一种更清楚，parseCents 还能被别处复用。" },
+  ];
+  const LH = 17, TOP = 10, GAP = 12, XT = 10, XA = 250;
+  const modesEl = document.getElementById("cj-modes"), stage = document.getElementById("cj-stage"), narr = document.getElementById("cj-narrate"), crossOnly = document.getElementById("cj-cross");
+  let cur = 1;
+  const btns = MODES.map((m, i) => h("button", { onclick: () => { cur = i; draw(); } }, m.name));
+  modesEl.append(...btns);
+  crossOnly.onchange = draw;
+  function draw() {
+    const m = MODES[cur];
+    btns.forEach((b, i) => b.classList.toggle("on", i === cur));
+    // 布局：每行的 y，记录 id → {y, fn}
+    const pos = {}, boxes = [];
+    let y = TOP;
+    m.fns.forEach((fn, fi) => {
+      const y0 = y;
+      fn.forEach(([, id]) => { y += LH; if (id) pos[id] = { y, fn: fi }; });
+      boxes.push({ y0, y1: y + 6, lines: fn, fi });
+      y += GAP + 6;
+    });
+    const H = y;
+    const svg = s("svg", { viewBox: `0 0 330 ${H}`, role: "img", "aria-label": "代码行之间的依赖线" });
+    boxes.forEach((b) => {
+      svg.append(s("rect", { x: 3, y: b.y0 + 3, width: 242, height: b.y1 - b.y0, rx: 6, class: "box" }));
+      b.lines.forEach(([t], k) => svg.append(s("text", { x: XT, y: b.y0 + (k + 1) * LH, "font-size": 10.5, class: "mono", style: "white-space:pre", text: t })));
+    });
+    let nx = 0;
+    const links = {};   // 跨函数隐藏依赖：fn → 关联的其他 fn
+    m.edges.forEach(([a, b, kind]) => {
+      const pa = pos[a], pb = pos[b];
+      if (!pa || !pb) return;
+      const k = kind === "call" ? "call" : pa.fn === pb.fn ? "in" : "x";
+      if (k === "x") {
+        nx++;
+        (links[pa.fn] = links[pa.fn] || new Set()).add(pb.fn);
+        (links[pb.fn] = links[pb.fn] || new Set()).add(pa.fn);
+      }
+      if (crossOnly.checked && k === "in") return;
+      const ya = pa.y - 4, yb = pb.y - 4, span = Math.abs(yb - ya) / LH;
+      const bx = XA + 10 + Math.min(span, 18) * 3.4;
+      const st = k === "x" ? "stroke:var(--bad)" : k === "call" ? "stroke:var(--ok)" : "stroke:var(--faint)";
+      svg.append(s("path", { d: `M${XA},${ya} C${bx},${ya} ${bx},${yb} ${XA},${yb}`, fill: "none", style: st, "stroke-width": k === "in" ? 1.2 : 1.8, "stroke-dasharray": k === "call" ? "4 3" : null }));
+      svg.append(s("circle", { cx: XA, cy: ya, r: 2.2, style: st.replace("stroke", "fill") }), s("circle", { cx: XA, cy: yb, r: 2.2, style: st.replace("stroke", "fill") }));
+    });
+    stage.replaceChildren(svg);
+    const maxRead = Math.max(0, ...Object.values(links).map((st) => st.size));
+    document.getElementById("cj-fn").textContent = m.fns.length;
+    document.getElementById("cj-x").textContent = nx;
+    document.getElementById("cj-read").textContent = maxRead;
+    narr.textContent = m.note + (crossOnly.checked ? (nx ? ` 现在只显示跨函数的依赖：共 ${nx} 条红线。` : " 现在只显示跨函数的依赖：没有红线，函数之间只靠参数和返回值交流。") : "");
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

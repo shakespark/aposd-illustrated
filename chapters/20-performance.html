@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 20 章 · 为性能而设计</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch20.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+#lat-stage svg { display: block; margin: 0 auto; }
+#lat-stage .row { cursor: pointer; }
+#lat-stage .row .hit { fill: transparent; }
+#lat-stage .row:hover .hit { fill: var(--surface-2); }
+#lat-stage .row.on .hit { fill: var(--accent-soft); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cost-table td:first-child { white-space: nowrap; }
+.src-book { color: var(--accent); font-size: 12.5px; white-space: nowrap; }
+.src-site { color: var(--warn); font-size: 12.5px; white-space: nowrap; }
+</style>
+</head>
+<body data-chapter="20">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>系统必须快的时候，怎样拿到性能，又不把前面十九章辛苦换来的简洁设计赔进去？</strong></p>
+</div>
+<p>前面所有章节都围绕一个目标：让软件尽可能简单、好懂。很多 C/C++ 程序员读到这里会有一个疑问：这些主张是不是只适合"不在乎快慢"的代码？深模块多了一层调用，通用接口多了一层判断，系统还能快吗？</p>
+<p>这一章正面回答这个疑问，而且答案有点出人意料：作者认为简洁和高性能并不冲突，<strong>简单的代码通常反而更快</strong>。复杂的代码慢，往往是因为它做了多余或重复的工作。全章按一条时间线展开：平时怎样选设计（20.1）→ 系统真的慢了先做什么（20.2）→ 找不到根本性修复时怎样改写一段热点代码（20.3），最后用作者自己的存储系统 RAMCloud 里的一个类做完整示范（20.4）。</p>
+<p>它和第 21 章是一对：性能是"什么最重要"的一个具体例子。当性能真的重要时，设计就该围绕它来组织。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>20.1 节那份"昂贵操作"清单</strong>：注意作者除了给绝对时间，还常常换算成"相当于多少条指令的时间"。同一节后半段有一条"什么时候值得为性能增加复杂度"的分级规则，读时把它整理成三种情况。</li>
+    <li><strong>20.2 节的最后两句</strong>很容易被跳过：改动如果没有带来可测量的提升，就撤回，除非它让系统更简单。想想你见过多少"优化"在没测过的情况下留在了代码里。</li>
+    <li><strong>20.3～20.4 节</strong>：先读懂"理想代码"是怎么构造出来的，再去数一数 Buffer 例子里原来的关键路径检查了几个条件，新代码又靠什么一次排除了三种特殊情况。还要留意关于 <code>totalLength</code> 的那段说明：作者为什么故意在关键路径上多留了一点工作。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>走中间路线</h4><p>逐条语句抠性能会拖慢开发、增加复杂度，很多"优化"也没用；完全不管性能，又会让低效散落各处，最后无从下手。</p></div>
+  <div class="card"><h4>选"天然高效"的设计</h4><p>天然高效（naturally efficient）：知道哪些操作贵，就能在同样简洁的方案里挑便宜的那个：不需要顺序时用哈希表，结构体直接放进数组而不是放指针。</p></div>
+  <div class="card"><h4>先测量，改完再测</h4><p>直觉不可靠，老手也一样。测量要深入到少数几个具体位置，并留下基线；改完没有可测的提升就撤回。</p></div>
+  <div class="card"><h4>优先找根本性修复</h4><p>根本性修复（fundamental fix）：加缓存、换算法、换架构，往往比改写代码有效得多，而且可以用前面各章的方法干净地实现。</p></div>
+  <div class="card"><h4>最后手段：围绕关键路径</h4><p>关键路径（critical path）指最常见情况下必须执行的代码。先想象这条路径上"最少要执行的代码"，即理想代码（the ideal），再找一个最接近它、结构又干净的设计。</p></div>
+  <div class="card"><h4>一次判断挡住所有特殊情况</h4><p>理想的关键路径开头只有一个 <code>if</code>；特殊情况去路径之外处理，那里写得简单就好，不必追求快。</p></div>
+  <div class="card"><h4>简单通常更快</h4><p>定义掉的特殊情况不需要检查；深类每次调用做的事更多，浅层越多，层间穿越的开销越多。<span data-flag="shallow"></span> <span data-flag="passthrough"></span></p></div>
+</div>
+
+<blockquote class="quote">The most important overall lesson from this chapter is that clean design and high performance are compatible.<cite>— 第 20.5 节</cite></blockquote>
+
+<h2>哪些操作贵：数量级要心里有数</h2>
+<p>"天然高效"的前提是知道什么贵、什么便宜。下表把书中 20.1 节给出的数量级整理出来（<span class="src-book">书中数据</span>），只有一处书中没给数字，由本站补充并标明（<span class="src-site">本站补充</span>）。</p>
+<div class="table-wrap"><table class="cost-table">
+  <thead><tr><th>操作</th><th>书中给出的代价</th><th>来源</th><th>设计上的含义（本站整理）</th></tr></thead>
+  <tbody>
+    <tr><td>数据中心内网络往返</td><td>10–50 µs，相当于数万条指令的时间</td><td><span class="src-book">书中数据</span></td><td>别在循环里逐个发请求；能批量就批量</td></tr>
+    <tr><td>广域网往返</td><td>10–100 ms</td><td><span class="src-book">书中数据</span></td><td>跨地域的交互要尽量少、尽量异步</td></tr>
+    <tr><td>磁盘 I/O</td><td>通常 5–10 ms，相当于数百万条指令的时间</td><td><span class="src-book">书中数据</span></td><td>关键路径上避免同步读写磁盘</td></tr>
+    <tr><td>闪存 I/O</td><td>10–100 µs</td><td><span class="src-book">书中数据</span></td><td>比磁盘快两个数量级，但仍是网络往返级别</td></tr>
+    <tr><td>新型非易失内存</td><td>可能快到 1 µs，但仍约等于 2000 条指令的时间</td><td><span class="src-book">书中数据</span></td><td>"很快的存储"也远比内存访问慢</td></tr>
+    <tr><td>动态内存分配</td><td>书中只说分配、释放和垃圾回收都有明显开销，没有给数字</td><td><span class="src-site">本站补充</span></td><td>本站在一台笔记本上测得逐个 <code>make_unique</code> 约 40 ns/个（见下文微基准，含释放和遍历）</td></tr>
+    <tr><td>缓存未命中</td><td>从 DRAM 取数据到片上缓存，要几百条指令的时间</td><td><span class="src-book">书中数据</span></td><td>数据要连续摆放；很多程序的性能由缓存未命中和计算一起决定</td></tr>
+  </tbody>
+</table></div>
+<p>表里最有用的不是某个具体数字，而是<strong>它们之间差了多少个数量级</strong>。人对"微秒"和"毫秒"没有直觉，下面这个小工具把它们放到同一根对数轴上，还可以换成"如果一条指令花 1 秒"的人类时间来感受。</p>
+
+<section class="sim" id="sim-lat">
+  <div class="sim-head"><span class="tag">交互</span><h3>延迟刻度尺</h3>
+    <div class="desc">每一行是一类操作，横条覆盖书中给出的范围。点一行看它在设计上意味着什么；切到线性刻度，看看大部分操作会"消失"成什么样。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <span class="seg" id="lat-scale"><button data-v="log">对数刻度</button><button data-v="lin">线性刻度</button></span>
+      <span class="sep"></span>
+      <span class="seg" id="lat-unit"><button data-v="ns">绝对时间</button><button data-v="instr">指令时间</button><button data-v="human">1 条指令 = 1 秒</button></span>
+    </div>
+    <div class="stage" id="lat-stage"></div>
+    <div class="narrate" id="lat-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="lat-sel">—</div><div class="l">选中的操作</div></div>
+      <div class="stat"><div class="v" id="lat-ratio">—</div><div class="l">约等于多少条指令</div></div>
+      <div class="stat"><div class="v" id="lat-span">—</div><div class="l">最慢 / 最快（数量级）</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">换算方法：书中说 1 µs 约等于 2000 条指令的时间，本站据此取 1 条指令 ≈ 0.5 ns；"几百条指令"按 200–500 条画；动态内存分配的范围是本站粗估（书中没有数字）。这些只是建立直觉用的数量级，硬件一换数字就会变，所以作者才强调要自己写微基准去测。</p>
+
+<div class="aside" data-title="对照 OSTEP">
+  <p>这张表的大部分行，OSTEP 都用整章讲过它们为什么这么慢：<a href="https://t.miaowuao.cn/ostep/chapters/37-hdd.html">磁盘驱动器</a>里的寻道和旋转延迟，<a href="https://t.miaowuao.cn/ostep/chapters/44-ssd.html">闪存 SSD</a> 的读写特性，<a href="https://t.miaowuao.cn/ostep/chapters/19-tlb.html">TLB</a> 与缓存局部性，<a href="https://t.miaowuao.cn/ostep/chapters/48-distributed.html">分布式系统</a>里的网络往返。OSTEP 讲的是这些代价从哪来，这一章讲的是写代码时怎样提前绕开它们。</p>
+</div>
+
+<h2>心智模型：从"选设计"到"改热点"</h2>
+<p>20.1～20.3 节其实描述了一个有先后顺序的决策过程。大多数时候你只会停在第一步；越往下走，越少见，代价也越高。</p>
+<figure class="fig">
+<svg viewBox="0 0 640 470" width="640" role="img" aria-label="性能决策流程：先选天然高效的设计；慢了先测量；有根本性修复就用它；没有才围绕关键路径重新设计；改完再测，没有提升就撤回">
+  <defs><marker id="ar20" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <rect x="150" y="14" width="340" height="50" rx="8" class="ok-soft"/>
+  <text x="320" y="35" text-anchor="middle" font-weight="700" font-size="14">平时：在简洁的方案里挑天然高效的</text>
+  <text x="320" y="54" text-anchor="middle" font-size="12" class="t-muted">知道什么贵 · 微基准 · 20.1</text>
+  <line x1="320" y1="64" x2="320" y2="92" class="arrow" marker-end="url(#ar20)"/>
+  <rect x="230" y="94" width="180" height="40" rx="20" class="box"/>
+  <text x="320" y="119" text-anchor="middle" font-size="13.5">系统够快吗？</text>
+  <line x1="410" y1="114" x2="478" y2="114" class="arrow" marker-end="url(#ar20)"/>
+  <text x="444" y="107" text-anchor="middle" font-size="12" class="t-muted">够</text>
+  <rect x="480" y="94" width="150" height="40" rx="8" class="box"/>
+  <text x="555" y="113" text-anchor="middle" font-size="12.5">到此为止</text>
+  <text x="555" y="128" text-anchor="middle" font-size="11.5" class="t-muted">别凭直觉"优化"</text>
+  <line x1="320" y1="134" x2="320" y2="162" class="arrow" marker-end="url(#ar20)"/>
+  <text x="332" y="153" font-size="12" class="t-muted">不够</text>
+  <rect x="130" y="164" width="380" height="50" rx="8" class="accent-soft"/>
+  <text x="320" y="185" text-anchor="middle" font-weight="700" font-size="14">先测量：定位到少数几个具体位置</text>
+  <text x="320" y="204" text-anchor="middle" font-size="12" class="t-muted">只测顶层总时间不够 · 同时留下基线 · 20.2</text>
+  <line x1="320" y1="214" x2="320" y2="242" class="arrow" marker-end="url(#ar20)"/>
+  <rect x="200" y="244" width="240" height="40" rx="20" class="box"/>
+  <text x="320" y="269" text-anchor="middle" font-size="13.5">有根本性的修复吗？</text>
+  <line x1="440" y1="264" x2="478" y2="264" class="arrow" marker-end="url(#ar20)"/>
+  <text x="458" y="257" text-anchor="middle" font-size="12" class="t-muted">有</text>
+  <rect x="480" y="236" width="150" height="56" rx="8" class="ok-soft"/>
+  <text x="555" y="256" text-anchor="middle" font-size="12.5">缓存 / 换算法 / 换架构</text>
+  <text x="555" y="273" text-anchor="middle" font-size="11.5" class="t-muted">用前面各章的方法</text>
+  <text x="555" y="287" text-anchor="middle" font-size="11.5" class="t-muted">把它做干净</text>
+  <line x1="320" y1="284" x2="320" y2="312" class="arrow" marker-end="url(#ar20)"/>
+  <text x="332" y="303" font-size="12" class="t-muted">没有</text>
+  <rect x="60" y="314" width="400" height="74" rx="8" class="warn-soft"/>
+  <text x="260" y="334" text-anchor="middle" font-weight="700" font-size="14">最后手段：围绕关键路径重新设计（20.3）</text>
+  <text x="76" y="355" font-size="12.5">① 无视现有结构，写出常见情况下最少的代码（理想代码）</text>
+  <text x="76" y="374" font-size="12.5">② 找最接近理想、结构又干净的设计；开头一个 if 分流</text>
+  <line x1="260" y1="388" x2="260" y2="416" class="arrow" marker-end="url(#ar20)"/>
+  <path d="M555 292 L555 438 L432 438" class="arrow" marker-end="url(#ar20)"/>
+  <rect x="88" y="418" width="344" height="44" rx="8" class="bad-soft"/>
+  <text x="260" y="437" text-anchor="middle" font-weight="700" font-size="13.5">改完再测：和基线比</text>
+  <text x="260" y="454" text-anchor="middle" font-size="12" class="t-muted">没有可测的提升 → 撤回（除非它让代码更简单）</text>
+</svg>
+<figcaption>越往下走越少见：大多数代码只需要第一步。本站自绘示意。</figcaption>
+</figure>
+
+<h2>原创例子：一条"关闭的"日志</h2>
+<p>书中 20.4 节的例子是 RAMCloud 的 <code>Buffer</code> 类：在缓冲区末尾分配一小段空间是它最常见的操作，原来的路径穿过三层签名相同的浅方法，检查了 6 个条件；重写后只剩一个方法、一次判断，速度约快一倍，类的代码量反而少了 20%。建议读原书看完整过程。这里换一个 C++ 程序员几乎都写过的场景，用同样的思路走一遍。</p>
+<p>场景：一个键值服务的 GET 路径上有一行 debug 日志，每个请求都会经过。线上 debug 级别是关闭的，所以<strong>最常见的情况是"这条日志什么都不用做"</strong>。这就是关键路径。</p>
+<div class="ba">
+  <div data-label="改之前：先干活，再判断">
+<pre class="numbered" data-mark="6,15,27"><code class="lang-cpp">enum Level { kDebug, kInfo, kWarn, kError, kOff };
+
+class Logger {
+public:
+    void log(Level level, const std::string&amp; module, const std::string&amp; msg) {
+        std::string line = formatLine(level, module, msg);  // 时间戳 + 级别 + 模块 + 正文
+        if (!shouldLog(level, module)) return;
+        for (auto&amp; sink : sinks_) sink-&gt;write(line);
+    }
+private:
+    bool shouldLog(Level level, const std::string&amp; module) const {
+        if (!enabled_) return false;
+        if (sinks_.empty()) return false;
+        Level threshold = globalLevel_;
+        auto it = moduleLevels_.find(module);               // 每次调用都按名字查一遍
+        if (it != moduleLevels_.end()) threshold = it-&gt;second;
+        return level &gt;= threshold;
+    }
+    std::string formatLine(Level, const std::string&amp; module, const std::string&amp; msg) const;
+    bool enabled_ = true;
+    Level globalLevel_ = kInfo;
+    std::map&lt;std::string, Level&gt; moduleLevels_;            // 按模块覆盖全局级别
+    std::vector&lt;std::unique_ptr&lt;Sink&gt;&gt; sinks_;
+};
+
+// 调用处：GET 路径，每个请求都经过
+logger.log(kDebug, "kv.get", "lookup key=" + key);</code></pre>
+    <p>每一行单独看都合理，合起来却很浪费：调用处先拼好消息字符串（第 27 行），进入 <code>log</code> 后又读时钟、拼整行（第 6 行），然后才判断要不要输出；判断本身还要过两个开关、做一次按字符串的 <code>map</code> 查找（第 15 行）。在最常见的情况下，这些工作全部白做。</p>
+  </div>
+  <div data-label="改之后：一次比较">
+<pre class="numbered" data-mark="5,6,14,19"><code class="lang-cpp">// 一个模块一个通道。通道在启动时创建一次，之后一直复用。
+class LogChannel {
+public:
+    // 关键路径。线上大多数 debug/info 日志是关闭的，这时只做这一次比较。
+    bool enabled(Level level) const {
+        return level &gt;= threshold_.load(std::memory_order_relaxed);
+    }
+    void write(Level level, std::string_view msg);   // 前提：enabled(level) 为真
+private:
+    friend class Logger;
+    std::string name_;
+    // 四个条件合成一个值：总开关关闭或没有输出目标时为 kOff；
+    // 否则是本模块的覆盖级别，没有覆盖就用全局级别。
+    std::atomic&lt;Level&gt; threshold_{kOff};
+};
+
+// 注意：expr 只在该级别打开时才求值，不要在里面写有副作用的表达式。
+#define LOG(ch, level, expr) \
+    do { if ((ch).enabled(level)) (ch).write((level), (expr)); } while (0)
+
+// 关键路径之外：配置变化时（很少发生）重算所有通道。写得直白即可。
+void Logger::recomputeThresholds() {
+    for (auto&amp; ch : channels_) {
+        Level t = globalLevel_;
+        if (auto it = moduleLevels_.find(ch-&gt;name_); it != moduleLevels_.end()) t = it-&gt;second;
+        if (!enabled_ || sinks_.empty()) t = kOff;
+        ch-&gt;threshold_.store(t, std::memory_order_relaxed);
+    }
+}
+
+// 调用处
+static LogChannel&amp; kvGetLog = logger.channel("kv.get");
+LOG(kvGetLog, kDebug, "lookup key=" + key);   // 关闭时连字符串都不拼</code></pre>
+    <p>做法和书中的思路一致：先写出"理想代码"（关闭时只比较一次），再围绕它调整数据结构。四个条件（总开关、有无输出目标、全局级别、模块覆盖）被预先合成一个 <code>threshold_</code>，一次比较就能排除所有"不用输出"的情况；按名字查找挪到了启动时；格式化挪到了判断之后。特殊情况的处理全在 <code>recomputeThresholds</code> 里，它很少运行，所以写成最直白的样子。</p>
+  </div>
+</div>
+<div class="table-wrap"><table>
+  <thead><tr><th>关闭的 debug 日志，关键路径上的工作</th><th>改之前</th><th>改之后</th></tr></thead>
+  <tbody>
+    <tr><td>条件判断</td><td>5（开关、输出目标、查找结果、级别，外加 map 内部的字符串比较）</td><td>1</td></tr>
+    <tr><td>非内联的函数调用</td><td>log、formatLine、shouldLog、map::find、读时钟……</td><td>0</td></tr>
+    <tr><td>堆分配（拼字符串）</td><td>通常 2 次以上</td><td>0</td></tr>
+    <tr><td>本站实测（见下文微基准）</td><td>约 90 ns</td><td>不到 1 ns</td></tr>
+  </tbody>
+</table></div>
+<p><strong>代价也要说清楚。</strong>第一，新增了一个必须维护的不变量：只要四个输入中的任何一个变了，就必须调用 <code>recomputeThresholds</code>，漏掉一处就是 bug。所以这四个输入的修改应该全部收进 <code>Logger</code> 内部，不能让外面直接改。第二，宏让调用处的求值规则变得不明显（<code>expr</code> 可能根本不被求值），这条必须写进注释（第 18 章说的"不明显的代码"）。第三，调用者要先拿到通道对象。对一条每秒执行几十万次的路径，这些代价值得；对一个每分钟跑一次的管理命令，就不值得。</p>
+
+<h2>动手测一测：一个最小的微基准</h2>
+<p>作者说，了解什么贵，最好的办法是写微基准（micro-benchmark）：单独测一个操作的代价。下面这个程序测了三件事：有序 <code>map</code> 和哈希表的查找、结构体数组和指针数组、以及上面日志例子的改前改后。复制下来就能编译运行。</p>
+<details class="reveal"><summary>展开 bench.cpp（约 100 行）</summary><div>
+<pre><code class="lang-cpp">// bench.cpp —— 几个最小的微基准。g++ -O2 -std=c++17 bench.cpp -o bench &amp;&amp; ./bench
+#include &lt;algorithm&gt;
+#include &lt;atomic&gt;
+#include &lt;chrono&gt;
+#include &lt;cstdio&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+#include &lt;random&gt;
+#include &lt;string&gt;
+#include &lt;unordered_map&gt;
+#include &lt;vector&gt;
+
+// 把 f 跑 n 次，返回平均每次的纳秒数
+template &lt;class F&gt; double nsPerOp(long n, F f) {
+    auto t0 = std::chrono::steady_clock::now();
+    for (long i = 0; i &lt; n; i++) f(i);
+    std::chrono::duration&lt;double, std::nano&gt; d = std::chrono::steady_clock::now() - t0;
+    return d.count() / n;
+}
+
+volatile long sink;  // 防止编译器把结果整个优化掉
+
+// 3 号测试用：一条"关闭的"debug 日志，改前与改后（只保留关键路径上的工作）
+enum Level { kDebug, kInfo, kWarn, kError, kOff };
+struct OldLogger {
+    bool enabled = true;
+    Level global = kInfo;
+    std::map&lt;std::string, Level&gt; moduleLevels{{"kv.put", kDebug}, {"net", kWarn}, {"raft", kInfo}};
+    std::vector&lt;int&gt; sinks{1};
+    bool shouldLog(Level lv, const std::string&amp; module) const {
+        if (!enabled || sinks.empty()) return false;
+        Level th = global;
+        auto it = moduleLevels.find(module);
+        if (it != moduleLevels.end()) th = it-&gt;second;
+        return lv &gt;= th;
+    }
+    void log(Level lv, const std::string&amp; module, const std::string&amp; msg) {
+        auto ts = std::chrono::system_clock::now().time_since_epoch().count();
+        std::string line = std::to_string(ts) + " " + module + " " + msg;  // 先格式化
+        if (!shouldLog(lv, module)) return;                                  // 再判断
+        sink = (long)line.size();
+    }
+};
+struct LogChannel {
+    std::atomic&lt;Level&gt; threshold{kInfo};
+    bool enabled(Level lv) const { return lv &gt;= threshold.load(std::memory_order_relaxed); }
+};
+
+// 1 号测试：n 个随机键，有序 map 与哈希表各查 1,000,000 次
+void lookupBench(long n) {
+    std::mt19937_64 rng(42);
+    std::vector&lt;long&gt; keys(n);
+    for (auto&amp; k : keys) k = (long)(rng() &gt;&gt; 1);
+    std::map&lt;long, long&gt; tree;
+    std::unordered_map&lt;long, long&gt; hash;
+    for (long k : keys) { tree[k] = k; hash[k] = k; }
+    std::shuffle(keys.begin(), keys.end(), rng);
+    const long Q = 1'000'000;
+    double tMap  = nsPerOp(Q, [&amp;](long i) { sink = tree.find(keys[i % n])-&gt;second; });
+    double tHash = nsPerOp(Q, [&amp;](long i) { sink = hash.find(keys[i % n])-&gt;second; });
+    std::printf("%8ld 个键：map %6.1f ns，unordered_map %5.1f ns\n", n, tMap, tHash);
+}
+
+int main() {
+    // 1. 有序 map 与哈希表：随机查找。规模不同，差距也不同
+    lookupBench(1'000);
+    lookupBench(1'000'000);
+
+    // 2. 结构体数组与指针数组：分配 + 遍历 N 个元素
+    const long N = 1'000'000;
+    struct Order { long id, qty, price; };
+    double tPtr = nsPerOp(10, [&amp;](long) {
+        std::vector&lt;std::unique_ptr&lt;Order&gt;&gt; v;
+        v.reserve(N);
+        for (long i = 0; i &lt; N; i++) v.push_back(std::make_unique&lt;Order&gt;(Order{i, 1, 2}));
+        long s = 0; for (auto&amp; o : v) s += o-&gt;qty * o-&gt;price;
+        sink = s;
+    }) / N;
+    double tVal = nsPerOp(10, [&amp;](long) {
+        std::vector&lt;Order&gt; v;
+        v.reserve(N);
+        for (long i = 0; i &lt; N; i++) v.push_back(Order{i, 1, 2});
+        long s = 0; for (auto&amp; o : v) s += o.qty * o.price;
+        sink = s;
+    }) / N;
+    std::printf("vector&lt;unique_ptr&lt;Order&gt;&gt;：%5.1f ns / 元素\n", tPtr);
+    std::printf("vector&lt;Order&gt;：            %5.1f ns / 元素\n", tVal);
+
+    // 3. 一条关闭的 debug 日志：改前 vs 改后
+    OldLogger oldLog;
+    LogChannel ch;
+    double tOld = nsPerOp(N, [&amp;](long i) { oldLog.log(kDebug, "kv.get", "lookup key=" + std::to_string(i)); });
+    double tNew = nsPerOp(N, [&amp;](long i) {
+        if (ch.enabled(kDebug)) sink = (long)("lookup key=" + std::to_string(i)).size();
+    });
+    std::printf("关闭的日志，改前：%5.1f ns\n", tOld);
+    std::printf("关闭的日志，改后：%5.1f ns\n", tNew);
+}</code></pre>
+</div></details>
+<pre><code><span class="cmd">g++ -O2 -std=c++17 bench.cpp -o bench &amp;&amp; ./bench</span>
+    1000 个键：map    7.8 ns，unordered_map   3.9 ns
+ 1000000 个键：map  821.5 ns，unordered_map  45.9 ns
+vector&lt;unique_ptr&lt;Order&gt;&gt;： 41.5 ns / 元素
+vector&lt;Order&gt;：              1.3 ns / 元素
+关闭的日志，改前： 93.8 ns
+关闭的日志，改后：  0.4 ns</code></pre>
+<p class="small muted">示例输出，你的机器上数字会不同（本站在 AMD Ryzen 7 8745H、WSL2、g++ 14.2 上运行；多跑几次，个别数字的波动可达 20%）。</p>
+<p>几点值得停下来想一想：</p>
+<ul>
+  <li><strong>差距取决于规模。</strong>1000 个键时，<code>map</code> 只比哈希表慢一倍；100 万个键时差了将近 20 倍。书中说哈希表"很容易快 5～10 倍"，这是经验值。大数据量下差距更大，主要因为树的每一层都可能是一次缓存未命中，正好对应上表最后一行。</li>
+  <li><strong>逐个分配很贵。</strong>同样 100 万个三字段结构体，逐个 <code>make_unique</code> 比直接放进 <code>vector</code> 慢约 30 倍，而两种写法几乎一样简单。这就是"天然高效"：不用多付复杂度。</li>
+  <li><strong>微基准有陷阱。</strong>编译器可能把你要测的代码整个优化掉（程序里用 <code>volatile</code> 防了一下），循环里的数据可能一直在缓存里，结果比真实场景好看。所以微基准适合建立"数量级"直觉，真实系统的瓶颈仍然要在真实负载下测量。</li>
+</ul>
+
+<h2>边界与反方：什么时候别生搬硬套</h2>
+<div class="counter" data-title="两个极端都不对">
+  <p>"过早优化是万恶之源"常被用来为"完全不管性能"辩护。作者两个极端都不赞成：逐条语句抠性能会拖慢开发、徒增复杂度，而且很多"优化"根本没用；完全不管，低效会散落在各处，系统很容易慢 5～10 倍，到时候找不到任何一个改了就见效的地方。<em>本站补充：</em>Knuth 那句话的原文本来也有后半句：不要错过那关键的 3%。两人的立场其实很接近。</p>
+</div>
+<div class="counter" data-title="复杂度什么时候值得付">
+  <p>作者给了一个分级规则：如果更快的方案只多一点复杂度，而且藏在实现里、不影响接口，可能值得（但要记住复杂性是一点点累积的）；如果它会带来大量实现复杂度，或者让接口变复杂，就先用简单方案，真出了性能问题再说；如果有清楚的证据表明这里的性能至关重要，那就一开始就做快的方案。RAMCloud 一开始就决定绕过内核直接和网卡通信，依据是之前的测量已经表明走内核太慢。</p>
+</div>
+<div class="counter" data-title="改写关键路径是最后手段">
+  <p>作者明确说，围绕关键路径重写现有代码应当是最后手段，不该经常发生。先找根本性的修复（加缓存、换算法、换架构）。另外，"理想代码"只是目标，不是要原样照抄：为了保持干净的抽象，在理想代码上加一点东西是可以的，例如多一次对通用哈希表类的方法调用。</p>
+</div>
+<div class="counter" data-title="关键路径不止一条；简单也不总是更快">
+  <p>Buffer 的例子里，作者故意在分配路径上多维护一个总长度，因为"取总长度"也是常见操作，不能为了一条路径饿死另一条。上面日志例子里的 <code>recomputeThresholds</code> 也是同一类取舍：把成本挪到很少执行的路径上。<em>本站补充：</em>作者说的是简单的代码"往往"更快，不是定律。SIMD、无锁结构这类优化天生复杂；如果测量证明非用不可，就把它们关进一个深模块，让复杂性只出现在一个地方。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。先自己判断再看解析，答题记录会进入间隔复习。</p>
+<div class="drill-embed" data-ids="ch20-ab-01 ch20-flag-01 ch20-write-01"></div>
+
+<h2>动手：项目任务</h2>
+<p>读完本章和第 18 章后，去做 <a href="../project/index.html">minikv</a> 的任务 m08。minikv 的一次 GET 命中要穿过 <code>Server::handleGet</code> → <code>Database::get</code> → <code>Store::get</code> → <code>Index::get</code> 四层。先用 <code>make bench</code> 测出这条路径的时间花在哪儿，再围绕它重新设计：去掉多余的工作（同一个键查两次、值被拷贝两次、昂贵的格式化），同时把带 <code>bool</code> 参数的调用、藏着副作用的方法改成一目了然的代码。提示：测量结果可能和你的直觉不一样，花时间最多的未必是查找，那几层透传在 <code>-O2</code> 下也许根本测不出开销。这正是 20.2 节说的"先测量，别靠猜"。改完再测一次，和基线比。</p>
+<div class="lab"><p>任务 m08：先用 <code>make bench</code> 找出 GET 关键路径上的时间花在哪儿，再去掉多余的工作，并把不明显的代码改清楚；改完再测。详见 <a href="../project/m08.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make bench</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="1"><div class="q">关于"平时写代码要不要考虑性能"，作者的立场最接近哪一项？</div>
+  <div class="opts"><button>A. 每条语句都写成最快的形式，养成习惯</button><button>B. 用基本的性能常识，在同样简洁的方案里挑天然高效的那个</button><button>C. 只有写底层库的人才需要考虑</button><button>D. 完全不管，等出了性能问题再统一优化</button></div>
+  <div class="explain">作者反对两个极端：逐条优化会增加复杂度且常常无效；完全不管会导致"千刀万剐"式的整体低效，事后很难补救。中间路线是靠对昂贵操作的了解来做选择。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">动手优化之前先测量，作者给出的两个目的是？</div>
+  <div class="opts"><button>A. 找出调优收益最大的具体位置；留下基线，改完后验证确实变快了</button><button>B. 向上级证明系统慢；为写周报准备数据</button><button>C. 测出顶层总延迟即可，剩下的靠经验判断</button><button>D. 找出最复杂的代码；确认测试覆盖率</button></div>
+  <div class="explain">只测顶层只能告诉你"慢"，不能告诉你"为什么慢"。要往下测到少数几个具体位置。基线则用来检验改动是否真的有效。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">你为一个热点函数手写了一段更复杂的实现，重新测量后发现差别在噪声范围内。按本章的建议应该？</div>
+  <div class="opts"><button>A. 保留，并在注释里写明"已优化"</button><button>B. 撤回，除非这次改动本身让代码更简单</button><button>C. 继续加更多优化，直到能测出差别</button><button>D. 保留，因为理论上它更快</button></div>
+  <div class="explain">没有显著加速，就没有理由保留额外的复杂度。唯一的例外是改动让代码变简单了，那它本身就有价值。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">围绕关键路径重新设计时，"理想代码"指的是什么？</div>
+  <div class="opts"><button>A. 无视现有结构和特殊情况，在常见情况下必须执行的最少代码</button><button>B. 用汇编手写的版本</button><button>C. 覆盖所有特殊情况、但没有重复判断的代码</button><button>D. 现有代码中最快的那个版本</button></div>
+  <div class="explain">理想代码是一个目标：假设可以把相关代码放进一个方法、随意选择最方便的数据结构，常见情况最少要做什么。它可能和现有类结构冲突，下一步是找一个尽量接近它、结构又干净的设计。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">为什么作者说深类通常也比浅类更快？</div>
+  <div class="opts"><button>A. 深类都用了更好的算法</button><button>B. 深类的代码行数更少</button><button>C. 编译器会对深类做特殊优化</button><button>D. 深类每次调用完成的工作更多；浅层多了，层间穿越的开销就多</button></div>
+  <div class="explain">每穿过一层都有开销，而且上层常常还要检查下层的返回值，又多出一个需要判断的情况。Buffer 例子里原来的三层浅方法正是如此。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">RAMCloud 一开始就接受了绕过内核联网带来的复杂度。这说明了什么？</div>
+  <div class="opts"><button>A. 性能永远比简洁重要</button><button>B. 应该在所有项目里都绕过内核</button><button>C. 有清楚的证据（事先的测量）表明某处性能至关重要时，可以一开始就做快的方案</button><button>D. 先做简单方案、以后再优化的建议是错的</button></div>
+  <div class="explain">这是分级规则里的第三种情况。作者同时指出，把这一件大事做对之后，系统的其余部分大多可以按简洁来设计。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">在关键路径上处理特殊情况，本章推荐的结构是？</div>
+  <div class="opts"><button>A. 把特殊情况的检查合并进一个大 switch</button><button>B. 用异常处理所有特殊情况</button><button>C. 开头用一次判断检测所有特殊情况，命中就跳到关键路径之外处理，那里写得简单即可</button><button>D. 每个特殊情况在用到它的那一层各自检查一次</button></div>
+  <div class="explain">常见情况只付出一次判断的代价。特殊情况本来就少见，不必为它们追求速度，可以按"最简单"来组织。实现上常常需要像 Buffer 的 <code>availableAppendBytes</code> 或上面日志例子的 <code>threshold_</code> 那样，引入一个把多个条件合在一起的变量。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>干净的设计和高性能并不冲突；复杂的代码之所以慢，常常是因为做了多余或重复的工作。</li>
+  <li>平时：知道哪些操作贵（网络、存储、分配、缓存未命中），在同样简洁的方案中选天然高效的那个。</li>
+  <li>慢了：先深入测量，找少数具体热点，留下基线；改完再测，没有提升就撤回。</li>
+  <li>优先找根本性修复；实在没有，才围绕关键路径重新设计：想象理想代码，一次判断分流所有特殊情况。</li>
+  <li>新增变量、预先计算是常用手段，但要清楚它们带来的新不变量。</li>
+</ul>
+<p>第 21 章会把这一章当成例子推广：性能只是"重要的东西"之一。一旦确定什么最重要，设计就该围绕它来组织，并把不重要的东西藏起来。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你见过的某次"优化"。</p>
+<textarea class="note" data-key="ch20-oneline" placeholder="例如：我们那次把 map 换成手写跳表的优化，其实从来没测过……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, s } = APOSD;
+  // 每项：[名称, 下限 ns, 上限 ns, 来源是否为书中数据, 来源说明, 设计含义]
+  const ITEMS = [
+    ["一条指令", 0.5, 0.5, false, "书中没有单独给出；由\"1 µs ≈ 2000 条指令时间\"推出约 0.5 ns。", "这是比较的单位。下面每一行都可以读成\"这件事够 CPU 执行多少条指令\"。"],
+    ["动态内存分配", 20, 100, false, "书中没有给数字，只说分配、释放（以及垃圾回收）有明显开销；范围为本站粗估，下文微基准里逐个 make_unique 约 40 ns/个。", "关键路径上避免逐个 new：结构体直接放进数组，一次分配一大块。"],
+    ["缓存未命中", 100, 250, true, "书中：从 DRAM 取到片上缓存要几百条指令的时间（本站按 200–500 条画）。", "数据要连续摆放。大数据量下有序树比哈希表慢得多，主要原因就在这里。"],
+    ["新型非易失内存", 1000, 1000, true, "书中：可能快到 1 µs，但仍约 2000 条指令的时间。", "即使是很快的存储，也比访问内存慢几个数量级。"],
+    ["数据中心内网络往返", 1e4, 5e4, true, "书中：10–50 µs，相当于数万条指令的时间。", "一次往返够 CPU 做很多事。循环里逐个发请求是典型的\"不天然高效\"，改成批量接口往往一样简单。"],
+    ["闪存 I/O", 1e4, 1e5, true, "书中：10–100 µs。", "比磁盘快两个数量级，但仍和网络往返同一量级。"],
+    ["磁盘 I/O", 5e6, 1e7, true, "书中：通常 5–10 ms，相当于数百万条指令的时间。", "关键路径上不要同步读写磁盘；批量、顺序、异步。"],
+    ["广域网往返", 1e7, 1e8, true, "书中：10–100 ms。", "跨地域交互要尽可能少。这一项和\"一条指令\"之间差了八个多数量级。"],
+  ];
+  const INSTR = 0.5;
+  const stage = document.getElementById("lat-stage"), narr = document.getElementById("lat-narrate");
+  let scale = "log", unit = "ns", sel = 4;
+
+  function fmtNs(ns) {
+    if (ns < 1000) return `${+ns.toPrecision(2)} ns`;
+    if (ns < 1e6) return `${+(ns / 1e3).toPrecision(2)} µs`;
+    return `${+(ns / 1e6).toPrecision(2)} ms`;
+  }
+  function fmtCount(n) {
+    if (n < 1) return `${+n.toPrecision(1)}`;
+    if (n < 1e4) return `${Math.round(n)}`;
+    if (n < 1e8) return `${+(n / 1e4).toPrecision(2)} 万`;
+    return `${+(n / 1e8).toPrecision(2)} 亿`;
+  }
+  function fmtHuman(sec) {
+    const u = [[365 * 86400, "年"], [30 * 86400, "个月"], [86400, "天"], [3600, "小时"], [60, "分钟"], [1, "秒"]];
+    for (const [k, name] of u) if (sec >= k) return `${+(sec / k).toPrecision(2)} ${name}`;
+    return `${+sec.toPrecision(2)} 秒`;
+  }
+  function fmt(ns) {
+    if (unit === "instr") return fmtCount(ns / INSTR) + " 条";
+    if (unit === "human") return fmtHuman(ns / INSTR);
+    return fmtNs(ns);
+  }
+  const textW = (t) => [...t].reduce((w, c) => w + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 11.5 : 6.5), 0);
+  const range = (lo, hi) => (lo === hi ? fmt(lo) : `${fmt(lo)} – ${fmt(hi)}`);
+
+  function draw() {
+    const W = 680, L = 150, R = 646, top = 30, rowH = 32, H = top + ITEMS.length * rowH + 8;
+    const LOG0 = -1, LOG1 = 8;
+    const x = (ns) => scale === "log" ? L + (Math.log10(ns) - LOG0) / (LOG1 - LOG0) * (R - L) : L + ns / 1e8 * (R - L);
+    const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: W, role: "img", "aria-label": "各类操作延迟的刻度尺" });
+    const ticks = scale === "log" ? [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8].map((e) => 10 ** e) : [0, 2.5e7, 5e7, 7.5e7, 1e8];
+    ticks.forEach((t) => {
+      const tx = x(t || 0.0001);
+      const xx = scale === "log" ? tx : L + t / 1e8 * (R - L);
+      svg.append(s("line", { x1: xx, y1: top - 6, x2: xx, y2: H - 8, style: "stroke:var(--border)" }),
+        s("text", { x: xx, y: top - 12, "text-anchor": "middle", "font-size": 11, class: "t-muted", text: t === 0 ? "0" : unit === "ns" ? fmtNs(t) : fmt(t) }));
+    });
+    ITEMS.forEach(([name, lo, hi, book], i) => {
+      const y = top + i * rowH;
+      const x0 = scale === "log" ? x(lo) : L + lo / 1e8 * (R - L), x1 = scale === "log" ? x(hi) : L + hi / 1e8 * (R - L);
+      const bw = Math.max(4, x1 - x0);
+      const label = range(lo, hi);
+      const right = x0 + bw + 6 + textW(label) < W, inside = !right && bw > textW(label) + 12;
+      const g = s("g", { class: "row" + (i === sel ? " on" : ""), onclick: () => { sel = i; draw(); } });
+      g.append(
+        s("rect", { class: "hit", x: 0, y: y + 2, width: W, height: rowH - 4, rx: 4 }),
+        s("text", { x: L - 8, y: y + rowH / 2 + 4, "text-anchor": "end", "font-size": 12.5, text: name }),
+        s("rect", { x: x0, y: y + 8, width: bw, height: rowH - 16, rx: 3, class: book ? "accent-soft" : "warn-soft" }),
+        s("text", { x: right ? x0 + bw + 6 : inside ? x0 + 6 : x0 - 6, y: y + rowH / 2 + 4, "text-anchor": right || inside ? "start" : "end", "font-size": 11.5, class: "t-muted", text: label }));
+      svg.append(g);
+    });
+    stage.replaceChildren(svg);
+    const [name, lo, hi, book, src, design] = ITEMS[sel];
+    narr.textContent = `${name}：${range(lo, hi)}。${src} ${design}` + (scale === "lin" ? " 线性刻度下，除了最慢的两三项，其余几乎都挤在 0 附近：这就是为什么要用对数刻度来看延迟。" : "") + (book ? "" : "（这一行不是书中数据。）");
+    document.getElementById("lat-sel").textContent = name;
+    document.getElementById("lat-ratio").textContent = lo === hi ? fmtCount(lo / INSTR) : `${fmtCount(lo / INSTR)}–${fmtCount(hi / INSTR)}`;
+    document.getElementById("lat-span").textContent = `约 ${Math.round(Math.log10(1e8 / INSTR))} 个`;
+    document.querySelectorAll("#lat-scale button").forEach((b) => b.classList.toggle("on", b.dataset.v === scale));
+    document.querySelectorAll("#lat-unit button").forEach((b) => b.classList.toggle("on", b.dataset.v === unit));
+  }
+  document.querySelectorAll("#lat-scale button").forEach((b) => (b.onclick = () => { scale = b.dataset.v; draw(); }));
+  document.querySelectorAll("#lat-unit button").forEach((b) => (b.onclick = () => { unit = b.dataset.v; draw(); }));
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 11 章 · 设计两次</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch11.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.dt-step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin: 14px 0; }
+.dt-step > h4 { margin: 0 0 6px; font-size: 15px; }
+.dt-step > h4 .n { display: inline-block; min-width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 12.5px; margin-right: 6px; }
+.dt-step > p { margin: 0 0 8px; font-size: 14.5px; color: var(--muted); }
+.dt-step textarea.note { min-height: 90px; }
+</style>
+</head>
+<body data-chapter="11">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>怎样才能得到一个好的设计，而不只是第一个想到的设计？</strong></p>
+</div>
+<p>第 4～10 章给了很多判断设计好坏的工具：深度、信息隐藏、通用性、分层、把复杂性往下拉、把错误定义掉。但这些工具都是用来<strong>评价</strong>一个方案的。如果你手里只有一个方案，评价的结果最多是"还行"或者"有问题"，并不能告诉你更好的方案长什么样。</p>
+<p>这一章很短，只讲一个过程上的习惯：对每个重要的设计决定，先勾勒几个差别很大的方案，比较之后再选择或组合。它是全书第 12 条原则，也是本站项目任务 m02 的设计步骤。所以这一页不打算多讲道理，而是带你<strong>真的做一次</strong>。</p>
+
+<div class="reading">
+  <ol>
+    <li>本章不分小节。<strong>开头的文本编辑器例子</strong>里有三种接口：按行、按字符、按任意区间。注意作者说的不是哪个"更优雅"，而是每种方案会让<em>上层代码</em>多做什么事。</li>
+    <li><strong>中段"列出优缺点"那部分</strong>：作者给比较标准排了优先级。读的时候留意接口的标准和实现的标准有什么不同。</li>
+    <li><strong>结尾关于"聪明人"的那几段</strong>：问问自己，上一次你认真考虑第二个方案是什么时候？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>第一个想法很少是最好的</h4><p>设计软件很难，第一个想法未必就是好设计。对每个重要的决定，至少考虑两个方案。<span data-principle="12"></span></p></div>
+  <div class="card"><h4>方案之间要差别很大</h4><p>只改名字或参数的两个方案没什么可比的。差别越大，学到的越多。即使确信只有一种合理做法，也勾勒一个第二方案。</p></div>
+  <div class="card"><h4>草图就够了</h4><p>每个方案只需写出最重要的几个方法，不必把所有细节定下来。</p></div>
+  <div class="card"><h4>接口先看"上层好不好用"</h4><p>其次才是简单性、通用性、能否高效实现。到了实现阶段，标准换成简单和性能。</p></div>
+  <div class="card"><h4>选择、组合或重新设计</h4><p>最好的结果可能是几个方案的组合；如果都不满意，就用已经发现的问题驱动新的方案。</p></div>
+  <div class="card"><h4>代价很小，回报很大</h4><p>一个类花一两个小时比较方案，对比几天到几周的实现时间不算什么，长期还能提升设计能力。</p></div>
+</div>
+
+<h2>心智模型：先发散，再收敛</h2>
+<figure class="fig">
+<svg viewBox="0 0 660 250" width="660" role="img" aria-label="设计两次的流程：从第一个想法出发，刻意发散出几个差别很大的方案，按标准比较后收敛成选择、组合或新方案">
+  <defs><marker id="dh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <rect x="10" y="105" width="110" height="40" rx="8" class="box"/>
+  <text x="65" y="130" text-anchor="middle" font-size="13">第一个想法</text>
+  <rect x="190" y="30" width="120" height="40" rx="8" class="accent-soft"/><text x="250" y="55" text-anchor="middle" font-size="13">方案 A</text>
+  <rect x="190" y="105" width="120" height="40" rx="8" class="accent-soft"/><text x="250" y="130" text-anchor="middle" font-size="13">方案 B</text>
+  <rect x="190" y="180" width="120" height="40" rx="8" class="accent-soft"/><text x="250" y="205" text-anchor="middle" font-size="13">方案 C</text><text x="250" y="238" text-anchor="middle" font-size="11.5" class="t-muted">哪怕你觉得它很糟</text>
+  <path d="M120 120 L188 52" class="arrow" marker-end="url(#dh)"/><path d="M120 125 L188 125" class="arrow" marker-end="url(#dh)"/><path d="M120 130 L188 198" class="arrow" marker-end="url(#dh)"/>
+  <text x="150" y="20" text-anchor="middle" font-size="12" class="t-muted">刻意发散</text>
+  <rect x="360" y="60" width="130" height="130" rx="8" class="warn-soft"/>
+  <text x="425" y="84" text-anchor="middle" font-size="13" font-weight="700">按标准比较</text>
+  <text x="425" y="108" text-anchor="middle" font-size="12">① 上层好不好用</text>
+  <text x="425" y="128" text-anchor="middle" font-size="12">② 接口简单吗</text>
+  <text x="425" y="148" text-anchor="middle" font-size="12">③ 够通用吗</text>
+  <text x="425" y="168" text-anchor="middle" font-size="12">④ 能高效实现吗</text>
+  <path d="M312 50 L358 90" class="arrow" marker-end="url(#dh)"/><path d="M312 125 L358 125" class="arrow" marker-end="url(#dh)"/><path d="M312 200 L358 160" class="arrow" marker-end="url(#dh)"/>
+  <rect x="540" y="40" width="110" height="36" rx="8" class="ok-soft"/><text x="595" y="63" text-anchor="middle" font-size="12.5">选一个</text>
+  <rect x="540" y="107" width="110" height="36" rx="8" class="ok-soft"/><text x="595" y="130" text-anchor="middle" font-size="12.5">组合优点</text>
+  <rect x="540" y="174" width="110" height="36" rx="8" class="ok-soft"/><text x="595" y="197" text-anchor="middle" font-size="12.5">缺点驱动新方案</text>
+  <path d="M492 100 L538 60" class="arrow" marker-end="url(#dh)"/><path d="M492 125 L538 125" class="arrow" marker-end="url(#dh)"/><path d="M492 150 L538 190" class="arrow" marker-end="url(#dh)"/>
+  <text x="595" y="236" text-anchor="middle" font-size="12" class="t-muted">接口定了，实现再来一遍</text>
+</svg>
+<figcaption>设计两次是一次刻意的发散和收敛。同一个过程可以用在接口、实现、系统分解等各个层次。本站自绘示意。</figcaption>
+</figure>
+<p>书中的例子是文本编辑器里管理文本的类。按行的接口让上层在剪切、粘贴跨行内容时自己拆行、并行；按字符的接口让上层写循环，而且每个字符调用一次，很慢。作者指出，两个方案都逼着上层代码做额外的文本处理，这本身就是一个信号：既然有一个文本类，文本处理就该由它负责。顺着这个缺点想下去，就得到了按区间操作的接口。这正是"用已发现的问题驱动新方案"。</p>
+
+<h2>怎样逼出"差别很大"的方案</h2>
+<p>"再想一个方案"说起来容易，真坐下来，第二个方案常常只是第一个换了个名字。书里没有给出具体的方法，下面是本站整理的几个维度。把第一个方案放在每个维度上定位，然后故意走到另一端：</p>
+<div class="table-wrap"><table>
+  <tr><th>维度</th><th>一端</th><th>另一端</th></tr>
+  <tr><td>操作的粒度</td><td>单个元素（一个字符、一条记录）</td><td>任意范围、整批</td></tr>
+  <tr><td>信息流向</td><td>调用者来"拉"（查询、轮询）</td><td>模块去"推"（回调、事件）</td></tr>
+  <tr><td>状态</td><td>可变对象，原地修改</td><td>不可变快照，整体替换</td></tr>
+  <tr><td>同步方式</td><td>阻塞直到完成</td><td>立即返回，结果稍后取</td></tr>
+  <tr><td>谁负责</td><td>调用者自己组装、自己处理特殊情况</td><td>模块包办，调用者一行搞定</td></tr>
+  <tr><td>做不做</td><td>做这个功能</td><td>不做，用别的机制替代（重启、离线批处理、人工流程）</td></tr>
+</table></div>
+<div class="warn">
+  <p><strong>常见误区</strong>：① 把第二个方案写成一个明显很差的"稻草人"，只为了衬托第一个。作者说要认真分析它的弱点，稻草人教不了你什么。② 按"哪个我更快写完"来比较。接口的首要标准是上层用起来是否方便，实现的难易排在后面。③ 比较完只做"选择"，忘了"组合"：很多时候最好的设计是从两三个方案里各借一点。</p>
+</div>
+
+<h2>练习：自己设计两次</h2>
+<p>下面是一个真实服务里常见的需求。请按步骤写下你的想法，写的内容只保存在你的浏览器里。<strong>先写完再展开后面的参考比较</strong>，否则这个练习就失去了意义。</p>
+<div class="exercise">
+  <p><strong>需求：配置热更新。</strong>一个 C++ 写的 HTTP 服务，有几十个组件会读配置：限流阈值、超时时间、功能开关、下游地址、线程池大小、监听端口……运维希望修改配置文件后，<strong>不重启进程</strong>就能生效。请设计"配置模块"对其他组件提供的接口。</p>
+  <p class="small muted">提示：想想会有哪些调用者。有的在每个请求里读一个值；有的在启动时根据配置建好一个长期存在的资源（线程池、连接池）；有的一次要读好几个相互关联的值（例如连接池的 <code>min</code> 和 <code>max</code>）。</p>
+</div>
+
+<div class="dt-step"><h4><span class="n">1</span>写下你的第一个想法</h4>
+  <p>不用犹豫，写出你脑子里第一个冒出来的接口：两三个最重要的方法声明，加一句话说明调用者怎么用。</p>
+  <textarea class="note" data-key="ch11-ex-first" placeholder="例如：int Config::getInt(std::string_view key, int def); 文件变化时……"></textarea></div>
+
+<div class="dt-step"><h4><span class="n">2</span>强迫自己写出一个差别很大的方案</h4>
+  <p>不是给第一个方案换个名字。试着换一个根本的思路：信息是调用者"拉"还是配置模块"推"？值是可变的还是不可变的？甚至，真的需要热更新吗？</p>
+  <textarea class="note" data-key="ch11-ex-second" placeholder="方案二："></textarea></div>
+
+<div class="dt-step"><h4><span class="n">3</span>再来一个（哪怕你觉得它很糟）</h4>
+  <p>作者说，即使你认为只有一种合理做法，也值得想一想别的方案，分析它的弱点本身就很有启发。</p>
+  <textarea class="note" data-key="ch11-ex-third" placeholder="方案三："></textarea></div>
+
+<div class="dt-step"><h4><span class="n">4</span>按标准比较</h4>
+  <p>先回答最重要的问题：对上面三类调用者（每个请求读一个值 / 用配置建长期资源 / 一次读几个相关的值），哪个方案用起来最省事、最不容易出错？然后再看简单性、通用性、效率。</p>
+  <textarea class="note" data-key="ch11-ex-compare" placeholder="方案一：每个请求读值时……；建资源时……；读相关值时……"></textarea></div>
+
+<div class="dt-step"><h4><span class="n">5</span>选择、组合，或者重新设计</h4>
+  <p>写下最终的接口草图，并说明它从哪个方案借了什么、避开了哪个方案的什么问题。</p>
+  <textarea class="note" data-key="ch11-ex-final" placeholder="最终设计："></textarea></div>
+
+<details class="reveal"><summary>写完了？展开本站的参考比较</summary><div>
+<p>下面是本站想到的四个方案。它们的差别足够大：拉还是推、可变还是不可变，最后一个干脆问"要不要热更新"。</p>
+<div class="ba">
+  <div data-label="A：按键取值，原地更新">
+<pre><code class="lang-cpp">int Config::getInt(std::string_view key, int def) const;   // 内部加锁读 map
+// 文件变化时，后台线程逐项更新 map
+
+int timeout = cfg.getInt("upstream.timeout_ms", 500);</code></pre>
+    <p><strong>每个请求读一个值</strong>：最省事。<strong>读相关的值</strong>：先读 <code>pool.min</code>，再读 <code>pool.max</code>，中间如果刚好发生了更新，就会拿到一半旧、一半新的组合。<strong>建长期资源</strong>：线程池在启动时读了一次大小，之后永远不知道它变了。每次读取还要加锁。</p>
+  </div>
+  <div data-label="B：订阅变化，推给组件">
+<pre><code class="lang-cpp">Subscription Config::onChange(std::string_view key,
+                              std::function&lt;void(const Value&amp;)&gt; fn);
+
+auto sub = cfg.onChange("pool.max", [&amp;](const Value&amp; v) {
+    pool_.resize(v.asInt());
+});</code></pre>
+    <p><strong>建长期资源</strong>：正合适。<strong>每个请求读一个值</strong>：很别扭，每个组件都得写回调、自己存一份副本。回调在更新线程上执行，组件要自己处理并发；<code>min</code> 和 <code>max</code> 两个回调先后触发，中间状态可能不合法。</p>
+  </div>
+  <div data-label="C：不可变快照，整体替换">
+<pre><code class="lang-cpp">struct Settings { int timeoutMs; PoolLimits pool; bool newCheckout; /* … */ };
+
+// 返回当前配置的快照；快照永远不会被修改。
+std::shared_ptr&lt;const Settings&gt; Config::current() const;
+// 更新时：解析并校验整份新文件，校验通过才原子地替换指针；
+// 校验失败就保留旧配置并报警，不存在"更新了一半"的状态。
+
+auto s = cfg.current();          // 一个请求开始时取一次
+use(s-&gt;pool.min, s-&gt;pool.max);   // 同一快照里的值必然一致</code></pre>
+    <p><strong>每个请求</strong>：取一次快照，之后随便读，没有锁，值也一致。<strong>读相关值</strong>：天然一致。<strong>建长期资源</strong>：仍然不知道配置变了，这是它唯一的短板。注意它顺便把"配置只更新了一半"这个错误<strong>定义掉</strong>了（第 10 章）。</p>
+  </div>
+  <div data-label="D：不做热更新，滚动重启">
+<pre><code class="lang-cpp">// 配置只在启动时读一次。修改配置 = 滚动重启各个实例。
+const Settings&amp; settings();</code></pre>
+    <p>最简单，所有调用者都不用考虑"值会变"。代价在系统层面：重启会断开连接、丢掉本地缓存、启动慢的服务要等很久。对监听端口这类本来就无法在运行中修改的配置项，它反而是唯一合理的答案。</p>
+  </div>
+</div>
+<p><strong>本站的组合方案</strong>：以 C 为主，因为绝大多数调用者属于"每个请求读几个值"；给少数建长期资源的组件加一个很小的订阅接口，但推送的是<strong>整份新旧快照</strong>，而不是单个键，这样就避开了 B 的中间状态问题；监听端口这类字段明确标注"修改需要重启"，也就是对它们采用 D。</p>
+<pre><code class="lang-cpp">class Config {
+public:
+    std::shared_ptr&lt;const Settings&gt; current() const;
+    // 每次成功替换配置后调用 fn(旧快照, 新快照)，组件自己比较关心的字段。
+    // fn 在配置更新线程上执行。
+    Subscription subscribe(std::function&lt;void(const Settings&amp; before, const Settings&amp; after)&gt; fn);
+};</code></pre>
+<p>回头看第一个想法：如果你写的是 A（大多数人都会这么写），只比较一次就能发现它在"相关值一致性"上有一个很难排查的问题。如果你写下的第一个方案就是 C，也不要紧，B 和 D 的比较让你知道了 C 缺什么，从而补上订阅和"需要重启"的标注。这就是作者说的：比较能让你更好地找到最好的设计。</p>
+</div></details>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="不是每个决定都要设计两次">
+  <p>作者说的是"每个重要的设计决定"，并且强调对一个类来说，比较方案可能只需要一两个小时，相比几天到几周的实现时间很划算；模块越大，前期探索的时间越多，回报也越大。本站补充：反过来，一个私有辅助函数、一个随时能改的内部细节，不值得郑重其事地写三个方案。值得投入的，是那些<strong>接口会被很多人依赖、以后很难改</strong>的决定：公共 API、存储格式、网络协议、模块边界。</p>
+</div>
+<div class="counter" data-title="和&quot;先做最简单的能工作的东西&quot;冲突吗？">
+  <p>敏捷开发和 YAGNI（你不会需要它）常被理解为"先实现第一个能跑的方案，以后再重构"。本站补充：设计两次说的是动手实现<strong>之前</strong>花一点时间比较方案，比较的结果完全可以是"选最简单的那个"，上面的方案 D 就是例子。真正冲突的是"不比较就动手"。作者对敏捷开发的看法在第 19 章有更完整的讨论。</p>
+</div>
+<div class="counter" data-title="&quot;聪明人&quot;陷阱，以及 AI 时代的新形式">
+  <p>作者观察到，很多聪明人从小靠第一个想法就能拿好成绩，于是不习惯考虑第二种可能；可大型软件设计难到没有人能一次做对。坚持只实现第一个想法，会让他们发挥不出真正的水平，也让人很难和他们合作。本站补充：现在让 AI 生成三个备选方案只要几秒钟，发散变得很便宜，<strong>比较</strong>却依然要你自己来：哪个方案让上层代码多做了事、哪个把错误推给了调用者，这些判断正是前面几章训练的东西。参见<a href="../topics/ai-era.html">专题：AI 时代读这本书</a>。</p>
+</div>
+
+<h2>练一练</h2>
+<p>本章题目以书写题和判断题为主，共 9 题。下面三道来自训练场。</p>
+<div class="drill-embed" data-ids="ch11-ab-01 ch11-write-02 ch11-judge-03"></div>
+
+<h2>动手：项目任务</h2>
+<p>项目任务 m02（与第 6 章对应）要求把 minikv 里一串专用命令方法改造成一个更通用的核心。动手改代码之前，先用本章的方法给那个通用核心<strong>设计两次</strong>：至少写出两种差别很大的接口草图，按"上层命令处理代码用起来是否方便"比较它们，再动手实现。留着你的草图和比较结果，做完任务后回头看看当初的判断是否站得住。</p>
+<div class="lab"><p>任务 m02：从专用方法中提炼通用核心；动手前先为核心接口设计两次。详见 <a href="../project/m02.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">关于备选方案之间的差别，作者的建议是：</div>
+  <div class="opts"><button>A. 方案之间差别越大越好，这样能学到更多</button><button>B. 方案之间应该尽量相似，便于逐项比较</button><button>C. 只需要考虑你认为合理的方案</button><button>D. 每个方案都要写到可以直接实现的程度</button></div>
+  <div class="explain">作者建议挑选彼此差别很大的方案，并且只勾勒最重要的几个方法即可。即使确信只有一种合理做法，也要考虑第二种。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">比较几个<strong>实现</strong>方案（比如文本类内部用行链表、固定大小的块，还是 gap buffer）时，最重要的标准是：</div>
+  <div class="opts"><button>A. 哪个方案最新颖</button><button>B. 简单和性能</button><button>C. 上层代码用起来是否方便</button><button>D. 接口是否通用</button></div>
+  <div class="explain">"上层是否好用"是比较<strong>接口</strong>时最重要的标准。接口确定后，实现隐藏在其后，上层看不到，此时作者说最重要的是简单和性能。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">在文本类的例子里，作者是怎样从"按行"和"按字符"两个方案走到"按区间"方案的？</div>
+  <div class="opts"><button>A. 让用户投票决定</button><button>B. 发现两个方案都逼着上层代码做额外的文本处理，于是让接口去贴合上层实际的操作</button><button>C. 测量了两个方案的性能，选了更快的那个</button><button>D. 把两个方案的方法合并到同一个类里</button></div>
+  <div class="explain">两个方案共同的缺点（上层要自己拆行、并行或者写循环）就是线索：文本处理本该由文本类负责。用已发现的问题驱动新的方案，是"设计两次"里最有价值的一步。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">"设计两次"可以用在哪些层次？</div>
+  <div class="opts"><button>A. 接口、实现、用户界面功能、系统分解成哪些模块，都可以</button><button>B. 只用于类的接口</button><button>C. 只用于系统架构</button><button>D. 只在代码评审时使用</button></div>
+  <div class="explain">作者说这个原则可以用在系统的许多层次：先选接口，再选实现，更高层次的功能选择、系统分解也一样。每次只要能比较几个方案，就更容易找出最好的。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">按作者的说法，很多聪明人难以接受"设计两次"的原因是：</div>
+  <div class="opts"><button>A. 他们更擅长实现而不是设计</button><button>B. 设计两次需要的时间太长，不划算</button><button>C. 他们的第一个想法通常确实是最好的</button><button>D. 他们从小靠第一个想法就够用，形成了坏习惯，潜意识里认为"聪明人一次就该做对"</button></div>
+  <div class="explain">作者认为问题不在于不够聪明，而在于大型软件设计这类问题真的很难，没有人能一次做对。坚持只用第一个想法，反而会让人发挥不出真正的水平。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">你画出了三个接口方案，比较后发现都不太满意。按本章的建议，下一步最好是：</div>
+  <div class="opts"><button>A. 把三个方案的所有方法都放进同一个接口</button><button>B. 选缺点最少的那个，先实现再说</button><button>C. 利用已经发现的问题，去构思新的方案</button><button>D. 放弃设计，直接写代码，在实现中摸索</button></div>
+  <div class="explain">作者说，如果没有一个方案特别吸引人，就再想更多方案，并用原方案暴露出的问题驱动新设计，文本类从"按行 / 按字符"走到"按区间"就是这样。把所有方法堆进一个接口不是组合优点，只会得到一个更浅的模块。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>对每个重要的设计决定，勾勒几个差别很大的方案（草图即可），哪怕你确信只有一种合理做法。</li>
+  <li>比较接口时，最重要的是上层代码用起来是否方便；其次是简单、通用、能否高效实现。比较实现时，看简单和性能。</li>
+  <li>结果可以是选一个、组合几个，或者用已发现的问题驱动一个新方案。</li>
+  <li>代价很小（一个类一两个小时），回报很大，而且会持续提升你的设计能力。</li>
+  <li>"聪明人一次就该做对"是个陷阱：不是你不聪明，而是问题真的难。</li>
+</ul>
+<p>从第 12 章开始，全书转向注释。第 15 章会把注释也变成设计工具：先写接口注释，写不清楚往往说明设计本身有问题。这和"设计两次"一样，都是在动手实现之前发现问题的手段。</p>
+<p><strong>读后一句话</strong>：回想一个你只考虑过一个方案的设计决定，现在你会想到的第二个方案是什么？</p>
+<textarea class="note" data-key="ch11-oneline" placeholder="例如：我们的任务队列当初直接用了轮询数据库，其实也可以……"></textarea>
+
+</main>
+</body>
+</html>

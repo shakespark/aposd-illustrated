@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 18 章 · 代码应该一目了然</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch18.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.guess-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.guess-tabs button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.guess-opts { display: grid; gap: 6px; margin: 10px 0; }
+.guess-opts button { text-align: left; }
+.guess-opts button.right { border-color: var(--ok); background: var(--ok-soft); }
+.guess-opts button.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.guess-reveal h5 { margin: 12px 0 4px; font-size: 13.5px; color: var(--muted); }
+</style>
+</head>
+<body data-chapter="18">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>读者扫一眼代码时会做出一个猜测。怎样写，才能让这个第一眼的猜测恰好是对的？</strong></p>
+</div>
+<p>第 2 章说复杂性有两个根源：依赖和模糊性（obscurity）。第 4～11 章主要对付依赖；第 12～17 章从注释、命名、一致性入手对付模糊性。这一章把这条线收尾：给"不模糊"一个可操作的定义，即<strong>代码一目了然（obvious）</strong>，读得快，而且第一眼的猜测是对的。</p>
+<p>这一章提出了全书最后一个红旗"代码不明显"，和第 14 条设计原则"为易读而设计，而不是为易写而设计"。后者是一个很实用的裁判标准：几乎每一个"写起来方便"的捷径（返回 <code>std::pair</code>、加一个 <code>bool</code> 参数、在构造函数里顺手启动点什么）都是把成本从写的人转嫁给了以后所有读的人。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>本章开头</strong>关于"明显是在读者心里"的那一段：当你觉得自己的代码很清楚、评审者却说看不懂时，作者站在哪一边？这个立场对你写代码有什么实际影响？</li>
+    <li><strong>18.2 节</strong>列了几种让代码不明显的写法。注意作者对事件驱动编程的态度：书中没有说"别用"，而是说了什么？</li>
+    <li><strong>18.3 节</strong>给出了三种让读者拿到所需信息的方式，并且排了序。读完想一想：给一段难懂的代码加注释，属于第几种？为什么它不是最好的？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>"一目了然"的定义</h4><p>读者不用费多少力气就能读懂，而且第一眼对行为和含义的猜测是对的。明显的代码需要的注释也更少。</p></div>
+  <div class="card"><h4>读者说了算</h4><p>明显与否只存在于读者心里。评审者说看不懂，那就是不明显，不管你自己觉得多清楚。</p></div>
+  <div class="card"><h4>两大手段</h4><p>好名字（第 14 章）和一致性（第 17 章）。再加上恰当的空白，以及在无法避免时用注释补上缺失的信息。</p></div>
+  <div class="card"><h4>让代码变模糊的写法</h4><p>事件驱动、通用容器（<code>std::pair</code> 之类）、声明类型和实际类型不一致、违反读者预期的行为。</p></div>
+  <div class="card"><h4>为读而设计</h4><p>写的人多花几分钟，换来所有后来读的人少花时间、少出错。<span data-principle="14"></span></p></div>
+  <div class="card"><h4>三种给信息的方式</h4><p>最好是<strong>减少读者需要的信息</strong>；其次是利用读者已有的知识；最后才是把信息写进代码（名字、注释）。</p></div>
+  <div class="card"><h4>红旗：代码不明显</h4><p>快速读一遍弄不懂代码的含义和行为，通常说明有重要的信息读者拿不到。<span data-flag="nonobvious"></span></p></div>
+</div>
+
+<h2>心智模型：读者缺了什么信息</h2>
+<p>作者在 18.3 节换了一个角度：代码不明显，通常意味着<strong>读者缺少某条重要信息</strong>。于是"让代码明显"就变成"让读者拿到信息"，而拿到信息有三种方式，代价和效果完全不同：</p>
+<figure class="fig">
+<svg viewBox="0 0 640 300" width="640" role="img" aria-label="让读者拿到所需信息的三种方式，从好到次：减少需要的信息、利用已有的信息、在代码里呈现信息">
+  <text x="20" y="24" font-weight="700">读者需要的信息从哪里来？（由好到次）</text>
+  <rect x="20" y="40" width="600" height="72" rx="8" class="ok-soft" stroke-width="1.5"/>
+  <text x="36" y="64" font-weight="700">① 让读者根本不需要它</text>
+  <text x="36" y="86" font-size="12.5">抽象、消除特殊情况：读者不用知道的东西，就不会弄错</text>
+  <text x="36" y="104" font-size="12" class="t-muted mono">peek() 永不返回空 → 调用者不用判空</text>
+  <text x="604" y="64" text-anchor="end" font-size="12" style="fill:var(--ok)">最好</text>
+
+  <rect x="20" y="124" width="600" height="72" rx="8" class="accent-soft" stroke-width="1.5"/>
+  <text x="36" y="148" font-weight="700">② 用读者已经有的</text>
+  <text x="36" y="170" font-size="12.5">遵守约定、符合预期：读者在别处学过的东西，在这里依然成立</text>
+  <text x="36" y="188" font-size="12" class="t-muted mono">begin()/end() 是半开区间；构造函数不做 I/O</text>
+
+  <rect x="20" y="208" width="600" height="72" rx="8" class="warn-soft" stroke-width="1.5"/>
+  <text x="36" y="232" font-weight="700">③ 把它写在读者眼前</text>
+  <text x="36" y="254" font-size="12.5">精确的名字、有针对性的注释：信息仍然要读者去读、去记</text>
+  <text x="36" y="272" font-size="12" class="t-muted mono">flush(Durability::Fsync)；// 由事件循环在 I/O 线程调用</text>
+  <text x="604" y="232" text-anchor="end" font-size="12" style="fill:var(--warn)">兜底</text>
+</svg>
+<figcaption>三种方式不是互斥的，但顺序很重要：先问"能不能让这条信息变得不必要"，再问"能不能用读者已知的约定"，最后才写名字和注释。本站自绘示意。</figcaption>
+</figure>
+<p>这个排序和全书一脉相承：第 ① 种就是第 4～10 章的深模块、信息隐藏和"把错误定义为不存在"；第 ② 种是第 17 章的一致性；第 ③ 种是第 12～15 章的注释和命名。注释是兜底手段，不是首选。</p>
+
+<h3>试一试：你的第一眼猜对了吗？</h3>
+<p>下面的小工具只给你看<strong>调用处</strong>的一行代码，就像你在评审一个 diff 时看到的那样。先凭第一眼选一个猜测，再看真相和改法。</p>
+<section class="sim" id="sim-guess">
+  <div class="sim-head"><span class="tag">交互</span><h3>第一眼猜测</h3>
+    <div class="desc">每个例子只显示调用处。选出你第一眼认为它在做什么，然后看声明处的真相，以及怎样改写才能让调用处自己说清楚。</div></div>
+  <div class="sim-body">
+    <div class="controls"><div class="guess-tabs" id="guess-tabs"></div></div>
+    <div id="guess-call"></div>
+    <div class="guess-opts" id="guess-opts"></div>
+    <div class="guess-reveal" id="guess-reveal"></div>
+    <div class="narrate" id="guess-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="guess-done">0 / 4</div><div class="l">已作答</div></div>
+      <div class="stat"><div class="v" id="guess-right">0</div><div class="l">第一眼猜对</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">你猜错了不说明你粗心：调用处本来就没有给出足够的信息。每个例子的改法都是把信息搬到读者第一眼能看到的地方，或者让它变得不必要。</p>
+
+<h2>让代码更明显：名字、一致性、空白、注释</h2>
+<p>名字和一致性前两章已经讲过，这里不再展开。书中另外讲了<strong>空白</strong>的作用（用 Javadoc 参数说明和一段内存分配代码举例，见 18.1 节）。空白有三个层次：注释里用缩进区分条目、函数里用空行分块、语句里用空格分出结构。下面是一个日志恢复函数，逻辑完全相同：</p>
+<div class="ba" data-tone="neutral">
+  <div data-label="挤在一起">
+<pre><code class="lang-cpp">int LogReader::recover(){
+    uint64_t off=0;Header h;
+    while(readHeader(off,&amp;h)==0){
+        if(h.magic!=kMagic||h.len&gt;kMaxRecord)break;
+        if(crc32(payload(off,h.len))!=h.crc)break;
+        index_.put(h.key,off);off+=sizeof(h)+h.len;
+    }
+    truncateAt(off);return 0;
+}</code></pre>
+    <p>能看懂，但要逐个字符去找结构：两个 <code>break</code> 的条件分别在说什么？为什么最后要截断？</p>
+  </div>
+  <div data-label="用空白和块注释分出结构">
+<pre><code class="lang-cpp">// 从头扫描日志，重建内存索引。遇到第一条不完整或损坏的记录就停下，
+// 把它和之后的内容截掉：它们来自崩溃时没写完的追加。
+int LogReader::recover() {
+    uint64_t off = 0;
+    Header h;
+    while (readHeader(off, &amp;h) == 0) {
+        // 头部不合法：到了上次崩溃时写了一半的位置。
+        if (h.magic != kMagic || h.len &gt; kMaxRecord) break;
+
+        // 头部合法但内容校验失败：同样视为写了一半。
+        if (crc32(payload(off, h.len)) != h.crc) break;
+
+        index_.put(h.key, off);
+        off += sizeof(h) + h.len;
+    }
+
+    // off 之后的内容都不可信。
+    truncateAt(off);
+    return 0;
+}</code></pre>
+    <p>空行把循环体切成"检查头部、检查内容、登记"三块，每块第一行是一句说明<strong>为什么</strong>的注释；空行让这些注释更显眼。语句内部的空格让 <code>||</code> 两侧的条件一眼可分。</p>
+  </div>
+</div>
+<p>当不明显的写法无法避免时（例如为了性能），作者要求用注释<strong>补偿</strong>：站在读者的位置，想清楚对方会在哪里困惑、哪条信息能消除困惑，然后只写那条信息。</p>
+
+<h2>让代码不明显的四类写法（C++ 版）</h2>
+
+<h3>1. 事件驱动：谁在什么时候调用我？</h3>
+<p>事件驱动的代码里，处理函数从不被直接调用，而是由事件模块通过函数指针、<code>std::function</code> 或虚函数间接调用。你在处理函数里找不到调用者，在事件模块里找到调用点也看不出会调到哪个函数，因为那取决于运行时注册了什么。</p>
+<pre class="numbered" data-mark="3,9,10"><code class="lang-cpp">void Server::start() {
+    loop_.watch(listenFd_, Event::Readable, [this] { onAccept(); });
+    loop_.every(std::chrono::seconds(1), [this] { reapIdle(); });
+}
+
+// …… 四百行之后 ……
+
+// 关闭空闲超过 idleTimeout_ 的连接。
+// 由事件循环每秒调用一次，运行在 I/O 线程里，和 onAccept/onReadable
+// 不会并发执行，所以这里可以不加锁地修改 conns_。
+void Server::reapIdle() {
+    auto now = Clock::now();
+    std::erase_if(conns_, [&amp;](auto&amp; kv) { return now - kv.second.lastActive &gt; idleTimeout_; });
+}</code></pre>
+<p>第 9～10 行就是作者建议的补偿：在每个处理函数的接口注释里写明<strong>它在什么时候、被谁、在哪个线程调用</strong>。没有这两行，读者读到 <code>reapIdle</code> 时最想问的"这里不加锁安全吗？"就没有答案。作者并没有说事件驱动不好，它在网络服务里几乎无法替代；作者说的是用了就要补上文档。</p>
+<div class="aside" data-title="对照 OSTEP">
+  <p>OSTEP 第 33 章<a href="https://t.miaowuao.cn/ostep/chapters/33-events.html">基于事件的并发</a>讲了事件循环为什么能避免锁（单线程里处理函数不会并发），也讲了它的难处：阻塞调用会卡住整个循环、状态要手动在回调之间传递。那一章关心的是正确性和性能，这一章关心的是<strong>可读性</strong>：控制流被拆散到了注册点和处理函数两处，读者需要注释把它们重新连起来。</p>
+</div>
+
+<h3>2. 通用容器：<code>.first</code> 是什么？</h3>
+<p><code>std::pair</code>、<code>std::tuple</code> 写起来很方便，一个返回值就能带回好几样东西。问题是元素的名字是通用的：<code>first</code>、<code>second</code>、<code>std::get&lt;2&gt;</code>，读者从名字里得不到任何含义。作者的结论是：最好不要用通用容器，需要组合值就定义一个专门的类或结构体。</p>
+<div class="ba">
+  <div data-label="改之前：tuple">
+<pre><code class="lang-cpp">// 查找 key 在日志里的最新记录。
+std::optional&lt;std::tuple&lt;uint64_t, uint32_t, bool&gt;&gt;
+Index::locate(const Key&amp; key) const;
+
+// 调用者（另一个文件里）：
+auto r = index_.locate(key);
+if (!r || std::get&lt;2&gt;(*r)) return -ENOENT;
+return readAt(std::get&lt;0&gt;(*r), std::get&lt;1&gt;(*r), out);</code></pre>
+    <p><code>std::get&lt;2&gt;</code> 是什么，为什么它为真就返回"不存在"？第二个元素是长度还是结束偏移？每个调用者都要跳到声明处，而声明处也没写。</p>
+  </div>
+  <div data-label="改之后：专门的结构体">
+<pre><code class="lang-cpp">// 一个键在日志里最新一条记录的位置。
+struct Location {
+    uint64_t offset;     // 记录在日志文件中的起始偏移
+    uint32_t length;     // 记录总长度，含头部
+    bool     tombstone;  // 这条记录是删除标记：键已被删除
+};
+// key 从未写入过时返回 std::nullopt。
+std::optional&lt;Location&gt; Index::locate(const Key&amp; key) const;
+
+// 调用者：
+auto loc = index_.locate(key);
+if (!loc || loc-&gt;tombstone) return -ENOENT;
+return readAt(loc-&gt;offset, loc-&gt;length, out);</code></pre>
+    <p>调用处自己就说清楚了；声明处有地方写每个字段的含义和单位。代价是多一个类型、多几行声明，写的人多花两分钟。</p>
+  </div>
+</div>
+<blockquote class="quote">software should be designed for ease of reading, not ease of writing.<cite>— 第 18.2 节</cite></blockquote>
+<p>这就是第 14 条原则的来历：通用容器对写的人很方便，却让之后所有读的人困惑。同样的道理，本站补充一个 C/C++ 里比 <code>pair</code> 还常见的例子：<strong><code>bool</code> 参数</strong>。</p>
+<div class="ba">
+  <div data-label="改之前：两个 bool">
+<pre><code class="lang-cpp">void Store::flush(bool sync, bool compact);
+
+// 调用处：
+store.flush(true, false);</code></pre>
+    <p>只看调用处，没人知道 <code>true</code> 和 <code>false</code> 分别是什么；把两个参数的顺序写反，编译器也不会报错。</p>
+  </div>
+  <div data-label="改之后：让调用处自己说话">
+<pre><code class="lang-cpp">enum class Durability { Buffered, Fsync };
+void Store::flush(Durability d);
+void Store::compact();     // 原来的第二个 bool 本来就是另一件事
+
+// 调用处：
+store.flush(Durability::Fsync);</code></pre>
+    <p>枚举让调用处可读，也让参数顺序错不了。顺带发现：<code>compact</code> 根本不该是 <code>flush</code> 的一个开关，它是一个独立的操作。</p>
+  </div>
+</div>
+
+<h3>3. 声明的类型和实际的类型不一致</h3>
+<p>书中的例子是 Java 里把变量声明成接口类型 <code>List</code>、实际分配 <code>ArrayList</code>。C++ 里对应的情形是：成员声明成抽象基类的指针，实际总是某一个具体实现，而<strong>代码依赖了那个具体实现的特性</strong>。</p>
+<pre class="numbered" data-mark="3,10"><code class="lang-cpp">class Dispatcher {
+    // ……
+    std::unique_ptr&lt;TaskQueue&gt; queue_;
+};
+
+Dispatcher::Dispatcher() : queue_(std::make_unique&lt;MpscLockFreeQueue&gt;()) {}
+
+// 在多个工作线程里并发调用：
+void Dispatcher::submit(Task t) {
+    queue_-&gt;push(std::move(t));   // 没加锁：依赖 MpscLockFreeQueue 是多生产者安全的
+}</code></pre>
+<p>读者看到第 3 行的声明，会以为这里只依赖 <code>TaskQueue</code> 的接口；但 <code>TaskQueue</code> 的接口并不保证线程安全，第 10 行能工作，全靠构造函数里那个具体类型。作者的建议是让声明和分配一致：直接把成员声明成 <code>std::unique_ptr&lt;MpscLockFreeQueue&gt;</code>（或者干脆是一个值成员）。本站补充另一种同样有效的改法：把"多生产者安全"写进 <code>TaskQueue</code> 的接口约定，让所有实现都必须满足。两种改法的共同点是：<strong>读者在声明处就能看到代码真正依赖的东西</strong>。</p>
+
+<h3>4. 违反读者预期的代码</h3>
+<p>书中的例子是一个 <code>main</code> 函数返回后程序却不退出，因为某个构造函数悄悄起了线程。C++ 读者对构造函数也有一个普遍的预期：<strong>它初始化这个对象，不去改动进程级别的状态</strong>。下面的构造函数打破了这个预期：</p>
+<pre class="numbered" data-mark="4,7"><code class="lang-cpp">int main(int argc, char** argv) {
+    Config cfg = Config::load(argv[1]);
+    Logger log(cfg.logPath());
+    ConfigWatcher watcher(argv[1], &amp;cfg);   // 构造函数里调用了 sigaction(SIGHUP, …)
+
+    // 半年后，另一位同事为了支持日志轮转加了这一行：
+    std::signal(SIGHUP, [](int) { Logger::reopenAll(); });
+
+    return Server(cfg).run();
+}</code></pre>
+<p>第 7 行的作者看不到第 4 行在构造时装了信号处理器，于是悄悄覆盖了它，配置热加载从此失效，而且没有任何报错。作者对这类代码的建议是：在构造函数的接口注释里写明这种行为；如果它足够出人意料，在调用处（这里是 <code>main</code>）也加一行简短的注释。作者的原则是：代码遵守读者预期的约定时最明显；不遵守时，就必须把这种行为写清楚。本站补充：能做到的话，更好的办法是让副作用变成显式调用，例如 <code>watcher.reloadOn(SIGHUP);</code>，让 <code>main</code> 里所有信号处理都看得见，这就从"把信息写在读者眼前"升级成了"符合读者预期"。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="&quot;不明显&quot;的写法有时值得用">
+  <p>作者明确说，事件驱动这类写法在某些场合很有用，你可能还是会用它；这时要用额外的文档减少读者的困惑。同理，为了性能写的位运算技巧、无锁算法，本身可能无法写得一目了然。红旗"代码不明显"的意思是"这里需要补信息"，不是"这里必须重写"。不过要先问一句：真的无法避免吗？很多"必要的技巧"包进一个命名清楚的函数（如 <code>isPowerOfTwo(n)</code>，或 C++20 的 <code>std::has_single_bit</code>）就不再是问题。</p>
+</div>
+<div class="counter" data-title="&quot;面向接口编程&quot;和&quot;声明与分配一致&quot;冲突吗？">
+  <p>第 19 章作者会称赞接口继承：一个接口有多种实现，接口就更深。而本章又说声明类型要和实际类型一致。本站补充一个调和的办法：如果代码<strong>只依赖接口承诺的东西</strong>，声明成接口类型完全没问题，这正是抽象的意义；问题出在代码<strong>悄悄依赖了具体实现的性质</strong>（性能、线程安全、迭代顺序），而声明处没有体现。所以判断标准不是"用不用基类指针"，而是"读者看到声明时，会不会对行为做出错误的推断"。</p>
+</div>
+<div class="counter" data-title="&quot;明显&quot;取决于读者：那以谁为准？">
+  <p>一段位运算对内核开发者是常识，对业务开发者可能是天书。作者的立场很明确：评审者说不明显，那就是不明显，你该做的是弄清楚是什么让对方困惑，而不是在评审回复里解释一遍（解释在回复里，下一个读者还是看不到）。本站补充：这也意味着"明显"要以<strong>这份代码实际的读者群</strong>为准；团队里新人多，门槛就要放低。</p>
+</div>
+<div class="counter" data-title="标准库返回的 pair 怎么办？">
+  <p><code>std::map::insert</code>、<code>try_emplace</code> 返回 <code>pair&lt;iterator, bool&gt;</code>，你改不了它。本站补充：这类接口是 C++ 程序员普遍熟悉的约定（18.3 节说的"利用读者已有的信息"），用 C++17 的结构化绑定立刻给元素起名，<code>auto [it, inserted] = m.try_emplace(k);</code>，可读性的问题就基本解决了。所以本站认为，这条建议真正要管的是<strong>你自己设计的接口</strong>：别让它返回通用容器，把起名字的成本推给每一个调用者。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。本章的题大多是"识红旗"：先只凭第一眼读代码，再看自己漏掉了什么。</p>
+<div class="drill-embed" data-ids="ch18-flag-01 ch18-flag-04 ch18-ab-02"></div>
+
+<h2>动手：项目任务</h2>
+<p>minikv 是一个故意按"战术式"风格写成的迷你键值存储。任务 m08 对应本章和第 20 章：在 minikv 里找出让人第一眼就猜错的代码，例如 <code>bulk(s, true, true)</code> 这种看不出含义的 <code>bool</code> 参数、用 <code>std::pair&lt;bool, std::string&gt;</code> 带回来的返回值、一个"只是查询"却会悄悄改统计数字的方法，把它们改得一目了然；性能相关的部分留到第 20 章再做。改之前先写下你第一眼的猜测，改完请一位没看过这段代码的人读一遍，看对方的第一眼猜测是否正确。</p>
+<div class="lab"><p>任务 m08：找出 minikv 中读者第一眼会猜错的代码，把信息挪到调用处或让它变得不必要。详见 <a href="../project/m08.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">按本章的定义，"代码一目了然"指的是什么？</div>
+  <div class="opts"><button>A. 读者不用费多少力气就能读懂，而且第一眼的猜测是对的</button><button>B. 每一行都有注释</button><button>C. 代码用了团队里大家都会的语言特性</button><button>D. 代码很短</button></div>
+  <div class="explain">"一目了然"有两层：读得快，而且第一眼的猜测正确。短代码可能很难懂；注释多也不等于明显，作者说明显的代码需要的注释反而更少。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">你觉得自己的代码很清楚，评审者却说"这段我看不懂"。按作者的观点：</div>
+  <div class="opts"><button>A. 那它就是不明显的；应该弄清楚是什么让对方困惑，并改代码或补注释</button><button>B. 看团队投票</button><button>C. 评审者水平不够，在评审回复里解释清楚就行</button><button>D. 只要测试通过就没关系</button></div>
+  <div class="explain">作者说"明显"存在于读者心里，看别人的代码比看自己的更容易发现不明显之处，所以评审是判断明显与否的最好方法。在评审回复里解释，下一个读者仍然看不到。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">18.3 节给出的三种让读者拿到信息的方式中，作者认为<strong>最好</strong>的是哪一种？</div>
+  <div class="opts"><button>A. 用好名字和注释把信息写在代码里</button><button>B. 遵守约定，利用读者已有的知识</button><button>C. 写一份单独的设计文档</button><button>D. 通过抽象、消除特殊情况等手段，减少读者需要的信息</button></div>
+  <div class="explain">读者不需要知道的信息，就不会被误解，也不用去维护。其次才是利用读者已有的知识，最后是把信息呈现在代码里。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">关于事件驱动编程，作者的态度是：</div>
+  <div class="opts"><button>A. 它是一种设计模式，能让代码更明显</button><button>B. 只要用了 <code>std::function</code> 就没有可读性问题</button><button>C. 它让控制流难以追踪，但在某些场合很有用；用的时候要在每个处理函数的接口注释里写明它何时被调用</button><button>D. 它让控制流难以追踪，应该避免使用</button></div>
+  <div class="explain">作者承认事件驱动在某些场合有用，所以给的建议是补偿：在处理函数的接口注释里说明它在什么情况下被调用。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">函数返回 <code>std::pair&lt;int, int&gt;</code> 表示一个范围。最符合本章建议的改法是：</div>
+  <div class="opts"><button>A. 在函数注释里写清 first 和 second 的含义</button><button>B. 定义一个专门的结构体，如 <code>struct Range { int begin; int end; }</code>，并在声明处说明是否包含 end</button><button>C. 改成返回 <code>std::tuple&lt;int, int&gt;</code></button><button>D. 让调用者都用结构化绑定</button></div>
+  <div class="explain">作者的建议是不用通用容器，定义专门的类或结构体：元素有了有意义的名字，声明处还能写文档（如区间是否半开）。A 只把信息放在声明处，调用处读到 <code>.first</code> 仍然要跳过去查。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">"软件应该为易读而设计，而不是为易写而设计"，下列哪种做法<strong>违背</strong>了这条原则？</div>
+  <div class="opts"><button>A. 给事件处理函数写注释说明它在哪个线程被调用</button><button>B. 把 <code>flush(bool, bool)</code> 改成接受枚举的 <code>flush(Durability)</code></button><button>C. 为了少写一个类型，让函数返回 <code>std::tuple&lt;bool, size_t, std::string&gt;</code></button><button>D. 在一段长函数里用空行和块注释分出几个阶段</button></div>
+  <div class="explain">返回 tuple 对写的人最省事，却把理解成本留给了所有调用者。其他三项都是写的人多花一点功夫，让读的人更轻松。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">一个成员声明为 <code>std::unique_ptr&lt;Cache&gt;</code>，构造时总是创建 <code>ShardedConcurrentCache</code>，多个线程不加锁地调用它。下面哪种说法最准确？</div>
+  <div class="opts"><button>A. 没问题：面向接口编程本来就该这样声明</button><button>B. 代码依赖了具体实现的线程安全性，但声明处看不出来；要么声明成具体类型，要么把线程安全写进 <code>Cache</code> 的接口约定</button><button>C. 应该在每个调用处加锁，不管实现是否线程安全</button><button>D. 应该把 <code>unique_ptr</code> 换成 <code>shared_ptr</code></button></div>
+  <div class="explain">问题不在用了基类指针，而在代码依赖的性质（并发安全）没有体现在读者看到的声明里。让声明与实际一致，或者把这条性质提升为接口约定，读者就不会做出错误的推断。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>代码一目了然 = 读得快，而且第一眼的猜测正确；明显与否由读者（评审者）判断。</li>
+  <li>让代码更明显：好名字、一致性、恰当的空白；无法避免不明显时，用注释补上缺失的信息。</li>
+  <li>让代码不明显：事件驱动、通用容器、声明类型与实际类型不一致、违反读者预期的行为。</li>
+  <li>为易读而设计，而不是为易写而设计：写的人多花几分钟，换来所有读者少花时间。</li>
+  <li>三种给读者信息的方式：减少所需信息（最好）、利用已有信息、在代码里呈现信息。</li>
+</ul>
+<p>到这里，全书的 14 个红旗都已出现。下一章（软件开发趋势）换一个视角：拿前面学到的原则去评价面向对象、敏捷、测试驱动开发、设计模式等流行做法，看它们到底是减少还是增加了复杂性。</p>
+<p><strong>读后一句话</strong>：找一段你最近在评审里被问过"这是什么意思"的代码，写下当时读者缺了什么信息，以及三种方式里哪一种最适合补上它。</p>
+<textarea class="note" data-key="ch18-oneline" placeholder="例如：我写的 parse() 返回 pair<bool,int>，同事问 int 是什么。其实可以……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, highlight } = APOSD;
+  const codeBlock = (src) => h("pre", {}, h("code", { class: "lang-cpp", "data-hl": "1", html: highlight(src) }));
+  // 每个例子：调用处代码、三个猜测（right 为正确下标）、真相（声明处）、改法、说明
+  const CASES = [
+    { name: "close(true)",
+      call: `conn.close(true);`,
+      opts: ["立即强制关闭，丢弃还没发出去的数据", "关闭后自动重连", "先等发送缓冲区里的数据全部发完，再关闭（可能阻塞几秒）"], right: 2,
+      decl: `// linger 为 true 时，阻塞直到发送缓冲区清空（最多 30 秒）再关闭。\nvoid Connection::close(bool linger);`,
+      fix: `conn.close(CloseMode::DrainThenClose);   // 枚举名说明了行为\nconn.close(CloseMode::Abort);`,
+      note: "很多人看到 true 会猜\"强制\"。bool 参数在调用处不携带任何含义，读者只能猜；换成枚举后，调用处自己就把行为说清楚了。" },
+    { name: "find().second",
+      call: `auto r = index.find(key);\nif (r.second) return -ENOENT;\nreturn readAt(r.first, out);`,
+      opts: ["second 表示\"没找到\"", "second 表示\"这条记录是删除标记\"", "second 表示\"需要重建索引\""], right: 1,
+      decl: `// 返回 (偏移, 是否为墓碑)。key 从未写入时返回 (kNoOffset, false)。\nstd::pair<uint64_t, bool> Index::find(const Key& key) const;`,
+      fix: `std::optional<Location> loc = index.find(key);   // Location{offset, tombstone}\nif (!loc || loc->tombstone) return -ENOENT;\nreturn readAt(loc->offset, out);`,
+      note: "调用处的写法让人以为 second 是\"没找到\"，其实\"没找到\"另有一种表示，而且这段调用代码把它漏掉了。通用容器的元素名不带含义，读者只能靠猜，猜错了还会写出 bug。" },
+    { name: "ConfigWatcher",
+      call: `ConfigWatcher watcher(path, &cfg);\nreturn Server(cfg).run();`,
+      opts: ["只是创建一个对象，记住文件路径", "构造时启动一个后台线程轮询文件", "构造时给进程装上 SIGHUP 信号处理器，收到信号就重新加载"], right: 2,
+      decl: `// 构造时调用 sigaction(SIGHUP, ...)，覆盖进程已有的 SIGHUP 处理器。\nConfigWatcher::ConfigWatcher(std::string path, Config* target);`,
+      fix: `ConfigWatcher watcher(path, &cfg);\nwatcher.reloadOn(SIGHUP);    // 进程级的副作用在 main 里显式可见`,
+      note: "构造函数改动进程级状态，违反了读者的普遍预期。把副作用变成一次显式调用，读者在 main 里就能看到所有信号处理。" },
+    { name: "n & (n - 1)",
+      call: `if (n && !(n & (n - 1))) useFastPath(n);`,
+      opts: ["n 是 2 的整数次幂", "n 是奇数", "n 的最低位是 0"], right: 0,
+      decl: `// 没有声明可看：这是一个位运算惯用法。\n// n & (n - 1) 会清掉 n 最低的那个 1；结果为 0 说明 n 只有一个 1。`,
+      fix: `if (std::has_single_bit(n)) useFastPath(n);   // C++20 <bit>\n// 或者自己写一个 isPowerOfTwo(n)`,
+      note: "熟悉位运算的人第一眼就能猜对，其他人可能完全看不懂。\"明显\"取决于读者；包进一个命名清楚的函数，对所有读者都明显。" },
+  ];
+  const tabs = document.getElementById("guess-tabs"), callEl = document.getElementById("guess-call"), optsEl = document.getElementById("guess-opts"), reveal = document.getElementById("guess-reveal"), narr = document.getElementById("guess-narrate");
+  const answers = new Array(CASES.length).fill(null);
+  let cur = 0;
+  const btns = CASES.map((c, i) => h("button", { onclick: () => { cur = i; draw(); } }, `例 ${i + 1}：${c.name}`));
+  tabs.append(...btns);
+  function draw() {
+    const c = CASES[cur], a = answers[cur];
+    btns.forEach((b, i) => b.classList.toggle("on", i === cur));
+    callEl.replaceChildren(h("h5", { class: "small muted", style: { margin: "0 0 4px" } }, "调用处（你在 diff 里看到的）"), codeBlock(c.call));
+    optsEl.replaceChildren(...c.opts.map((t, k) => h("button", {
+      class: a === null ? "" : k === c.right ? "right" : k === a ? "wrong" : "",
+      onclick: () => { if (answers[cur] === null) { answers[cur] = k; draw(); } },
+    }, t)));
+    if (a === null) {
+      reveal.replaceChildren();
+      narr.textContent = "先凭第一眼选一个猜测。";
+    } else {
+      reveal.replaceChildren(h("h5", {}, "真相：声明处写着"), codeBlock(c.decl), h("h5", {}, "改法：让调用处自己说清楚"), codeBlock(c.fix));
+      narr.textContent = (a === c.right ? "猜对了。" : "第一眼猜错了。") + c.note;
+    }
+    const done = answers.filter((x) => x !== null).length;
+    document.getElementById("guess-done").textContent = `${done} / ${CASES.length}`;
+    document.getElementById("guess-right").textContent = answers.filter((x, i) => x === CASES[i].right).length;
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

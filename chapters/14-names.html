@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 14 章 · 起名字</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch14.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.nl-cases { display: flex; flex-wrap: wrap; gap: 6px; }
+.nl-cases button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.nl-cases button.done::after { content: " ✓"; color: var(--ok); }
+.nl-q { margin: 12px 0 6px; font-weight: 600; }
+.nl-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.nl-opts button.picked { border-color: var(--accent); font-weight: 600; }
+.nl-opts button.truth { background: var(--ok-soft); border-color: var(--ok); }
+.nl-opts button.miss { background: var(--bad-soft); border-color: var(--bad); }
+.nl-label { font-size: 13px; color: var(--muted); margin: 14px 0 4px; }
+.nl-stage pre { margin: 4px 0; }
+.vocab td:first-child { white-space: nowrap; }
+</style>
+</head>
+<body data-chapter="14">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>一个名字要怎样起，读者才能第一眼就猜对它的含义？名字怎么也起不好的时候，又说明了什么？</strong></p>
+</div>
+<p>第 12、13 章讲注释，这一章讲名字。两者是一回事的两面：名字也是文档，而且是最短、出现次数最多的文档。每个变量名都会在声明处之外被读到很多次，读者往往只看名字就做出判断，不会每次都回去查注释。</p>
+<p>作者把起名字当作"复杂性是一点点累积起来的"<span data-principle="1"></span>的典型例子：一个平庸的名字无伤大雅，但一个系统有成千上万个名字，它们加起来决定了代码好不好读。这一章还藏着一个更深的观点：<strong>起名字的难度是设计质量的读数</strong>。这和下一章"注释难写说明设计有问题"是一对。到第 18 章讨论"代码一目了然"时，好名字和一致性会被列为最重要的手段中的两种。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>14.1 节</strong>是作者亲历的一个 bug。留意两件事：为什么好几个人读过出错的那行代码都没看出问题？作者最后给出的修法分了两级，第二级是什么？</li>
+    <li><strong>14.3 节</strong>除了两个红旗，还有两处"例外"和一个反方向的错误（名字<em>太具体</em>）。读完试着各举一个你自己代码里的例子。</li>
+    <li><strong>14.6 节</strong>别读成"作者反对短名字"。弄清楚作者不同意什么、同意什么，以及最后用什么标准来裁决。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>名字是一种抽象</h4><p>和其他抽象一样，好名字突出被命名对象最重要的方面，省略次要的。名字通常只容得下两三个词，所以要挑。</p></div>
+  <div class="card"><h4>孤立测试</h4><p>假设读者只看到这个名字，看不到声明、文档和用法，读者能多准确地猜出它指什么？好名字也告诉读者它<strong>不是</strong>什么。</p></div>
+  <div class="card"><h4>精确：别太泛</h4><p>最常见的问题是名字太泛：count、data、status、x。读者可能猜成别的意思，进而用错。<span data-flag="vague-name"></span></p></div>
+  <div class="card"><h4>也别太具体</h4><p>名字的具体程度要和抽象一致：一个对任何文本范围都适用的方法，参数名不该暗示"只能是当前选中的文本"。</p></div>
+  <div class="card"><h4>布尔值用谓词</h4><p>布尔变量的名字应该让人一看就知道 true 表示什么。"status""mode"之类的词说不清哪边是 true。</p></div>
+  <div class="card"><h4>一致性的三条要求</h4><p>同一用途永远用同一个名字；这个名字不用于别的用途；用途窄到所有同名变量的行为都一样。</p></div>
+  <div class="card"><h4>去掉多余的词</h4><p>每个词都要提供信息。Object、类型前缀、重复类名这类词只会让名字变长。</p></div>
+  <div class="card"><h4>名字难起是设计信号</h4><p>起不出简单又清晰的名字，往往说明被命名的东西本身定义不清，比如一个变量身兼数职。<span data-flag="hard-name"></span></p></div>
+</div>
+
+<h2>心智模型：名字在读者脑中圈出一个范围</h2>
+<p>读者看到一个名字时，脑中会浮现出它<strong>可能</strong>指的几种东西。名字越泛，这个候选集合越大，读者"按最常见的理解"猜错的机会也越大。好名字的作用是把候选集合缩到只剩一个。</p>
+<figure class="fig">
+<svg viewBox="0 0 640 230" width="640" role="img" aria-label="含糊的名字 size 在读者脑中对应四种可能的含义；精确的名字 payloadBytes 只对应一种">
+  <rect x="20" y="95" width="90" height="36" rx="6" class="bad-soft"/>
+  <text x="65" y="118" text-anchor="middle" class="mono" font-size="14">size</text>
+  <g font-size="12.5">
+    <rect x="160" y="22" width="130" height="30" rx="15" class="box"/><text x="225" y="42" text-anchor="middle">字节数？</text>
+    <rect x="160" y="68" width="130" height="30" rx="15" class="box"/><text x="225" y="88" text-anchor="middle">元素个数？</text>
+    <rect x="160" y="114" width="130" height="30" rx="15" class="box"/><text x="225" y="134" text-anchor="middle">已分配的容量？</text>
+    <rect x="160" y="160" width="130" height="30" rx="15" class="box"/><text x="225" y="180" text-anchor="middle">屏幕上的像素尺寸？</text>
+  </g>
+  <g class="stroke" stroke-width="1.3" fill="none">
+    <path d="M110 108 L160 37"/><path d="M110 112 L160 83"/><path d="M110 118 L160 129"/><path d="M110 124 L160 175"/>
+  </g>
+  <text x="160" y="215" text-anchor="middle" font-size="12" class="t-muted">候选多：读者按自己最熟悉的那种去理解</text>
+
+  <line x1="320" y1="20" x2="320" y2="200" class="stroke" stroke-dasharray="4 4"/>
+
+  <rect x="350" y="95" width="120" height="36" rx="6" class="ok-soft"/>
+  <text x="410" y="118" text-anchor="middle" class="mono" font-size="14">payloadBytes</text>
+  <g font-size="12.5">
+    <rect x="500" y="22" width="120" height="30" rx="15" class="box" opacity=".35"/><text x="560" y="42" text-anchor="middle" class="t-muted" text-decoration="line-through">元素个数</text>
+    <rect x="500" y="98" width="120" height="30" rx="15" class="ok-soft"/><text x="560" y="118" text-anchor="middle">消息体的字节数</text>
+    <rect x="500" y="160" width="120" height="30" rx="15" class="box" opacity=".35"/><text x="560" y="180" text-anchor="middle" class="t-muted" text-decoration="line-through">已分配的容量</text>
+  </g>
+  <path d="M470 113 L500 113" class="stroke" stroke-width="1.6"/>
+  <text x="485" y="215" text-anchor="middle" font-size="12" class="t-muted">候选只剩一个，也排除了它"不是什么"</text>
+</svg>
+<figcaption>名字的好坏不在长短，而在它让读者脑中的候选集合有多小。本站自绘示意。</figcaption>
+</figure>
+
+<p>下面的小实验把书中 14.2 节的"孤立测试"变成练习：你只能看到一个变量的<strong>声明</strong>，先猜它的含义，再看它在代码里实际怎么用。注意观察：一个含糊的名字，是怎样让写下一行代码的人"自然而然"地写出 bug 的。</p>
+
+<section class="sim" id="sim-names">
+  <div class="sim-head"><span class="tag">交互</span><h3>名字实验室：只看声明，你能猜对吗？</h3>
+    <div class="desc">选一个案例，先凭第一印象选出你的猜测，再看实际用法和更好的名字。最后一个案例是对照组。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <div class="nl-cases" id="nl-cases"></div>
+      <button id="nl-reset">清空重来</button>
+    </div>
+    <div class="stage nl-stage" id="nl-stage"></div>
+    <div class="narrate" id="nl-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="nl-done">0 / 0</div><div class="l">已揭晓的案例</div></div>
+      <div class="stat"><div class="v" id="nl-hit">0</div><div class="l">第一印象猜对</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">这些案例都很小，放在一屏里你也许能猜对。真实代码里，声明和使用之间往往隔着几百行、甚至在不同文件里，写下使用那一行的人只能依赖名字。</p>
+
+<h2>一个名字两种含义：从名字到类型</h2>
+<p>书中 14.1 节讲的是作者职业生涯里最难查的一个 bug：一个分布式操作系统的文件系统里，同一个变量名有时指文件内的块号，有时指磁盘上的块号，一处用混了，就把磁盘上一块不相干的数据清零了。前后花了六个月才找到。下面是同一类问题在一个环形消息日志里的样子：</p>
+<div class="ba">
+  <div data-label="改之前：同一个名字">
+<pre class="numbered" data-mark="4,9"><code class="lang-cpp">// 消息按递增的序号写入，存放在 slots_[序号 % capacity_]。
+class RingLog {
+public:
+    const Msg&amp; get(uint64_t index) const { return slots_[index % capacity_]; }
+    uint64_t head() const;   // 下一条消息的序号
+};
+// 另一个文件里，缓冲区快照的遍历代码：
+for (uint64_t index = 0; index &lt; snapshot.size(); ++index)
+    process(log.get(index));   // 这里的 index 是数组下标，不是序号！</code></pre>
+    <p><code>index</code> 在 <code>RingLog</code> 里表示消息序号，在调用方表示数组下标。两处单独看都很自然，所以评审时谁也不会多看一眼第 9 行。程序不会崩溃，只会安静地处理错误的消息。</p>
+  </div>
+  <div data-label="改法一：不同的名字" data-tone="neutral">
+<pre class="numbered" data-mark="1,4"><code class="lang-cpp">const Msg&amp; get(uint64_t seq) const { return slots_[seq % capacity_]; }
+
+for (size_t i = 0; i &lt; snapshot.size(); ++i)
+    process(log.get(i));       // get(seq) 却传了 i：一眼就觉得不对</code></pre>
+    <p>只要全项目一致地用 <code>seq</code> 表示序号，第 4 行读起来就会别扭。这是书中给出的第一级修法：给不同的东西起不同的名字。</p>
+  </div>
+  <div data-label="改法二：不同的类型">
+<pre class="numbered" data-mark="1,2,6"><code class="lang-cpp">struct Seq { uint64_t value; };      // 消息序号，只增不减
+const Msg&amp; get(Seq seq) const { return slots_[seq.value % capacity_]; }
+Seq head() const;
+
+for (size_t i = 0; i &lt; snapshot.size(); ++i)
+    process(log.get(i));       // 编译错误：size_t 不能隐式转成 Seq</code></pre>
+    <p>作者说更好的做法是给两种东西定义不同的类型，让它们根本没法互换。在 C++ 里这只需要一个单成员结构体。代价是每处构造、取值都要多写一点，所以本站建议只对<strong>容易混淆、而且混了不会报错</strong>的东西这样做：各种 id、偏移量、带单位的数值。</p>
+  </div>
+</div>
+
+<div class="aside" data-title="对照 OSTEP">
+  <p>作者那个 bug 里混淆的两种块号，正是 OSTEP 第 40 章<a href="https://t.miaowuao.cn/ostep/chapters/40-fs-impl.html">文件系统实现</a>里 inode 负责翻译的两种地址：文件内第几块，以及它在磁盘上的哪一块。文件系统代码里这两种数字到处都是、类型都是整数，这正是名字和类型最该帮忙的地方。</p>
+</div>
+
+<h2>一致性：给项目定一张命名词汇表</h2>
+<p>精确解决的是"一个名字说没说清楚"，一致性解决的是"读者能不能把在一处学到的东西带到另一处"。书中把它比作复用一个类：读者在一个地方理解了 <code>seq</code>，到了别的文件看到 <code>seq</code> 就能立刻做出正确的假设。三条要求缺一不可，第三条最容易被忽视：用途要定得够窄，窄到所有叫这个名字的变量<strong>行为都一样</strong>。上面那个 bug 正是第三条被违反了。</p>
+<p>在实际项目里，最省事的做法是把高频概念的名字写下来。下面是一个日志存储项目可能有的词汇表：</p>
+<div class="table-wrap">
+<table class="vocab">
+  <tr><th>概念</th><th>统一叫法</th><th>这个名字<strong>不</strong>用来表示</th></tr>
+  <tr><td>记录的序号</td><td><code>seq</code></td><td>字节位置、数组下标</td></tr>
+  <tr><td>记录在文件中的位置</td><td><code>byteOffset</code></td><td>记录序号、段内第几条</td></tr>
+  <tr><td>时长</td><td><code>std::chrono</code> 类型；不得已用整数时带单位后缀：<code>timeoutMs</code></td><td>没有单位的 <code>int timeout</code></td></tr>
+  <tr><td>同时出现两个同类对象</td><td>通用名字加区分前缀：<code>oldSegment</code> / <code>newSegment</code></td><td><code>seg1</code> / <code>seg2</code></td></tr>
+  <tr><td>循环变量</td><td>最外层 <code>i</code>，内层 <code>j</code></td><td>外层用 <code>j</code> 内层用 <code>i</code></td></tr>
+</table>
+</div>
+
+<h3>多余的词</h3>
+<p>书中 14.5 节列出了三种多余的词，每种在 C++ 代码里都很常见：</p>
+<pre><code class="lang-cpp">std::vector&lt;User&gt; userListVector;   // → users        ：泛名词和类型信息
+Connection* pConnObj;               // → conn         ：匈牙利式前缀 + "Obj"
+class Segment { size_t segmentSize_; };   // → size_  ：重复类名
+</code></pre>
+<p>作者说自己以前也在名字里放过类型信息，现在不再推荐：IDE 点一下就能看到类型。重复类名有一个例外：如果类里有好几个同类的东西（比如 <code>Segment</code> 既有数据大小又有索引大小），区分它们的词就不是多余的。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="另一种观点：Go 的短名字">
+  <p>Go 社区一些开发者主张名字要很短，常常只用一个字母。作者在 14.6 节不同意这种普遍偏好，更反对用同一个短名字表示几种不同的东西（这正是 14.1 节那个 bug 的成因）。但作者的态度并不绝对：如果一个短名字在全系统里一贯只表示一种东西，别人多半能看懂；书中还赞同 Go 社区那条"声明和使用离得越远，名字越长"的规则，<code>i</code>、<code>j</code> 的例外就是它的特例。最终裁决交给读者：</p>
+  <blockquote class="quote">readability must be determined by readers, not writers.<cite>— 第 14.6 节</cite></blockquote>
+  <p>本站补充：这对团队很实用。名字是否清楚，不要靠作者自我感觉，而要看评审者和新同事的反应。有人问"这个 <code>d</code> 是什么"，就是该改名的信号。</p>
+</div>
+<div class="counter" data-title="好名字不是注释的替代品">
+  <p>名字只容得下两三个词，必然要省略次要信息。书中光标闪烁那个例子里，改名之后"为什么光标不总是显示"这一信息就不在名字里了，作者的态度是：这一点不那么重要，需要时去看注释。反过来，第 12.6 节批评了用超长方法名代替注释的做法：名字长得像一句话，仍然比一段好注释说得少，而且每次调用都要把这段"文档"重敲一遍。名字负责给出清晰的第一印象，注释负责补上精确的细节。两者的分歧在本站的<a href="../topics/clean-code.html">专题：APOSD 与 Clean Code</a> 里有完整对照。</p>
+</div>
+<div class="counter" data-title="&quot;精确&quot;不等于&quot;具体&quot;">
+  <p>名字也可能太具体：一个通用的工具函数，参数名却带着第一个调用方的业务词汇，会让其他人以为它只适用于那种场景。名字的具体程度要和它所命名的抽象一致。这和第 6 章"通用模块更深"是同一个道理：抽象是通用的，名字也该是通用的；抽象是专用的，名字就该说出它专用在哪里。</p>
+</div>
+<div class="counter" data-title="名字难起时，先别查词典">
+  <p>遇到"名字难起"，最常见的反应是继续琢磨词汇，最后用一个又长又拗口的名字凑合。作者的建议是换个方向：<strong>怀疑被命名的东西</strong>。它是不是同时代表了两件事？是不是一个函数做了几件不相干的事？拆开以后，名字往往自己就出来了。当然，也有确实是词汇量问题的时候（领域术语不熟），这时去问懂业务的人，比自己硬造一个词更好。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。本章题库里有 4 道"先写后对照"的改名题，建议都做一遍：起名字这件事，只有动手写才练得出来。</p>
+<div class="drill-embed" data-ids="ch14-flag-01 ch14-ab-03 ch14-write-01"></div>
+
+<h2>动手：项目任务</h2>
+<p>任务 m07 覆盖第 12～15 章。和本章相关的部分：<a href="../project/index.html">minikv</a> 的存储层里有几个典型的含糊名字，比如 <code>total_</code>、<code>dead_</code>、<code>count()</code>、<code>handle()</code>。先对每个名字做一次"孤立测试"：只看名字，你能猜出它是什么的总量、什么东西死了、数的是什么、处理的又是什么吗？读懂实际用法后再改名，测试保持全绿。改名时如果发现某个名字怎么也起不好，记下来：那很可能是一处值得重构的设计。</p>
+<div class="lab"><p>任务 m07：给 <code>store.h</code> / <code>store.cpp</code> / <code>index.h</code> 里含糊的名字改名、重写复述代码和写满实现步骤的注释，再先写接口注释、后实现新命令 <code>RENAME src dst</code>。详见 <a href="../project/m07.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="1"><div class="q">书中建议用来检验一个名字的问题是什么？</div>
+  <div class="opts"><button>A. 这个名字是否符合团队的大小写规范？</button><button>B. 如果有人只看到这个名字，看不到声明、文档和用法，能多准确地猜出它指什么？</button><button>C. 这个名字是否包含了变量的类型？</button><button>D. 这个名字是否足够短，能在一行内写下？</button></div>
+  <div class="explain">这是 14.2 节的"孤立测试"：好名字要在读者脑中建立一个清晰的印象，既告诉读者它是什么，也告诉读者它不是什么。大小写规范、长短都是次要的；类型信息则是作者明确不再推荐放进名字里的。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">下列哪一项<strong>不是</strong>书中提出的命名一致性的要求？</div>
+  <div class="opts"><button>A. 某个用途总是使用同一个通用名字</button><button>B. 所有名字都要使用同样的长度</button><button>C. 用途要足够窄，让所有同名变量的行为都一样</button><button>D. 这个通用名字不用于其他用途</button></div>
+  <div class="explain">A、C、D 是 14.4 节的三条要求。名字长度应该随声明和使用的距离而变化，没有"统一长度"一说。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">一个变量为 true 时表示"这个任务已经被别的线程领走了"。下列哪个名字最好？</div>
+  <div class="opts"><button>A. <code>taskStatus</code></button><button>B. <code>claimMode</code></button><button>C. <code>flag</code></button><button>D. <code>claimed</code></button></div>
+  <div class="explain">布尔变量的名字应该是谓词：<code>if (claimed)</code> 读起来就是"如果已被领走"。status、flag、mode 只说明它和什么有关，说不清 true 是哪一边。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">你想给一个变量起名，试了好几个都觉得不准确。按本章的观点，最应该先做什么？</div>
+  <div class="opts"><button>A. 检查这个变量是不是同时代表了几样东西，考虑把它拆开</button><button>B. 用一个短名字，然后写详细的注释</button><button>C. 用一个更长的名字，把所有含义都写进去</button><button>D. 使用匈牙利命名法，至少把类型写清楚</button></div>
+  <div class="explain">"名字难起"是红旗：它暗示被命名的东西本身定义不清。书中给出的建议是考虑换一种拆分，例如把一个表示多种东西的变量拆成多个，每个的定义都会更简单，名字也就好起了。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">关于在名字里加入类型信息（如 <code>pConn</code>、<code>strName</code>），作者的态度是？</div>
+  <div class="opts"><button>A. 一直反对，认为这从来都是坏习惯</button><button>B. 只推荐在成员变量上使用</button><button>C. 自己过去也这样做过，但现在不再推荐，因为现代 IDE 能直接显示类型</button><button>D. 推荐在 C/C++ 中使用，因为指针和值容易混淆</button></div>
+  <div class="explain">作者在 14.5 节说得很坦白：自己过去也在名字里放过类型信息，但现在不推荐了。现代 IDE 一点就能跳到声明，甚至会自动显示类型，名字里不需要再重复。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">作者在 14.6 节<strong>同意</strong> Go 社区的哪一个观点？</div>
+  <div class="opts"><button>A. 名字的声明和使用离得越远，名字应该越长</button><button>B. 名字应该尽量只用一个字母</button><button>C. 长名字会遮蔽代码在做什么</button><button>D. 同一个短名字可以用来表示几种不同的东西</button></div>
+  <div class="explain">作者只同意距离规则，并指出 <code>i</code>、<code>j</code> 的例外正是它的一个例子。作者也不认为长名字更难读，并且认为用同一个短名字指几种东西容易引发和 14.1 节类似的错误。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>名字是一种抽象，也是最常被读到的文档。用"孤立测试"检验它：只看名字能不能猜对。</li>
+  <li>精确：避免泛泛的词，布尔值用谓词；但也别比抽象本身更具体。</li>
+  <li>一致：同一用途同一个名字，这个名字不做他用，用途窄到所有同名变量行为一致。</li>
+  <li>删掉不提供信息的词；名字长度随声明和使用的距离增长；可读性由读者裁决。</li>
+  <li>名字难起，往往是设计不干净的信号；容易混淆的数值，用不同的类型比用不同的名字更可靠。</li>
+</ul>
+<p>第 15 章把同样的思路用到注释上：如果一个方法或变量的注释怎么也写不短，那也是设计在报警。两章合起来，就是在写实现之前，用名字和注释来检验设计。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好附上一个你最近改过（或想改）的名字。</p>
+<textarea class="note" data-key="ch14-oneline" placeholder="例如：我们代码里的 xxxInfo 和 xxxData 其实分别是……，应该叫……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, codeBlock } = APOSD;
+  // 每个案例：声明（读者先只看到它）、问题、选项 [文字, 是否真实含义, 选它之后的反馈]、实际用法、关键行、讲解、更好的写法
+  const CASES = [
+    { name: "timeout",
+      decl: `int timeout = cfg.getInt("upstream.timeout", 5);`,
+      q: "timeout 的单位是什么？",
+      opts: [["秒", true, "你猜对了声明处的含义。可惜写 poll 那一行的人没有。"], ["毫秒", false, "你和写下 poll 那一行的人想的一样，而这正是 bug 的来源。"], ["看不出来", false, "这是最诚实的回答：名字根本没告诉你单位。"]],
+      usage: `int timeout = cfg.getInt("upstream.timeout", 5);  // 配置里的单位是秒
+// …… 隔了几十行，另一个人写的 ……
+int ready = ::poll(fds, nfds, timeout);   // poll 的超时参数是毫秒`,
+      mark: [3],
+      why: "配置项以秒为单位（默认 5 秒），poll 却按毫秒理解，上游超时从 5 秒变成了 5 毫秒。写 poll 那行的人只看到了一个没有单位的 timeout。",
+      better: `auto timeout = std::chrono::seconds(cfg.getInt("upstream.timeout_sec", 5));
+int ready = ::poll(fds, nfds, toMillis(timeout));   // 类型强迫你显式转换
+// 退一步，至少：int timeoutSec = ...;  poll(fds, nfds, timeoutSec) 一眼就别扭` },
+    { name: "done",
+      decl: `bool done = false;   // Conn 的成员`,
+      q: "done 为 true 时表示什么？",
+      opts: [["当前请求已处理完", false, "很多人这样猜。但实际含义不是这个。"], ["连接已经关闭", false, "第二个模块的作者也是这样猜的，于是丢掉了还没写完的响应。"], ["已经通知客户端准备关闭", true, "猜中了，不过你多半是蒙的：名字里没有任何线索指向\"通知\"。"]],
+      usage: `void Conn::beginShutdown() {
+    if (!done) { send(GoAwayFrame{}); done = true; }
+    // 发了通知，但仍要等进行中的请求处理完，连接还开着
+}
+// …… 另一个模块 ……
+void Conn::writeResponse(const Response& r) {
+    if (done) return;          // 作者以为 done = 连接已关闭
+    ...
+}`,
+      mark: [2, 7],
+      why: "done 只说明\"某件事完成了\"，没说是哪件事。写 writeResponse 的人按自己的理解补全了含义，结果在关闭过程中悄悄丢掉了正在处理的请求的响应。",
+      better: `bool goAwaySent_ = false;   // 已经通知对端准备关闭；连接仍然可用
+bool closed_ = false;       // 连接已关闭，不能再写` },
+    { name: "size",
+      decl: `size_t size = ids.size();   // ids 是 std::vector<uint32_t>`,
+      q: "size 表示什么？",
+      opts: [["元素个数", true, "对。你看得到 ids 的类型和 .size()。可写 memcpy 的人只看到了一个叫 size 的变量。"], ["字节数", false, "你和写 memcpy 那一行的人想的一样。"]],
+      usage: `size_t size = ids.size();
+// …… 组装消息头、校验和，二十多行之后 ……
+std::memcpy(payload, ids.data(), size);   // memcpy 要的是字节数`,
+      mark: [3],
+      why: "vector::size() 返回元素个数，memcpy 要的是字节数，于是只拷贝了四分之一的数据。size 这个词在 C++ 里两种含义都很常见，读者会按眼前的语境去理解。",
+      better: `size_t idCount = ids.size();
+size_t payloadBytes = idCount * sizeof(uint32_t);
+std::memcpy(payload, ids.data(), payloadBytes);` },
+    { name: "list",
+      decl: `std::vector<Order> list;`,
+      q: "list 里装的是哪些订单？",
+      opts: [["本批次处理的全部订单", false, "第二个改这段代码的人也是这么想的。"], ["支付失败、需要重新扣款的订单", true, "猜中了，但只凭名字不可能知道，你多半是排除法。"], ["看不出来", false, "对，名字只告诉你它是一个列表，这一点类型已经说了。"]],
+      usage: `std::vector<Order> list;
+for (const Order& o : batch)
+    if (paymentFailed(o)) list.push_back(o);
+// …… 八十行之后，另一个人新加的代码 ……
+list.push_back(refund);               // 写这行的人以为 list 是"本批次处理过的订单"
+// …… 最后 ……
+for (const Order& o : list) chargeAgain(o);   // 退款单也被重新扣了款`,
+      mark: [5, 7],
+      why: "list 只重复了类型信息，没说装的是什么。离声明越远，读者越只能靠猜，而猜错的代价是给用户重复扣款。",
+      better: `std::vector<Order> ordersToRecharge;   // 支付失败、需要重新扣款的订单` },
+    { name: "对照组",
+      decl: `TimePoint heartbeatDeadline = lastHeartbeat + 3 * heartbeatInterval;`,
+      q: "heartbeatDeadline 是什么？",
+      opts: [["一个时间点：过了它还没收到心跳，就判定对端失联", true, "猜对了，而且几乎不需要猜。"], ["两次心跳之间允许的最长间隔（一段时长）", false, "名字里的 Deadline 指的是时间点，不是时长。类型 TimePoint 也排除了这种理解。"], ["允许错过的心跳次数", false, "名字和类型都不支持这种理解。"]],
+      usage: `if (now > heartbeatDeadline) markPeerDead(peer);`,
+      mark: [1],
+      why: "这是一个通过了孤立测试的名字：两个词，说清了\"关于什么\"（心跳）和\"是什么\"（截止时刻），也排除了\"时长\"\"次数\"等理解。类型 TimePoint 又帮了一把。",
+      better: `// 不需要改。` },
+  ];
+  const casesEl = document.getElementById("nl-cases"), stage = document.getElementById("nl-stage"), narr = document.getElementById("nl-narrate");
+  let cur = 0;
+  const picks = {};   // 案例下标 → 选中的选项下标
+  const btns = CASES.map((c, i) => h("button", { onclick: () => { cur = i; draw(); } }, c.name));
+  casesEl.append(...btns);
+  document.getElementById("nl-reset").onclick = () => { for (const k of Object.keys(picks)) delete picks[k]; cur = 0; draw(); };
+  function draw() {
+    const c = CASES[cur], pick = picks[cur];
+    btns.forEach((b, i) => { b.classList.toggle("on", i === cur); b.classList.toggle("done", picks[i] !== undefined); });
+    const opts = h("div", { class: "nl-opts" }, c.opts.map(([t, truth], k) => {
+      const cls = pick === undefined ? "" : (k === pick ? "picked " : "") + (truth ? "truth" : k === pick ? "miss" : "");
+      return h("button", { class: cls, disabled: pick !== undefined, onclick: () => { if (picks[cur] === undefined) { picks[cur] = k; draw(); } } }, t);
+    }));
+    const parts = [h("div", { class: "nl-label" }, "你只看到这一行："), codeBlock(c.decl, { numbers: false }), h("div", { class: "nl-q" }, c.q), opts];
+    if (pick !== undefined) parts.push(h("div", { class: "nl-label" }, "实际的用法："), codeBlock(c.usage, { mark: c.mark }), h("div", { class: "nl-label" }, "更好的写法："), codeBlock(c.better, { numbers: false }));
+    stage.replaceChildren(...parts);
+    narr.textContent = pick === undefined ? "先凭第一印象选一个答案。别回头去推敲，真实的读者也不会。" : c.opts[pick][2] + " " + c.why;
+    const done = Object.keys(picks).length;
+    const hit = Object.entries(picks).filter(([i, k]) => CASES[i].opts[k][1]).length;
+    document.getElementById("nl-done").textContent = `${done} / ${CASES.length}`;
+    document.getElementById("nl-hit").textContent = String(hit);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 8 章 · 把复杂性往下拉</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch08.js"></script>
+<script src="../assets/drill.js"></script>
+</head>
+<body data-chapter="8">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>一份<em>无法消除</em>的复杂性，该由模块的作者在内部消化，还是交给模块的使用者去处理？</strong></p>
+</div>
+<p>第 4 章说模块要深，第 5～7 章讲了几种把模块做深的办法。第 8 章很短，却给出了一个贯穿全书的取向：当复杂性躲不掉、又和模块的功能相关时，<strong>让模块的作者多吃点苦</strong>。理由很朴素：一个模块的使用者通常比作者多得多，作者辛苦一次，换来所有使用者省事。</p>
+<blockquote class="quote">it is more important for a module to have a simple interface than a simple implementation.<cite>— 第 8 章开头</cite></blockquote>
+<p>这一章用两个例子说明这个取向（编辑器文本类、配置参数），最后用"别做过头"给它划了边界。它也为第 10 章埋了伏笔：随手抛异常，是最常见的"把复杂性往上推"。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>本章开头</strong>：作者描述了开发者最常见的两种"踢皮球"（punt）的方式。读的时候对照你最近写的代码：有没有因为拿不准，而抛了一个异常或者加了一个配置项？</li>
+    <li><strong>8.2 节</strong>：作者在暴露一个配置参数之前会先问自己一个问题。把这个问题原样记下来，它是本章最实用的工具。也注意作者举的那个"配置参数确实合理"的例子。</li>
+    <li><strong>8.3 节</strong>：往下拉在三个条件下最有道理。读完回头想第 6 章的退格键方法：为什么它<em>看起来</em>是往下拉，作者却说它只是信息泄漏？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>踢皮球的两种方式</h4><p>拿不准怎么处理，就抛异常给调用方；拿不准用什么策略，就加个配置参数让管理员去定。短期省事，长期放大复杂性。</p></div>
+  <div class="card"><h4>配置参数是在往上推</h4><p>它常常是一个不完整的解决方案：使用者往往不知道该填多少，填了的值也会随环境变化而过时。</p></div>
+  <div class="card"><h4>使用者比作者多</h4><p>复杂性留在模块里，只有作者一个人要面对；推给使用者，每个调用方、每个部署都要面对一遍。<span data-principle="10"></span></p></div>
+  <div class="card"><h4>简单的接口比简单的实现重要</h4><p>为了让接口简单，实现变复杂是值得的。<span data-principle="6"></span></p></div>
+  <div class="card"><h4>暴露参数前先问</h4><p>使用者（或上层模块）能不能定出比我们在这里定的<strong>更好</strong>的值？不能，就自己算；能，也尽量给合理的默认值。</p></div>
+  <div class="card"><h4>别做过头</h4><p>只有和模块已有功能密切相关、能让别处变简单、能让接口变简单的复杂性，才值得往下拉。</p></div>
+</div>
+
+<h2>心智模型：同一份复杂性，付一次还是付 N 次</h2>
+<p>假设有一份躲不掉的复杂性（比如"缓冲多大、什么时候落盘"）。它要么在模块里被解决一次，要么在每个使用者那里各解决一次：</p>
+<figure class="fig">
+<svg viewBox="0 0 640 270" width="640" role="img" aria-label="左图：复杂性在模块内部只出现一次，四个调用方都很简单；右图：模块很薄，复杂性在四个调用方和管理员那里各出现一次">
+  <defs><pattern id="hatch8" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" style="stroke:var(--warn)" stroke-width="2"/></pattern></defs>
+  <text x="155" y="22" text-anchor="middle" font-weight="700">往下拉：付一次</text>
+  <text x="480" y="22" text-anchor="middle" font-weight="700">往上推：付 N 次</text>
+  <g font-size="12">
+    <rect x="20" y="40" width="62" height="34" rx="6" class="ok-soft"/><text x="51" y="61" text-anchor="middle">调用方</text>
+    <rect x="92" y="40" width="62" height="34" rx="6" class="ok-soft"/><text x="123" y="61" text-anchor="middle">调用方</text>
+    <rect x="164" y="40" width="62" height="34" rx="6" class="ok-soft"/><text x="195" y="61" text-anchor="middle">调用方</text>
+    <rect x="236" y="40" width="62" height="34" rx="6" class="ok-soft"/><text x="267" y="61" text-anchor="middle">调用方</text>
+    <line x1="51" y1="74" x2="100" y2="110" class="arrow"/><line x1="123" y1="74" x2="140" y2="110" class="arrow"/>
+    <line x1="195" y1="74" x2="175" y2="110" class="arrow"/><line x1="267" y1="74" x2="215" y2="110" class="arrow"/>
+    <rect x="60" y="110" width="190" height="120" rx="8" class="box"/>
+    <line x1="60" y1="110" x2="250" y2="110" style="stroke:var(--ok)" stroke-width="5"/>
+    <rect x="80" y="135" width="150" height="76" rx="4" class="warn-soft"/>
+    <rect x="80" y="135" width="150" height="76" rx="4" fill="url(#hatch8)" opacity=".35"/>
+    <text x="155" y="170" text-anchor="middle">那份复杂性</text>
+    <text x="155" y="188" text-anchor="middle" class="t-muted">（作者解决一次）</text>
+    <text x="155" y="252" text-anchor="middle" class="t-muted">接口窄，每个调用方两行代码</text>
+
+    <rect x="340" y="40" width="62" height="58" rx="6" class="bad-soft"/><text x="371" y="58" text-anchor="middle">调用方</text>
+    <rect x="348" y="66" width="46" height="24" rx="3" class="warn-soft"/><rect x="348" y="66" width="46" height="24" rx="3" fill="url(#hatch8)" opacity=".35"/>
+    <rect x="412" y="40" width="62" height="58" rx="6" class="bad-soft"/><text x="443" y="58" text-anchor="middle">调用方</text>
+    <rect x="420" y="66" width="46" height="24" rx="3" class="warn-soft"/><rect x="420" y="66" width="46" height="24" rx="3" fill="url(#hatch8)" opacity=".35"/>
+    <rect x="484" y="40" width="62" height="58" rx="6" class="bad-soft"/><text x="515" y="58" text-anchor="middle">调用方</text>
+    <rect x="492" y="66" width="46" height="24" rx="3" class="warn-soft"/><rect x="492" y="66" width="46" height="24" rx="3" fill="url(#hatch8)" opacity=".35"/>
+    <rect x="556" y="40" width="62" height="58" rx="6" class="bad-soft"/><text x="587" y="58" text-anchor="middle">管理员</text>
+    <rect x="564" y="66" width="46" height="24" rx="3" class="warn-soft"/><rect x="564" y="66" width="46" height="24" rx="3" fill="url(#hatch8)" opacity=".35"/>
+    <line x1="371" y1="98" x2="420" y2="140" class="arrow"/><line x1="443" y1="98" x2="460" y2="140" class="arrow"/>
+    <line x1="515" y1="98" x2="500" y2="140" class="arrow"/><line x1="587" y1="98" x2="540" y2="140" class="arrow"/>
+    <rect x="380" y="140" width="200" height="40" rx="8" class="box"/>
+    <line x1="380" y1="140" x2="580" y2="140" style="stroke:var(--bad)" stroke-width="5"/>
+    <text x="480" y="165" text-anchor="middle" class="t-muted">模块：实现很简单</text>
+    <text x="480" y="210" text-anchor="middle" class="t-muted">接口宽：参数、异常、调优手册</text>
+    <text x="480" y="228" text-anchor="middle" class="t-muted">每个使用者各自解决一遍</text>
+    <text x="480" y="246" text-anchor="middle" class="t-muted">而且解决得各不相同</text>
+  </g>
+</svg>
+<figcaption>斜线块代表同一份躲不掉的复杂性。往下拉时它只存在一份；往上推时它在每个使用者那里各存在一份。本站自绘示意。</figcaption>
+</figure>
+<p>右边的代价不只是"多写几遍"：每个使用者对这份复杂性的理解都不一样，有人填对了参数，有人照抄了别人的值，有人干脆没处理异常。作者的说法是，往上推会<strong>放大</strong>复杂性，让许多人去面对本来只需一个人面对的问题。</p>
+<blockquote class="quote">Most modules have more users than developers, so it is better for the developers to suffer than the users.<cite>— 第 8 章开头</cite></blockquote>
+
+<h2>两个例子</h2>
+<p><strong>编辑器文本类（8.1 节）。</strong>这是第 6、7 章用过的例子换个角度看：按行的接口让文本类实现简单，却让界面代码到处拆行、并行；按字符的接口让文本类内部要处理拆行并行，界面代码却简单了。复杂性从"每个界面操作"移到了"文本类内部一处"，系统整体更简单。</p>
+<p><strong>配置参数（8.2 节）。</strong>这是本章的重点，下面用一个存储引擎的预写日志写入器来看。很多系统的配置项是这样长出来的：每遇到一个拿不准的取值，就加一个参数。</p>
+<div class="ba">
+  <div data-label="改之前：六个必填参数">
+<pre class="numbered" data-mark="2,3,4,5,6,7"><code class="lang-cpp">struct WalOptions {
+    size_t   bufferBytes;         // 写缓冲大小
+    uint32_t flushIntervalUs;     // 最长多久必须刷一次
+    uint32_t maxBatchRecords;     // 组提交一批最多几条
+    uint32_t fsyncEveryNFlushes;  // 每刷几次 fsync 一次
+    size_t   preallocBytes;       // 预分配文件大小
+    bool     useODirect;
+};
+WalWriter wal("db.wal", WalOptions{1 &lt;&lt; 20, 2000, 128, 4, 64 &lt;&lt; 20, false});</code></pre>
+    <p>使用者真正关心的只有一件事："崩溃时最多丢多少数据"。为此却得先弄懂六个底层参数和它们的相互影响。实际上大多数部署会从别处复制一组数字，然后再也没人改过，哪怕硬件早就换了。</p>
+  </div>
+  <div data-label="改之后：一个使用者真正懂的选择">
+<pre><code class="lang-cpp">enum class Durability {
+    EveryCommit,   // 每次提交都落盘才返回：最安全，最慢
+    Batched,       // 最多丢失最近约 10ms 的提交（默认）
+    OsBuffered,    // 交给操作系统决定何时落盘：最快，崩溃可能丢较多数据
+};
+// 缓冲大小、批量、预分配由写入器根据观测到的写入速率自动调整。
+explicit WalWriter(const std::string&amp; path, Durability d = Durability::Batched);
+
+WalWriter wal("db.wal");</code></pre>
+    <p>拆开看每个参数：缓冲、批量、预分配，使用者<strong>不</strong>比写入器更清楚该取多少，写入器看得到实际写入速率，可以自己算，还能随负载变化自动调整；持久性要求则是业务决定，只有使用者知道，所以保留，并给一个合理的默认值。代价是写入器的实现变复杂了，这正是本章说值得付的代价。</p>
+  </div>
+</div>
+<p>这个改法就是 8.2 节那个问题的直接应用：<strong>使用者能不能定出比我们在这里定的更好的值？</strong>书中的正面例子是网络协议的重传间隔：与其让人配置，不如根据成功请求的响应时间自己算（训练场里有一道题就是这个）；反面的合理例子是请求优先级：哪个请求更紧急，只有使用者知道。</p>
+<p>把这个问题用在几个常见参数上练一练。注意同一个参数在不同系统里答案可能不同，关键是<strong>谁掌握了做决定所需的信息</strong>：</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>参数</th><th>谁掌握决定所需的信息</th><th>倾向的处理</th></tr></thead>
+  <tbody>
+    <tr><td>哈希表初始容量</td><td>模块：它看得到实际元素数，可以自动扩容</td><td>删掉</td></tr>
+    <tr><td>读缓冲大小</td><td>模块：一个对绝大多数访问模式都够好的值，或者根据访问模式自适应</td><td>删掉，或内部常量</td></tr>
+    <tr><td>后台线程数</td><td>大多由模块决定（核数、积压程度）；容器里的 CPU 配额有时只有部署方清楚</td><td>自动计算，留可选覆盖</td></tr>
+    <tr><td>写入是否每次落盘</td><td>使用者：丢几条数据能不能接受是业务决定</td><td>保留，写清代价，给默认值</td></tr>
+    <tr><td>请求优先级</td><td>使用者：只有使用者自己知道哪个请求有人在等（书中的例子）</td><td>保留，默认"普通"</td></tr>
+    <tr><td>租户存储配额</td><td>使用者：合同和计费决定的</td><td>保留（往往是必填）</td></tr>
+  </tbody>
+</table></div>
+<p>抛异常也是同样的道理。拿不准"键不存在""缓存满了"该怎么办，就抛给调用方，看起来很负责，实际上是让每个调用方都写一遍同样的处理代码。第 10 章会专门讨论怎样让异常少一些。</p>
+
+<div class="aside" data-title="对照 OSTEP">
+  <p>OSTEP 的<a href="https://t.miaowuao.cn/ostep/chapters/08-mlfq.html">多级反馈队列（MLFQ）</a>一章讲到"每隔多久把所有任务提回最高优先级"这个时间参数时，引用了 Ousterhout 的一个说法：这类值像<strong>巫毒常数</strong>（voo-doo constants），似乎要靠某种黑魔法才能设对；OSTEP 的作者还把"尽量避免巫毒常数"称为"Ousterhout 定律"。OSTEP 也坦言这很难做到，结果往往是一份满是默认值的配置文件，通常没人改，只能祈祷默认值够用；它提到越来越多的系统转向自动方法（比如机器学习）。对照本章：作者给出的出路正是"让模块自己算"，而那份没人改的配置文件，就是 8.2 节说的"容易过时"。</p>
+</div>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="别做过头（8.3 节）">
+  <p>极端地说，把整个应用都塞进一个类，复杂性就全"在下面"了，这显然荒谬。作者给的判断条件是：被拉下去的复杂性和这个类<strong>已有的功能密切相关</strong>；拉下去能让<strong>别处的代码变简单</strong>；而且能让这个类的<strong>接口变简单</strong>。书中的反例是第 6 章的退格键方法：把界面知识放进文本类，看似往下拉，实际上既没让上层简单多少，又和文本类的核心功能无关，结果只是信息泄漏。目标始终是<strong>整个系统</strong>的复杂性最低。</p>
+</div>
+<div class="counter" data-title="配置参数有合理的用途">
+  <p>作者并没有说"永远不要配置项"。主张配置的人有一个对的理由：底层代码有时确实不知道最佳策略，而使用者更了解自己的领域（比如哪些请求更紧急）。这时暴露参数是对的，但要配上合理的默认值，让大多数人只在特殊情况下才需要碰它。作者反对的是把配置当成<strong>回避决定的借口</strong>，以至于有的系统长出了几百个参数。</p>
+</div>
+<div class="counter" data-title="本站补充：自动计算也有成本">
+  <p>"让模块自己算"不是免费的：自适应逻辑更难预测、更难调试，出问题时运维人员会问"它为什么现在选了这个值"。实践中常见的做法是：自动计算为主，把算出来的值通过指标或日志暴露出来，再留一个罕用的覆盖开关（并写清楚什么时候才该用）。这和作者的立场并不矛盾，那个开关只在例外情况下才需要碰，大多数使用者仍然不用知道它的存在。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道判断某个参数该不该暴露，一道识别"踢皮球"式的配置，一道在多个"往下拉"提议里挑出真正合理的那个。</p>
+<div class="drill-embed" data-ids="ch08-ab-01 ch08-flag-01 ch08-judge-02"></div>
+
+<h2>动手：项目任务</h2>
+<p>minikv 的作者把好几个"拿不准"的决定交给了使用者：启动时有一串调优参数，README 里有一整节教你怎么调，代码里还有专门检查参数组合是否合法的逻辑。这个任务要你逐个用 8.2 节的问题检验这些参数：哪些可以由存储自己算出来或者干脆用一个内部常量，哪些确实只有使用者知道（那就保留，写清楚代价，并给默认值）。</p>
+<div class="lab"><p>任务 m04：把 minikv 推给使用者的配置和决定拉回模块内部。详见 <a href="../project/m04.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">作者认为，复杂性无法避免、又与模块功能相关时，通常应该由模块内部处理。作者给出的主要理由是：</div>
+  <div class="opts"><button>A. 大多数模块的使用者比开发者多，作者辛苦一次能让所有使用者省事</button><button>B. 使用者的水平通常不如模块作者</button><button>C. 模块内部的代码运行得更快</button><button>D. 这样模块的实现会更简单</button></div>
+  <div class="explain">关键是数量上的不对称：复杂性推出去，会在每个使用者那里各出现一次。D 恰好说反了：往下拉通常会让实现更复杂。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">在暴露一个配置参数之前，作者建议先问什么？</div>
+  <div class="opts"><button>A. 使用者或上层模块能不能定出比我们在这里定的更好的值？</button><button>B. 这个参数有没有可能在将来某一天被用到？</button><button>C. 这个参数能不能通过环境变量设置？</button><button>D. 竞争对手的产品有没有这个参数？</button></div>
+  <div class="explain">只有使用者确实掌握模块不掌握的信息时（比如请求优先级），暴露参数才有意义；即使暴露，也要尽量提供合理的默认值。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">一个 RPC 库要决定重传等待时间。下面哪种做法最符合本章的思路？</div>
+  <div class="opts"><button>A. 每次超时都抛异常，让调用方决定是否重传</button><button>B. 根据最近成功请求的往返时间自动估计，并随网络状况变化调整</button><button>C. 做成必填的配置项，让每个服务的负责人自己测出合适的值</button><button>D. 写死成 200ms，从此不再修改</button></div>
+  <div class="explain">书中正是用"根据成功请求的响应时间计算重传间隔"说明往下拉的好处：使用者不必操心，而且值会随运行条件自动调整，不会像配置值那样过时。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">有人在通用 HTTP 客户端里加了一个专为结算页服务的方法，理由是"把复杂性往下拉"。按 8.3 节，这为什么不对？</div>
+  <div class="opts"><button>A. 因为往下拉总是错的</button><button>B. 因为方法名太长</button><button>C. 被拉下去的东西和 HTTP 客户端的核心功能无关，也没让上层简单多少，结果只是把业务知识泄漏进了通用库</button><button>D. 因为 HTTP 客户端应该尽量少写代码</button></div>
+  <div class="explain">往下拉有三个条件：和已有功能密切相关、让别处变简单、让接口变简单。这个例子一个都不满足，和书中退格键方法的例子是一回事。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">下面哪一项最能说明"配置参数容易过时"？</div>
+  <div class="opts"><button>A. 配置项太多，文档跟不上</button><button>B. 配置参数会让启动变慢</button><button>C. 配置文件的格式会随版本变化</button><button>D. 三年前按当时的磁盘调好的缓冲大小，换了新硬件后没人记得去改</button></div>
+  <div class="explain">配置值是某个时刻对环境的一次性判断，环境变了它不会跟着变。模块自己根据运行时观测计算的值则能自动适应。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>躲不掉、又与模块功能相关的复杂性，通常应该由模块内部消化：使用者比作者多。</li>
+  <li>简单的接口比简单的实现更重要。</li>
+  <li>抛异常、加配置项是最常见的"踢皮球"，会把一个人的问题放大成所有人的问题。</li>
+  <li>暴露参数前先问：使用者能不能定出更好的值？能，也要给默认值；不能，就自己算。</li>
+  <li>别做过头：只拉那些和已有功能密切相关、能让别处和接口都变简单的复杂性。</li>
+</ul>
+<p>第 9 章把视角从"上下"转向"左右"：给定两段功能，应该放在一起还是分开？它会重新审视第 4 章提过的"方法越短越好"，也会给出三个新的红旗。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段代码。</p>
+<textarea class="note" data-key="ch08-oneline" placeholder="例如：我们服务里那个 xxx_timeout_ms 配置项，其实可以根据……自己算出来"></textarea>
+
+</main>
+</body>
+</html>

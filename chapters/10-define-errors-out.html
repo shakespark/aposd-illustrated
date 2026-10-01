@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 10 章 · 把错误定义为不存在</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch10.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.ex-toggles label.on { color: var(--fg); font-weight: 600; }
+.ex-toggles label.risky { color: var(--warn); }
+#ex-stage svg { display: block; margin: 0 auto; min-width: 560px; }
+.ex-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.ex-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid; vertical-align: -1px; margin-right: 4px; }
+.ex-legend .l-local { background: var(--bad-soft); border-color: var(--bad); }
+.ex-legend .l-moved { background: var(--accent-soft); border-color: var(--accent); }
+.ex-legend .l-gone { background: var(--ok-soft); border-color: var(--ok); }
+.ex-legend .l-swallow { background: var(--warn-soft); border-color: var(--warn); }
+.narrate.alarm { background: var(--warn-soft); }
+.stat .v.bad { color: var(--bad); }
+.stat .v.ok { color: var(--ok); }
+</style>
+</head>
+<body data-chapter="10">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>异常为什么会让系统复杂得不成比例？在错误真实存在的前提下，怎样让必须处理它的地方尽可能少？</strong></p>
+</div>
+<p>第 4～9 章一直在讲怎样把模块做深。这一章用同样的眼光看异常：一个类会抛出的异常属于它的接口，而且是特别"重"的那部分，因为异常会穿过好几层调用栈，牵连的不只是直接调用者。所以异常越多，模块越浅。</p>
+<p>它也是好几条线索的交汇点。第 6 章 6.8 节说要消除特殊情况，而异常正是特殊情况代码最主要的来源之一；本章的"屏蔽"是第 8 章"把复杂性往下拉"的一个实例；"聚合"则又一次说明了通用机制的好处。10.9 节"别做过头"预告了第 21 章的主题：判断什么重要。</p>
+<p>这一章最反直觉的地方，是它反对"能检测的错误越多越好"这种防御式本能。读的时候注意作者的论证并不是"错误不重要"，而是<strong>处理异常的地方越少越好</strong>，而最好的办法是让一部分"错误"根本不存在。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>10.1 节</strong>列了异常难处理的好几条理由：两种应对方式各有各的麻烦、处理过程中又冒出新异常、语法冗长、很难测试。读完拿你最近写的一段错误处理代码对照一下：它在生产环境里真正执行过几次？</li>
+    <li><strong>10.3 节 Tcl <code>unset</code> 的修正</strong>：注意改的不是实现，而是操作的<em>定义</em>，只改了一句话。这是全章的精髓，10.4、10.5 两节的例子用的是同一招。</li>
+    <li><strong>10.7 节后半段</strong>：屏蔽为什么适合放在底层、聚合为什么适合放在高层；RAMCloud 的"错误提升"有什么前提。然后读 <strong>10.9 节</strong>，问自己：什么时候这些技术会害人？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>异常是广义的</h4><p>任何改变正常控制流的不常见情况都算：<code>throw</code> 出来的，和"返回一个特殊值表示没做成"的，都会增加复杂性。</p></div>
+  <div class="card"><h4>抛出容易，处理难</h4><p>复杂性来自处理代码。所以目标不是少检测错误，而是<strong>减少必须处理异常的地方</strong>。</p></div>
+  <div class="card"><h4>异常是接口的一部分</h4><p>抛的异常越多，接口越复杂、类越浅；异常还会往上穿透，连带影响更高层的调用者。<span data-flag="shallow"></span></p></div>
+  <div class="card"><h4>① 定义掉（首选）</h4><p>改写操作的语义，让正常行为本身就覆盖原来的"错误"情况。<span data-principle="11"></span></p></div>
+  <div class="card"><h4>② 屏蔽</h4><p>在底层发现并就地处理，上层完全感知不到。这是"把复杂性往下拉"的一种。<span data-principle="10"></span></p></div>
+  <div class="card"><h4>③ 聚合</h4><p>让异常往上传几层，在高处用一个处理器接住一大批。把小错误"提升"成已有恢复机制的大错误，也是一种聚合。</p></div>
+  <div class="card"><h4>④ 直接崩溃</h4><p>难以处理又很少发生的错误，打印诊断信息后退出。能不能这样做，取决于应用。</p></div>
+  <div class="card"><h4>别做过头</h4><p>只有调用者不需要的异常信息才可以藏起来。调用者需要的，哪怕让接口变复杂也要暴露。</p></div>
+</div>
+
+<h2>为什么异常处理格外昂贵</h2>
+<p>遇到异常，代码只有两条路：要么想办法<strong>继续往前做</strong>（重发、从副本恢复），要么<strong>中止并往上报</strong>。前者会引出新的异常：重发的包其实没丢，只是迟到了，对端就收到了重复的包；后者得先把做了一半的状态恢复一致，再交给上层，而上层又面临同样的二选一。书中把这叫作处理异常的过程中产生的<strong>次生异常</strong>，它们往往比原来的异常更隐蔽。</p>
+<p>语言的异常语法也在添乱。书中用一段 Java 反序列化代码说明，光是 try/catch 的样板就比正常逻辑还长（10.1 节）。下面是同样问题的 C++ 版本：</p>
+<pre class="numbered" data-mark="9,10,11"><code class="lang-cpp">// 从快照文件恢复内存索引
+try {
+    File f(path);                          // 可能抛 IoError（不存在、无权限）
+    Header h = readHeader(f);              // 可能抛 FormatError、IoError
+    for (uint32_t i = 0; i &lt; h.count; ++i)
+        index_.insert(readEntry(f));       // 可能抛 FormatError、IoError
+} catch (const FormatError&amp; e) {
+    // ……
+} catch (const IoError&amp; e) {
+    // 是打开失败、读文件头失败，还是读到一半失败？到这里已经分不清了，
+    // 而这三种情况下 index_ 的状态各不相同：空的、空的、填了一半。
+}</code></pre>
+<p>一个大 try 块让人看不出每个异常从哪里来，也看不出出错时状态被破坏到了什么程度。反过来给每一行单独包 try，出错位置清楚了，正常流程却被切得支离破碎，相同的处理代码还会在几个 catch 里重复出现。两种写法都不好，根源在于需要处理的地方太多。</p>
+<p>更麻烦的是，异常处理代码很少被执行。I/O 错误在测试环境里很难造出来，于是处理代码里的 bug 可以潜伏很久，等到真正需要它的那天才发现它不工作。作者有一句很喜欢的话：</p>
+<blockquote class="quote">code that hasn't been executed doesn't work<cite>— 第 10.1 节</cite></blockquote>
+<p>书中引用了 OSDI 2014 年的一项研究（Yuan 等）：在分布式数据密集型系统里，<strong>超过 90%</strong> 的灾难性故障是由错误处理不当造成的。本站补充：那篇论文的标题就叫《简单的测试就能防止大多数严重故障》，很多出事的处理代码一眼就能看出问题（比如空的 catch、只写了一行 TODO），只是从来没有被测试覆盖过。</p>
+<p>所以本章的策略很朴素：</p>
+<blockquote class="quote">Throwing exceptions is easy; handling them is hard.<cite>— 第 10.2 节</cite></blockquote>
+<p>既然难的是处理，那就让需要处理的地方越少越好。作者给出了四种技术，其中把错误定义掉是最好的办法。它们的区别可以用一个问题概括：<strong>处理器放在哪里？</strong></p>
+
+<figure class="fig">
+<svg viewBox="0 0 660 290" width="660" role="img" aria-label="四种技术把异常处理器放在调用栈的不同位置：定义掉没有处理器；屏蔽在底层；聚合在顶层；直接崩溃让进程退出">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+  <text x="6" y="66" font-size="12" class="t-muted">顶层</text><text x="6" y="80" font-size="11" class="t-muted">请求循环</text>
+  <text x="6" y="136" font-size="12" class="t-muted">中层</text><text x="6" y="150" font-size="11" class="t-muted">业务逻辑</text>
+  <text x="6" y="206" font-size="12" class="t-muted">底层</text><text x="6" y="220" font-size="11" class="t-muted">库函数</text>
+  <g>
+    <text x="130" y="24" text-anchor="middle" font-weight="700">① 定义掉</text>
+    <rect x="80" y="50" width="100" height="40" rx="6" class="box"/><rect x="80" y="120" width="100" height="40" rx="6" class="box"/><rect x="80" y="190" width="100" height="40" rx="6" class="ok-soft"/>
+    <text x="130" y="215" text-anchor="middle" font-size="12">正常返回</text>
+    <text x="130" y="258" text-anchor="middle" font-size="12" class="t-muted">没有错误，</text><text x="130" y="274" text-anchor="middle" font-size="12" class="t-muted">也就没有处理器</text>
+  </g>
+  <g>
+    <text x="270" y="24" text-anchor="middle" font-weight="700">② 屏蔽</text>
+    <rect x="220" y="50" width="100" height="40" rx="6" class="box"/><rect x="220" y="120" width="100" height="40" rx="6" class="box"/><rect x="220" y="190" width="100" height="40" rx="6" class="bad-soft"/>
+    <text x="270" y="215" text-anchor="middle" font-size="12">catch：重试</text>
+    <text x="270" y="258" text-anchor="middle" font-size="12" class="t-muted">一处处理，</text><text x="270" y="274" text-anchor="middle" font-size="12" class="t-muted">所有调用者受益</text>
+  </g>
+  <g>
+    <text x="410" y="24" text-anchor="middle" font-weight="700">③ 聚合</text>
+    <rect x="360" y="50" width="100" height="40" rx="6" class="bad-soft"/><rect x="360" y="120" width="100" height="40" rx="6" class="box"/><rect x="360" y="190" width="100" height="40" rx="6" class="box"/>
+    <text x="410" y="75" text-anchor="middle" font-size="12">一个 catch</text>
+    <path d="M375 190 L375 92" class="arrow" marker-end="url(#ah)"/><path d="M410 190 L410 92" class="arrow" marker-end="url(#ah)"/><path d="M445 190 L445 92" class="arrow" marker-end="url(#ah)"/>
+    <text x="410" y="258" text-anchor="middle" font-size="12" class="t-muted">许多抛出点，</text><text x="410" y="274" text-anchor="middle" font-size="12" class="t-muted">在高处一并接住</text>
+  </g>
+  <g>
+    <text x="560" y="24" text-anchor="middle" font-weight="700">④ 直接崩溃</text>
+    <rect x="500" y="50" width="100" height="40" rx="6" class="box"/><rect x="500" y="120" width="100" height="40" rx="6" class="box"/><rect x="500" y="190" width="100" height="40" rx="6" class="warn-soft"/>
+    <text x="550" y="215" text-anchor="middle" font-size="12">abort()</text>
+    <path d="M600 210 L640 210" class="arrow" marker-end="url(#ah)"/>
+    <text x="625" y="196" text-anchor="middle" font-size="11" class="t-muted">退出</text>
+    <text x="560" y="258" text-anchor="middle" font-size="12" class="t-muted">打印诊断信息，</text><text x="560" y="274" text-anchor="middle" font-size="12" class="t-muted">不写恢复代码</text>
+  </g>
+</svg>
+<figcaption>四种技术的区别在于异常处理器的位置。屏蔽和聚合都是把处理器挪到"能接住最多异常"的地方。本站自绘示意。</figcaption>
+</figure>
+
+<h2>交互：数一数要写几个 catch</h2>
+<p>下面是一个小型文本协议服务器的调用关系：分发器把命令交给 5 个处理函数，每个处理函数会调用解析参数、存储层、内存分配、回写响应等下层函数，每个调用都可能出现某种异常。一开始采用最直接的写法：<strong>哪里可能出错，就在哪里处理</strong>。按书中的顺序依次打开四种技术，观察处理位置的数量怎么变化，以及它们被挪到了哪里。最后试试那个黄色的选项。</p>
+
+<section class="sim" id="sim-ex">
+  <div class="sim-head"><span class="tag">交互</span><h3>catch 计数器</h3>
+    <div class="desc">每个小格是一处可能出错的调用。红色 = 在这里就地处理；蓝色 = 处理挪到了别处（分发器、底层库、分配包装函数）；绿色 = 错误被定义掉了；黄色 = 被悄悄吞掉了。</div></div>
+  <div class="sim-body">
+    <div class="controls ex-toggles" id="ex-toggles"></div>
+    <div class="stage" id="ex-stage"></div>
+    <div class="ex-legend"><span><i class="l-local"></i>就地 catch</span><span><i class="l-moved"></i>挪到别处统一处理</span><span><i class="l-gone"></i>已定义掉</span><span><i class="l-swallow"></i>被吞掉</span></div>
+    <div class="narrate" id="ex-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="ex-sites">0</div><div class="l">需要写处理代码的位置</div></div>
+      <div class="stat"><div class="v" id="ex-iface">0</div><div class="l">存储层接口上的异常种类</div></div>
+      <div class="stat"><div class="v" id="ex-durable">—</div><div class="l">写盘失败时客户端知道吗</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">计数规则：屏蔽、聚合、崩溃都<strong>不是让处理器消失</strong>，而是把许多处理器合成一个，所以它们各算 1 处；只有定义掉才真正是 0。19 处、几个异常种类都是本站为演示设定的规模。</p>
+
+<h2>四种技术，按书中的顺序</h2>
+
+<h3>① 把错误定义掉</h3>
+<p>书中的三个例子用的是同一招。Tcl 的 <code>unset</code> 在变量不存在时报错，作者事后称这是自己设计 Tcl 时最大的错误之一：<code>unset</code> 最常见的用途是清理一个可能只做了一半的操作留下的临时变量，调用者根本不确定哪些变量存在，只好每次都包一层 catch。把定义从"删除变量"改成"确保变量不存在"，错误就消失了（10.3 节）。Unix 允许删除一个正被打开的文件：名字立刻从目录里消失，数据等最后一个使用者关闭后才释放，删除方和使用方都不会遇到错误；Windows 的做法则是拒绝删除（10.4 节）。Java 的 <code>substring</code> 越界抛异常，如果定义成"取落在这个区间里的那些字符"，越界就不再是错误（10.5 节）。</p>
+<p>下面是一个服务端常见的原创例子：连接关闭时取消它的空闲超时定时器。</p>
+<div class="ba">
+  <div data-label="改之前：取消失败就报错">
+<pre><code class="lang-cpp">// 取消定时器。id 不存在（从未创建、已经触发、已经取消）时抛 NoSuchTimer。
+void TimerWheel::cancel(TimerId id);
+
+void Connection::close() {
+    try {
+        timers_.cancel(idleTimer_);
+    } catch (const NoSuchTimer&amp;) {
+        // 超时回调可能刚好已经触发了，也可能 close() 被调用了两次
+    }
+    ::close(fd_);
+}</code></pre>
+    <p>"定时器已经触发"和"取消"之间存在竞态，这是正常情况而不是错误。可每个调用者都要知道这个异常，写同样的 catch，再写一行注释解释为什么忽略它。</p>
+  </div>
+  <div data-label="改之后：确保它不会再触发">
+<pre><code class="lang-cpp">// 确保 id 对应的回调以后不会再被调用。若它已经触发或已被取消，什么也不做。
+// 返回这次调用是否真的阻止了一次触发（极少数调用者关心）。
+bool TimerWheel::cancel(TimerId id);
+
+void Connection::close() {
+    timers_.cancel(idleTimer_);
+    ::close(fd_);
+}</code></pre>
+    <p>新定义读起来完全自然："确保它不会再触发"，而它本来就不会再触发，那就什么都不用做。接口少了一个异常，调用代码少了一个分支，<code>close()</code> 被调两次也安全了。返回值把信息留给少数真正关心的调用者，这一点下面"别做过头"一节还会讲到。</p>
+  </div>
+</div>
+<p>可以把这一招整理成几种常见的"改定义"句式（本站整理）：</p>
+<div class="table-wrap"><table>
+  <tr><th>原来的定义（会出错）</th><th>改后的定义（不会出错）</th><th>例子</th></tr>
+  <tr><td>删除 X（X 不在就报错）</td><td>确保 X 不存在</td><td><code>unset</code>、<code>erase</code>、删除缓存项</td></tr>
+  <tr><td>创建 X（X 已在就报错）</td><td>确保 X 存在</td><td><code>mkdir -p</code>、建表 <code>IF NOT EXISTS</code></td></tr>
+  <tr><td>取下标区间（越界就报错）</td><td>取区间与数据的交集</td><td>子串、切片、分页</td></tr>
+  <tr><td>取消 / 关闭（重复调用就报错）</td><td>确保它以后不再发生 / 处于关闭状态</td><td>定时器、连接、订阅</td></tr>
+  <tr><td>查找（找不到就报错）</td><td>返回"可能没有"的结果</td><td><code>std::optional</code>、空列表</td></tr>
+</table></div>
+
+<div class="aside" data-title="对照 OSTEP">
+  <p>OSTEP 第 39 章讲过 <code>unlink()</code> 为什么叫这个名字：删除文件其实只是去掉一个名字到 inode 的链接，inode 的引用计数归零、而且没有进程还打开着它时，数据才真正释放。书中 10.4 节夸的就是这个设计。另外，<a href="https://t.miaowuao.cn/ostep/chapters/49-nfs.html">OSTEP 第 49 章</a>讲 NFS 时强调协议操作被设计成<strong>幂等</strong>的，客户端超时后可以无脑重发。下面讲屏蔽时你会看到，这正是 NFS 能在客户端屏蔽服务器故障的前提。</p>
+</div>
+
+<h3>② 屏蔽：在底层就地处理</h3>
+<p>有些异常无法定义掉，但可以在很低的层次处理掉，让上层根本看不到。TCP 在内部重传丢掉的包，应用只看到一个可靠的字节流。书中还举了一个更有争议的例子：NFS 服务器无响应时，客户端会一直重试，应用就挂在那里，控制台上打印"服务器没有响应，仍在重试"。作者认为这比报错更好：应用拿到错误也没什么可做的，要么自己重试（同样挂住），要么层层中止，最后用户的整个工作环境都垮掉，服务器恢复后还得把所有程序重启一遍（10.6 节）。</p>
+<p>一个原创例子：分布式键值存储的客户端库。请求发到了非 leader 节点，或者 leader 刚刚换了，这对调用者来说毫无意义，客户端库可以自己处理：</p>
+<pre><code class="lang-cpp">// 读取 key。请求发到非 leader 节点时，节点会回复 NotLeader 并附上它所知道的 leader，
+// 客户端自动切换过去重发；调用者看不到这种情况。
+// 只有到 deadline 仍得不到答复时才返回 Unavailable。
+Result&lt;std::string&gt; KvClient::get(std::string_view key, Deadline d) {
+    for (;;) {
+        Reply r = rpc(leaderHint_, GetRequest{key}, d);
+        if (r.ok())        return r.value();
+        if (r.notLeader()) { leaderHint_ = r.leader(); continue; }
+        if (r.timedOut())  {
+            if (d.expired()) return Unavailable{};
+            leaderHint_ = nextNode();
+            continue;
+        }
+        return r.error();   // 其他错误（比如权限不足）照常上报
+    }
+}</code></pre>
+<p>这一个循环替所有调用者处理掉了"找错节点"和"节点暂时无响应"两种情况，<code>KvClient</code> 的接口变小了，功能却变多了，模块更深。注意两个细节：读操作是幂等的，所以重发安全；如果是写操作，重发可能造成重复写入（10.1 节说的次生异常），需要给请求带上唯一 id 让服务端去重。另外它仍然保留了 deadline：屏蔽的是调用者不需要知道的事，"一直连不上"调用者是需要知道的。</p>
+
+<h3>③ 聚合：在高处用一个处理器接住一批</h3>
+<p>书中 10.7 节的例子来自学生写的 Web 服务器：每个处理 URL 的方法都要取参数，很多学生在每次取参数的地方各包一个 catch，所有 catch 干的都是同一件事。更好的做法是让异常一路传到顶层的分发方法，在那里只写一个处理器。下面是同样思路的原创例子，注意"改之前"用的是返回值，并没有 <code>throw</code>，但按本章的广义定义，它照样是一处处异常处理：</p>
+<div class="ba">
+  <div data-label="改之前：每个处理函数自己查错">
+<pre><code class="lang-cpp">Response handleCreateOrder(const HttpRequest&amp; req, const User&amp; user) {
+    auto sku = req.json().getString("sku");
+    if (!sku) return Response::badRequest("missing field 'sku'");
+    auto qty = req.json().getInt("qty");
+    if (!qty) return Response::badRequest("missing field 'qty'");
+    if (*qty &lt;= 0) return Response::badRequest("'qty' must be positive");
+    if (!user.can(Permission::PlaceOrder)) return Response::forbidden("no permission");
+    return Response::created(orders_.create(user.id(), *sku, *qty));
+}
+// handleCancelOrder、handleUpdateAddress……几十个处理函数都是这个样子</code></pre>
+    <p>真正的业务只有最后一行。几十个处理函数里，同样性质的检查和错误响应写了几百遍，措辞还各不相同。</p>
+  </div>
+  <div data-label="改之后：抛出处给信息，分发器统一处理">
+<pre><code class="lang-cpp">// 处理一个请求时，任何地方都可以抛 RequestError 来中止这个请求。
+// message 在抛出处生成，分发器把它放进错误响应。
+struct RequestError : std::runtime_error {
+    RequestError(int status, std::string message);
+    int status;
+};
+
+Response handleCreateOrder(const HttpRequest&amp; req, const User&amp; user) {
+    user.require(Permission::PlaceOrder);                    // 不满足时抛 403
+    auto sku = req.json().requireString("sku");              // 缺失时抛 400
+    auto qty = req.json().requireInt("qty", {.min = 1});     // 缺失或越界时抛 400
+    return Response::created(orders_.create(user.id(), sku, qty));
+}
+
+Response Dispatcher::dispatch(const HttpRequest&amp; req) {
+    try {
+        return route(req)(req, authenticate(req));
+    } catch (const RequestError&amp; e) {
+        return Response::error(e.status, e.what());   // 唯一的处理器
+    }
+}</code></pre>
+    <p>分发器只知道错误响应长什么样，不知道有哪些具体错误；<code>requireInt</code> 知道怎样描述参数错误，却不知道 HTTP 响应的格式。两份知识各在各的地方，新加的处理函数只要抛 <code>RequestError</code> 就自动接入。</p>
+  </div>
+</div>
+<p>书中把这总结成一个通用模式：系统处理一连串请求时，定义一种"中止当前请求"的异常，在请求循环顶部捕获，清理状态后继续处理下一个请求。作者特别提醒，这类异常要和"整个系统都完了"的致命异常<strong>明确区分</strong>。上面的分发器只捕获 <code>RequestError</code>，不用 <code>catch (...)</code>，原因就在这里。</p>
+<p><strong>错误提升</strong>（error promotion）是聚合的另一种形式。作者的 RAMCloud 存储系统本来就必须能从整台服务器崩溃中恢复，于是发现单个对象损坏时，它不去单独修复那个对象，而是直接让服务器崩溃，复用那套恢复机制。这样少写了一套恢复代码，而且崩溃恢复被执行得更频繁，其中的 bug 更容易被发现。代价是恢复成本变大，所以只适合<strong>罕见</strong>的错误：不能每丢一个网络包就让服务器崩溃（10.7 节）。本站补充：系统领域有一篇著名的短文《Crash-Only Software》（Candea 与 Fox，2003），主张让"崩溃后重启"成为唯一的停机和恢复路径；Erlang 社区的"let it crash"也是类似的思路。</p>
+
+<h3>④ 直接崩溃</h3>
+<p>有些错误难以处理、很少发生，处理它们的代码多半永远不会被执行。这时最简单的做法是打印诊断信息后退出。书中的例子是内存耗尽：C 的 <code>malloc</code> 返回 <code>NULL</code> 要求每个调用者都检查，而真有可以释放的内存，程序早就该释放了，所以作者主张用一个包装函数代替 <code>malloc</code>，分配失败就带着信息退出；C++ 的 <code>new</code> 抛 <code>bad_alloc</code>，捕获它也没什么意义，处理代码自己多半还要分配内存（10.8 节）。内部数据结构不一致也属于这一类，它通常意味着 bug：</p>
+<pre><code class="lang-cpp">// 内部不变量被破坏说明有 bug：打印位置和原因后立即终止，不尝试恢复。
+[[noreturn]] void fatal(const char* file, int line, const char* expr, const char* msg);
+#define KV_CHECK(cond, msg) \
+    do { if (!(cond)) ::kv::fatal(__FILE__, __LINE__, #cond, (msg)); } while (0)
+
+KV_CHECK(entry.offset + entry.len &lt;= segment.size(), "index entry points past segment end");</code></pre>
+<p>能不能崩溃要看应用。对多数程序来说，读写已打开文件时的磁盘硬错误、打不开网络套接字，都可以带着清楚的信息退出；但对一个副本存储系统，遇到 I/O 错误就退出是不可接受的，从副本恢复数据正是它向用户提供的核心价值。</p>
+
+<div class="key">
+  <p><strong>本站整理：遇到一个异常情况时，按这个顺序问自己</strong></p>
+  <ol>
+    <li>能不能换个定义，让这种情况变成正常行为？能 → <strong>定义掉</strong>。</li>
+    <li>调用者需要知道这件事吗？需要 → 必须暴露，再考虑下面哪种方式让处理的地方最少。</li>
+    <li>能不能在底层就地解决（重试、换节点），而且对调用者无害？能 → <strong>屏蔽</strong>。</li>
+    <li>是否有很多地方会抛同样性质的错误、处理方式也一样？是 → <strong>聚合</strong>到一个能做出正确反应的高处。</li>
+    <li>罕见、难以恢复、继续运行也没有意义？是 → <strong>直接崩溃</strong>（先确认你的应用承受得起）。</li>
+  </ol>
+</div>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="别做过头：重要的信息必须暴露（10.9 节）">
+  <p>定义掉或屏蔽一个异常的前提是：模块外面<strong>不需要</strong>这个信息。<code>unset</code> 和 <code>substring</code> 满足这个前提，少数关心特殊情况的调用者另有办法拿到信息（就像上面 <code>cancel</code> 的返回值）。书中的反例是一个学生团队的网络模块：它吞掉了所有网络异常，用它的应用无从得知消息丢了或者对端挂了，也就不可能做得可靠。交互里的"吞掉写盘失败"是同一类错误：处理位置少了一个，客户端却会对一笔没落盘的写入收到 "OK"。<strong>处理位置的数量不是唯一的目标，它服从于"调用者需要知道什么"。</strong>作者在这里说的是：不重要的要藏起来，越多越好；重要的必须暴露。第 21 章会专门讨论怎样判断什么重要。</p>
+</div>
+<div class="counter" data-title="&quot;这样不会把 bug 藏起来吗？&quot;">
+  <p>作者在 10.5 节回应过这个质疑：抛错的写法也许能抓到一些 bug，但它让调用者不得不写更多代码去避开或忽略错误，或者忘了写、运行时冒出意外的异常，这些本身又会造成 bug；整体上，减少 bug 最好的办法是让软件更简单。本站补充：这条论证在"越界是正常需求"时最有力，比如取一段可能偏短的预览。如果越界在你的场景里几乎一定意味着数据损坏（解析带长度前缀的记录，声明的长度超出了缓冲区），那它就是重要信息，应该报错甚至崩溃，而不是悄悄截断。</p>
+</div>
+<div class="counter" data-title="&quot;直接崩溃&quot;和&quot;屏蔽&quot;都要看是谁的进程">
+  <p>书里的 <code>ckalloc</code> 是<strong>应用</strong>为自己做的决定。本站补充：一个通用库在分配失败时直接 <code>abort()</code>，等于替所有使用它的应用做了这个决定，这通常不合适；分配大小由不可信输入决定时（客户端声称要上传 4GB），分配失败也应该变成"拒绝这个请求"，而不是让整个服务退出。同样，NFS 无限期挂住的做法作者自己也承认有争议，用户确实经常抱怨；现在常见的 NFS 客户端提供 <code>soft</code> 挂载选项，超时后返回错误，代价正是作者担心的那种连锁中止。哪种更好，取决于应用能不能对错误做出有意义的反应。</p>
+</div>
+<div class="counter" data-title="和&quot;防御式编程&quot;、错误码文化的关系">
+  <p>很多人从小被教导"尽可能多地检测并报告错误"。作者反对的是由此产生的<strong>过度防御</strong>：稍有可疑就抛异常，把难题推给调用者，并美其名曰"让调用者自己决定"（10.2 节）。这和"快速失败"并不矛盾，直接崩溃恰恰就是快速失败。本站补充：Go、Rust 这类显式错误值的语言让每个出错点在调用处都看得见，常被认为与异常机制对立。但本章说的"异常"包括特殊返回值，它的论点与机制无关：<strong>不论用哪种机制，需要做出处理决定的地方越少越好</strong>。Rust 的 <code>?</code> 运算符让错误可以低成本地往上传到一个聚合点，正好方便了聚合。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道识红旗、一道 A/B 对比、一道"给每种异常选技术"的书写题。本章共 20 题。</p>
+<div class="drill-embed" data-ids="ch10-flag-01 ch10-ab-02 ch10-write-02"></div>
+
+<h2>动手：项目任务</h2>
+<p>读完本章去做 minikv 的任务 m06。minikv 的存储层把很多正常情况当作错误抛出（比如删除一个不存在的键、读取一个越界的区间），服务端的命令处理函数于是各自带着一长串 catch，同样的错误响应写了很多遍。启动时也有问题：进程崩溃留下的末尾半条记录和日志中间真正的损坏走同一条报错路径，前者让程序拒绝启动，使用者只能手工截断文件。你要做的是：先找出哪些错误可以通过改定义消失，再把剩下的请求级错误聚合到命令分发处；把末尾半条记录在最底层屏蔽掉；为真正不可恢复的中间损坏选择直接崩溃，并给出清楚的说明。注意这个任务会<strong>有意改变</strong> DEL 和 GETRANGE 的外部行为，相应的测试要跟着改（任务页里说明了哪些），其余测试保持全绿。</p>
+<div class="lab"><p>任务 m06：把错误定义掉、在分发处聚合、在最底层屏蔽末尾半条记录、对不可恢复的情况直接崩溃，让 catch 的数量大幅减少。详见 <a href="../project/m06.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="2"><div class="q">按本章的用法，下面哪一项<strong>也</strong>算"异常"？</div>
+  <div class="opts"><button>A. 只有导致程序崩溃的错误才算</button><button>B. 只有调用者无法预料的错误才算</button><button>C. 函数返回 <code>-1</code> 表示"没能完成正常行为"</button><button>D. 只有用 <code>throw</code> 抛出的对象才算</button></div>
+  <div class="explain">作者把任何改变正常控制流的不常见情况都叫作异常，不论它是通过语言的异常机制抛出的，还是通过特殊返回值表示的。所以本章的论点对 C 风格的错误码同样适用。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">本章认为降低异常带来的复杂性，最关键的是什么？</div>
+  <div class="opts"><button>A. 给每种错误定义一个专门的异常类</button><button>B. 把所有异常都在最底层捕获</button><button>C. 尽可能多地检测和报告错误</button><button>D. 减少必须处理异常的地方</button></div>
+  <div class="explain">抛出容易、处理难，复杂性主要在处理代码里。四种技术（定义掉、屏蔽、聚合、直接崩溃）都是为了减少处理器的数量。"在最底层全部捕获"不是目标，屏蔽只适合底层能就地解决且调用者不需要知道的情况。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">Unix 允许删除一个正被其他进程打开的文件。书中说这个设计定义掉了哪些错误？</div>
+  <div class="opts"><button>A. 删除方不会因为"文件正在使用"而失败；正在使用文件的进程也不会因为文件被删而出错</button><button>B. 它让正在使用文件的进程收到一个"文件已删除"的通知</button><button>C. 只定义掉了"磁盘空间不足"</button><button>D. 它把错误推迟到了下次打开时</button></div>
+  <div class="explain">名字立刻从目录中移除，数据等所有使用者都关闭后才释放。删除操作和使用者两边都没有错误。如果改成"立刻删除并让其他进程的读写失败"，就会给那些进程制造新的错误。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">屏蔽（masking）和聚合（aggregation）通常分别适合放在调用栈的什么位置？</div>
+  <div class="opts"><button>A. 位置无所谓，只要每种异常都有处理器</button><button>B. 屏蔽放在顶层，聚合放在底层</button><button>C. 都放在最顶层</button><button>D. 屏蔽放在底层（被很多地方调用的库函数），聚合放在较高的层次（异常已经往上传了几层）</button></div>
+  <div class="explain">底层库函数被很多地方调用，如果让异常往上传，处理的地方就会成倍增加，所以就地屏蔽最划算；聚合则要等异常往上传了几层，才能把来自许多方法的异常集中到一个处理器。两者的共同点是：把处理器放在能接住最多异常的地方。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">RAMCloud 发现单个对象损坏时，直接让整台服务器崩溃，再用崩溃恢复机制恢复数据。下面哪一项<strong>不是</strong>书中给出的理由或条件？</div>
+  <div class="opts"><button>A. 崩溃恢复机制反正必须有，复用它可以少写一套恢复代码</button><button>B. 让服务器崩溃比修复单个对象的成本更低</button><button>C. 对象损坏很少发生，所以恢复成本变大可以接受</button><button>D. 崩溃恢复被执行得更频繁，其中的 bug 更容易被发现</button></div>
+  <div class="explain">错误提升恰恰会让恢复成本变大很多，书中把这列为它的缺点，所以它只适合罕见的错误。理由在于少写代码、恢复路径被更频繁地演练，而不是成本更低。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">一个日志库在磁盘写满时什么也不报告，直接丢弃日志，以免"影响业务"。对一个普通 Web 服务来说这可能可以接受；但同样的做法放在数据库的预写日志里就是严重错误。区别在于：</div>
+  <div class="opts"><button>A. 调用者是否需要这个信息：数据库必须知道一笔写入没有持久化，普通应用的调试日志丢了通常不影响正确性</button><button>B. 数据库的代码量更大</button><button>C. 普通 Web 服务的磁盘不会写满</button><button>D. 数据库应该改用聚合而不是屏蔽</button></div>
+  <div class="explain">这就是 10.9 节的标准：只有调用者不需要的异常信息，才可以屏蔽或定义掉。同一个技术，放在不同的应用里结论可以完全相反，这也是为什么作者把"判断什么重要"留给了第 21 章。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">同事说："这个函数遇到无法确定怎么办的情况就抛异常，让调用者自己决定，这样更灵活。"本章对这种做法的看法是：</div>
+  <div class="opts"><button>A. 赞同，但要求异常类型足够细</button><button>B. 赞同，异常本来就是把决定权交给调用者的机制</button><button>C. 如果连你都想不清楚该怎么处理，调用者多半也想不清楚；这样做只是把问题推给别人，并增加系统的复杂性</button><button>D. 只要写好文档就没问题</button></div>
+  <div class="explain">作者在 10.2 节正面反驳了"让调用者决定更灵活"这个理由。抛异常很容易，难的是处理；把难题往上推，并不会让它消失，只会让更多人面对它。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">客户端以为一个请求包丢了，于是重发；其实那个包只是延迟了。按 10.1 节的说法，这说明了什么？</div>
+  <div class="opts"><button>A. 只要重试次数足够多，所有异常都能被处理掉</button><button>B. 处理异常的代码本身会制造新的异常（这里是对端收到重复的包），这种次生异常往往比原来的更隐蔽</button><button>C. 应该在应用层的每次调用处都检查是否重复</button><button>D. 网络重传是一种错误的设计，应该改为直接报错</button></div>
+  <div class="explain">"继续往前做"这条路并不轻松：重发引出了重复，从副本恢复时副本本身也可能丢了。要避免异常无穷无尽地连锁下去，最终必须找到一种不再引入新异常的处理方式。这也是为什么屏蔽重试时常常要配合幂等操作或去重 id。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>异常（包括特殊返回值）对复杂性的贡献不成比例：处理代码难写、会制造次生异常、很少执行所以很难保证正确。</li>
+  <li>抛出容易、处理难，所以目标是<strong>减少必须处理异常的地方</strong>。</li>
+  <li><strong>定义掉</strong>（改语义）优先；定义不掉的，按位置选<strong>屏蔽</strong>（底层就地处理）或<strong>聚合</strong>（高处一个处理器，包括错误提升）；罕见且无法恢复的<strong>直接崩溃</strong>（看应用）。</li>
+  <li>屏蔽和聚合都是把处理器挪到能接住最多异常的地方；只有定义掉能让处理器真正消失。</li>
+  <li>别做过头：调用者需要的信息必须暴露，哪怕接口因此变复杂。</li>
+</ul>
+<p>本章里最有力的几招，往往都不是第一个想到的设计：<code>unset</code> 的作者一开始就设计错了。第 11 章讲的正是怎样逼自己在动手之前想出第二个、第三个方案。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段错误处理代码。</p>
+<textarea class="note" data-key="ch10-oneline" placeholder="例如：我们服务里每个 handler 都在 catch 参数错误，其实可以在分发器里聚合，因为……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, s } = APOSD;
+  // 调用关系：每个处理函数调用的下层函数，以及这处调用可能遇到的异常种类。
+  //   req = 参数缺失/格式错误；io = EINTR/部分写入；def = 可以改定义消除；oom = 内存耗尽；disk = 写盘失败
+  const HANDLERS = [
+    { name: "GET",  calls: [["arg(1)", "req"], ["reply()", "io"]] },
+    { name: "PUT",  calls: [["arg(1)", "req"], ["arg(2)", "req"], ["put()", "disk"], ["alloc", "oom"], ["reply()", "io"]] },
+    { name: "DEL",  calls: [["arg(1)", "req"], ["erase()", "def"], ["reply()", "io"]] },
+    { name: "INCR", calls: [["arg(1)", "req"], ["intArg(2)", "req"], ["incr()", "def"], ["alloc", "oom"], ["reply()", "io"]] },
+    { name: "SCAN", calls: [["intArg(1)", "req"], ["intArg(2)", "req"], ["range()", "def"], ["reply()", "io"]] },
+  ];
+  const TOGGLES = [
+    ["define", "① 定义掉：erase/incr 不存在的键、反向区间都不再是错误"],
+    ["mask", "② 屏蔽：writeAll 内部处理 EINTR 和部分写入"],
+    ["agg", "③ 聚合：参数错误、写盘失败都抛 RequestError，由分发器统一处理"],
+    ["crash", "④ 直接崩溃：分配统一走 xalloc，失败即退出"],
+    ["swallow", "过头：存储层把写盘失败吞掉，假装成功", true],
+  ];
+  const on = {};
+  const box = document.getElementById("ex-toggles");
+  const labels = TOGGLES.map(([k, text, risky]) => {
+    const cb = h("input", { type: "checkbox", onchange: () => { on[k] = cb.checked; draw(); } });
+    const lb = h("label", { class: risky ? "risky" : "" }, cb, text);
+    box.append(lb);
+    return [k, lb];
+  });
+
+  // 每处调用的处理方式：local 就地 / gone 定义掉 / mask 挪到 writeAll / agg 挪到分发器 / crash 挪到 xalloc / swallow 吞掉
+  function fate(kind) {
+    if (kind === "def") return on.define ? "gone" : "local";
+    if (kind === "io") return on.mask ? "mask" : "local";
+    if (kind === "req") return on.agg ? "agg" : "local";
+    if (kind === "oom") return on.crash ? "crash" : "local";
+    if (kind === "disk") return on.swallow ? "swallow" : on.agg ? "agg" : "local";
+    return "local";
+  }
+  const TAG = { local: "catch", gone: "定义掉", mask: "↓屏蔽", agg: "↑聚合", crash: "↓崩溃", swallow: "吞掉!" };
+  const CLS = { local: "bad-soft", gone: "ok-soft", mask: "accent-soft", agg: "accent-soft", crash: "accent-soft", swallow: "warn-soft" };
+
+  function draw() {
+    labels.forEach(([k, lb]) => lb.classList.toggle("on", !!on[k]));
+    const W = 680, colW = 120, gap = 13, x0 = 14, chipY = 134, chipH = 24, chipStep = 29, bottomY = 296;
+    const svg = s("svg", { viewBox: `0 0 ${W} 350`, width: W, role: "img", "aria-label": "文本协议服务器的调用关系与异常处理位置" });
+    let local = 0;
+    const used = { mask: 0, agg: 0, crash: 0, swallow: 0 };
+    HANDLERS.forEach((hd, i) => {
+      const x = x0 + i * (colW + gap);
+      svg.append(s("line", { x1: W / 2, y1: 52, x2: x + colW / 2, y2: 86, class: "arrow" }));
+      svg.append(s("rect", { x, y: 86, width: colW, height: 30, rx: 6, class: "box" }),
+        s("text", { x: x + colW / 2, y: 106, "text-anchor": "middle", "font-size": 13, class: "mono", text: "cmd" + hd.name + "()" }));
+      hd.calls.forEach(([fn, kind], j) => {
+        const f = fate(kind), y = chipY + j * chipStep;
+        if (f === "local") local++; else if (f in used) used[f]++;
+        svg.append(s("rect", { x, y, width: colW, height: chipH, rx: 4, class: CLS[f] }),
+          s("text", { x: x + 6, y: y + 16, "font-size": 11.5, class: "mono", style: f === "gone" ? "text-decoration:line-through" : null, text: fn }),
+          s("text", { x: x + colW - 6, y: y + 16, "text-anchor": "end", "font-size": 11, text: TAG[f] }));
+      });
+    });
+    // 顶部：分发器；底部：writeAll / xalloc / Store
+    const badge = (x, y, w, label, n, cls) => [
+      s("rect", { x, y, width: w, height: 34, rx: 6, class: n ? cls : "box" }),
+      s("text", { x: x + w / 2, y: y + 15, "text-anchor": "middle", "font-size": 12.5, class: "mono", text: label }),
+      s("text", { x: x + w / 2, y: y + 29, "text-anchor": "middle", "font-size": 11, class: "t-muted", text: n ? `1 个处理器，接住 ${n} 处` : "（无异常处理）" })];
+    svg.append(...badge(W / 2 - 110, 16, 220, "dispatch()", used.agg, "bad-soft"));
+    svg.append(...badge(x0, bottomY, 200, "writeAll()", used.mask, "bad-soft"));
+    svg.append(...badge(x0 + 230, bottomY, 200, "xalloc()", used.crash, "warn-soft"));
+    const storeExc = (on.define ? [] : ["KeyNotFound", "BadRange"]).concat(on.swallow ? [] : ["DiskError"]);
+    svg.append(s("rect", { x: x0 + 460, y: bottomY, width: 192, height: 34, rx: 6, class: on.swallow ? "warn-soft" : "box" }),
+      s("text", { x: x0 + 556, y: bottomY + 15, "text-anchor": "middle", "font-size": 12.5, class: "mono", text: "Store" }),
+      s("text", { x: x0 + 556, y: bottomY + 29, "text-anchor": "middle", "font-size": 11, class: "t-muted", text: storeExc.length ? "抛 " + storeExc.length + " 种异常" : "不抛异常" }));
+    document.getElementById("ex-stage").replaceChildren(svg);
+
+    const sites = local + (used.mask ? 1 : 0) + (used.agg ? 1 : 0) + (used.crash ? 1 : 0);
+    const sitesEl = document.getElementById("ex-sites");
+    sitesEl.textContent = sites;
+    sitesEl.className = "v " + (sites > 10 ? "bad" : sites <= 4 ? "ok" : "");
+    document.getElementById("ex-iface").textContent = storeExc.length;
+    const dur = document.getElementById("ex-durable");
+    dur.textContent = on.swallow ? "不知道" : "知道";
+    dur.className = "v " + (on.swallow ? "bad" : "ok");
+
+    const msgs = [];
+    if (!on.define && !on.mask && !on.agg && !on.crash) msgs.push("最直接的写法：19 处调用各自处理自己的异常。注意大部分处理代码做的事都一样（回一条错误响应），而且很少被执行。");
+    if (on.define) msgs.push("定义掉：erase 改成\"确保不存在\"，incr 把不存在的键当作 0，range 遇到 lo > hi 返回空结果。3 处处理代码真正消失了，Store 的接口也少了两种异常。");
+    if (on.mask) msgs.push(`屏蔽：EINTR 和部分写入在 writeAll 里用一个循环处理掉，${used.mask} 处回写调用都不用再管（对端断开这类真正的错误仍会上报给连接循环，图里没有画）。`);
+    if (on.agg) msgs.push(`聚合：参数错误${on.swallow ? "" : "和写盘失败"}都抛 RequestError，信息在抛出处生成，分发器里一个处理器接住 ${used.agg} 处。`);
+    if (on.crash) msgs.push(`直接崩溃：${used.crash} 处分配改走 xalloc，失败就打印信息退出。只剩包装函数里的一处检查。`);
+    if (on.swallow) msgs.push("⚠ 过头了：计数又少了，可客户端会对一笔没落盘的写入收到 OK。写盘失败是调用者必须知道的信息（10.9 节），不能为了减少处理位置而把它吞掉。");
+    else if (on.define && on.mask && on.agg && on.crash) msgs.push("四种技术都用上后，只剩 3 个处理位置，而且每个都在\"能接住最多异常\"的地方。注意写盘失败仍然会变成一条错误响应送到客户端。");
+    const narr = document.getElementById("ex-narrate");
+    narr.textContent = msgs.join(" ");
+    narr.classList.toggle("alarm", !!on.swallow);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

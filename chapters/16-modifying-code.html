@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 16 章 · 修改已有代码</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch16.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.figs2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (min-width: 820px) { .figs2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.figs2 figure.fig { margin: 0; }
+</style>
+</head>
+<body data-chapter="16">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>系统一直在被修改。怎样让每一次修改都不让设计变差，并且让注释跟得上代码？</strong></p>
+</div>
+<p>前面十几章大多在讲"第一次把东西设计好"。但作者在本章开头提醒：一个成熟系统的设计，更多是由它一路上的修改决定的，而不是由最初的构想决定的。大多数程序员大部分时间都在改别人（或很久以前的自己）写的代码，所以这一章讨论的其实是日常工作里最常见的场景。</p>
+<p>本章分两部分。第一部分（16.1 节）把第 3 章的战略式编程<span data-principle="3"></span>用到修改代码上：每次修改都是一次小投资的机会。第二部分（16.2～16.6 节）是一组很具体的技巧，让第 12～15 章辛苦写出来的注释不会随着修改而过时。它们都可以直接用在下一次代码评审里。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>16.1 节</strong>：作者承认了两种"不得不妥协"的情况。读的时候留意作者在承认之后，给出的那个自问的问题，以及两条退路。</li>
+    <li><strong>16.2 节</strong>关于 C/C++ 头文件的那一段要读仔细：作者说放在 .h 里是"不行"还是"不是最好"？又怎样回应"使用者要看头文件"这个反对意见？</li>
+    <li><strong>16.4 节</strong>里有三种不同的"重复"：代码内部多处重复、在调用处重述被调用方法、重述外部已有的文档。对每一种，作者给的替代做法各是什么？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>改代码时也要战略式</h4><p>"最小改动"心态会让每次修改都留下一点特殊情况和依赖。理想是：改完之后，系统看起来像是从一开始就为这个改动设计的。</p></div>
+  <div class="card"><h4>没变好，多半就是变差</h4><p>即使这次改动不需要重构，也顺手修一点看到的设计瑕疵。每次修改至少让设计好一点点。</p></div>
+  <div class="card"><h4>约束下的最好</h4><p>期限和兼容性可能逼你妥协。这时问自己：在当前约束下，这是我能做到的最干净的设计吗？</p></div>
+  <div class="card"><h4>注释贴着代码</h4><p>注释离代码越远，越容易忘了更新。接口注释紧挨方法体；实现注释放在能覆盖相关代码的最小范围里。</p></div>
+  <div class="card"><h4>写进代码，而不只是提交信息</h4><p>将来的开发者需要的信息，必须写进代码。他们很少会想到去翻提交历史。</p></div>
+  <div class="card"><h4>每件事只记录一次</h4><p>设计决定只写在最显然的一处，别处引用它；不要在调用处重述被调用方法；外部已有的文档直接引用。</p></div>
+  <div class="card"><h4>提交前看一遍 diff</h4><p>花几分钟确认每处改动都反映在文档里，顺便抓出遗留的调试代码和没处理的 TODO。</p></div>
+</div>
+
+<h2>心智模型：设计质量随修改的走向</h2>
+<div class="figs2">
+<figure class="fig">
+<svg viewBox="0 0 330 230" width="330" role="img" aria-label="设计质量随修改次数变化：最小改动的折线逐步下降，战略式修改的折线偶有小幅下探但总体上升">
+  <line x1="40" y1="20" x2="40" y2="190" class="stroke" stroke-width="1.2"/>
+  <line x1="40" y1="190" x2="315" y2="190" class="stroke" stroke-width="1.2"/>
+  <text x="34" y="26" text-anchor="end" font-size="11" class="t-muted">好</text>
+  <text x="34" y="190" text-anchor="end" font-size="11" class="t-muted">差</text>
+  <text x="315" y="208" text-anchor="end" font-size="11.5" class="t-muted">修改次数 →</text>
+  <polyline points="45,100 75,100 75,108 105,108 105,117 135,117 135,128 165,128 165,138 195,138 195,150 225,150 225,160 255,160 255,170 300,170" fill="none" style="stroke:var(--bad)" stroke-width="2.2"/>
+  <polyline points="45,100 75,100 75,104 90,92 120,92 120,96 135,84 165,84 165,88 180,76 210,76 210,80 225,66 255,66 255,70 270,58 300,58" fill="none" style="stroke:var(--ok)" stroke-width="2.2"/>
+  <text x="110" y="176" font-size="12" style="fill:var(--bad)">每次只做最小改动</text>
+  <text x="300" y="50" text-anchor="end" font-size="12" style="fill:var(--ok)">每次顺手改进一点</text>
+  <text x="178" y="226" text-anchor="middle" font-size="11" class="t-muted">小的下探 = 重构当时的投入</text>
+</svg>
+<figcaption>示意图，不是测量数据。本站自绘。</figcaption>
+</figure>
+<figure class="fig">
+<svg viewBox="0 0 330 230" width="330" role="img" aria-label="注释离代码越远越应该抽象：从语句上方的注释到外部文档的阶梯">
+  <g font-size="12">
+    <rect x="20" y="16" width="212" height="26" rx="5" class="accent-soft"/><text x="30" y="34">外部文档（RFC、手册）：只引用</text>
+    <rect x="20" y="48" width="212" height="26" rx="5" class="box"/><text x="30" y="66">类注释 / 设计说明文件</text>
+    <rect x="20" y="80" width="212" height="26" rx="5" class="box"/><text x="30" y="98">方法的接口注释（紧挨方法体）</text>
+    <rect x="20" y="112" width="212" height="26" rx="5" class="box"/><text x="30" y="130">方法开头：总体思路</text>
+    <rect x="20" y="144" width="212" height="26" rx="5" class="box"/><text x="30" y="162">每个阶段的第一行上方</text>
+    <rect x="20" y="176" width="212" height="26" rx="5" class="ok-soft"/><text x="30" y="194">紧挨某条语句</text>
+  </g>
+  <line x1="250" y1="196" x2="250" y2="26" class="stroke" stroke-width="1.6"/>
+  <path d="M 244 32 L 250 20 L 256 32 Z" style="fill:var(--muted)"/>
+  <text x="260" y="34" font-size="11.5" class="t-muted">离代码远</text>
+  <text x="260" y="50" font-size="11.5" class="t-muted">→ 更抽象</text>
+  <text x="260" y="182" font-size="11.5" class="t-muted">离代码近</text>
+  <text x="260" y="198" font-size="11.5" class="t-muted">→ 可具体</text>
+  <text x="126" y="222" text-anchor="middle" font-size="11" class="t-muted">细节写在底层，越往上越只讲"做什么、为什么"</text>
+</svg>
+<figcaption>注释的位置和抽象程度要匹配。本站自绘。</figcaption>
+</figure>
+</div>
+
+<blockquote class="quote">If you're not making the design better, you are probably making it worse.<cite>— 第 16.1 节</cite></blockquote>
+<p>左图是这句话的直观版本。最小改动的每一步看起来都无害，但它们只朝一个方向累积。战略式修改每次都要多花一点时间（图中的小下探），换来的是总体向上的趋势。右图对应 16.2 节的一条规则：注释离它描述的代码越远，就越应该抽象，这样小的代码改动不会让它失效。</p>
+
+<h2>一个原创例子：同一个 bug 的两种修法</h2>
+<p>电商系统里，促销商品的价格偶尔显示成旧价。排查发现：促销引擎直接写数据库里的价格表，绕过了价格服务，所以价格服务的缓存不会失效。</p>
+<div class="ba">
+  <div data-label="改之前：最小改动">
+<pre class="numbered" data-mark="3,4"><code class="lang-cpp">Price PriceService::get(ItemId id) {
+    const Item&amp; item = catalog_.item(id);
+    if (item.onPromotion)                 // 促销价不走缓存
+        return db_.loadPrice(id);
+    if (auto p = cache_.find(id)) return *p;
+    Price p = db_.loadPrice(id);
+    cache_.put(id, p);
+    return p;
+}
+// 提交信息：促销引擎直接写库，缓存不会失效，所以促销商品先绕过缓存。</code></pre>
+    <p>两行就修好了，测试也能过。但根本原因（有一个写入方绕过了失效机制）还在；读取路径多了一个特殊情况；促销商品从此每次都查数据库；而<strong>为什么</strong>要绕过缓存只写在提交信息里，代码里那条注释只说了做什么。下一个"有人绕过价格服务写库"的地方出现时，这个 bug 会换个样子再来。</p>
+  </div>
+  <div data-label="改之后：战略式">
+<pre class="numbered" data-mark="1,2,3"><code class="lang-cpp">// 商品价格的唯一写入入口。所有改价都必须经过这里：绕过它直接写
+// 价格表，缓存中的旧价格就不会失效。读取请用 get()，它总是走缓存。
+void PriceStore::update(ItemId id, Price p) {
+    db_.savePrice(id, p);
+    cache_.invalidate(id);
+}
+
+Price PriceStore::get(ItemId id) {
+    if (auto p = cache_.find(id)) return *p;
+    Price p = db_.loadPrice(id);
+    cache_.put(id, p);
+    return p;
+}
+// 同一次提交中：促销引擎改为调用 PriceStore::update()，不再直接写价格表。</code></pre>
+    <p>修的是根本原因：让"缓存失效"和"写入"成为同一个操作，读取路径没有特殊情况。约束写在了代码里最显然的地方，将来想绕过它的人会先看到这段话。代价是要改促销引擎的代码，可能涉及另一个团队。</p>
+  </div>
+</div>
+<p>如果促销团队这周确实没法配合，就该问那个问题：在当前约束下，最干净的做法是什么？比如让价格服务订阅数据库的变更通知来做失效，这样不需要改促销引擎，读取路径也不用加特殊情况；或者先上最小改动，但把"绕过缓存"的原因写进代码，并约好下个迭代回来做正确的修法。</p>
+
+<h3>实现注释：放到最小的范围里</h3>
+<p>16.2 节的另一条规则针对方法内部：不要在方法开头写一大段注释描述所有细节，而是把每条注释"往下推"，推到恰好覆盖它所说代码的最小范围。方法开头可以保留一段只讲整体思路的概述：</p>
+<pre><code class="lang-cpp">void Compactor::run() {
+    // 分三步：选出要合并的段 → 合并成一个新段 → 切换索引并删除旧段。
+    // 任何一步失败都只影响新段，旧段在第三步之前一直完整可用。
+
+    // 只挑垃圾比例超过阈值的段；太新的段可能还有进行中的读者，跳过。
+    std::vector&lt;Segment*&gt; victims = pickVictims(minGarbageRatio_);
+    ...
+    // 新段先写到临时文件，fsync 之后才改名，保证崩溃后不会留下半个段。
+    ...
+    // 先切换索引再删旧段：顺序反过来的话，读者可能查到已删除的段。
+    ...
+}</code></pre>
+<p>改第三步的人一定会看到第三步上方的注释，却未必会回到方法开头去更新一大段描述。概述只讲结构，小改动不会让它失效。</p>
+
+<h2>跟着做：提交前看一遍 diff</h2>
+<p>16.5 节的建议最容易执行：提交前花几分钟把整个 diff 过一遍。下面是一次"把缓存容量从条目数改成字节数"的提交。先自己找问题，写下来，再展开参考。（提示：至少有 5 处，大多和注释有关。）</p>
+<pre class="numbered"><code class="lang-cpp">  // cache.cc
+  // 当缓存中的条目数超过 capacity_ 时，淘汰最久未使用的条目。
+  void Cache::evictIfNeeded() {
+-     while (lru_.size() &gt; capacity_) {
++     while (usedBytes_ &gt; capacityBytes_) {
++         fprintf(stderr, "evict used=%zu\n", usedBytes_);
+          Entry&amp; victim = lru_.back();
++         usedBytes_ -= victim.value.bytes();
+          map_.erase(victim.key);
+          lru_.pop_back();
+      }
++     // TODO: 大对象单独处理
+  }
+
+  void Cache::put(Key k, Value v) {
+      ...
++     usedBytes_ += v.bytes();
++     // evictIfNeeded() 会按字节数淘汰最久未使用的条目，
++     // 直到 usedBytes_ 不超过 capacityBytes_。
+      evictIfNeeded();
+  }
+
+  // cache.h
+- explicit Cache(size_t capacity);        // capacity：最多保存的条目数
++ explicit Cache(size_t capacityBytes);   // capacity：最多保存的条目数</code></pre>
+<textarea class="note" data-key="ch16-diff-review" placeholder="第几行：什么问题，应该怎么改……"></textarea>
+<details class="reveal"><summary>展开参考</summary><div>
+  <ol>
+    <li><strong>第 2 行</strong>：<code>evictIfNeeded</code> 的接口注释还在说"条目数"，没有跟着行为一起改。它就在被修改的代码正上方，所以只要看一眼 diff 就能发现。</li>
+    <li><strong>第 6 行</strong>：遗留的调试输出。</li>
+    <li><strong>第 12 行</strong>：新加的 TODO。要么在这次提交里处理掉，要么说清楚"大对象"是什么问题、为什么现在不处理（例如单个对象超过总容量时会把整个缓存清空），否则它很快就会变成没人看得懂的噪音。</li>
+    <li><strong>第 18～19 行</strong>：在调用处重述被调用方法做了什么。这是 16.4 节说的重复：想知道的人应该去看 <code>evictIfNeeded</code> 的接口注释（IDE 悬停就能看到）。而且一旦淘汰策略再变，这里就会悄悄过时。</li>
+    <li><strong>第 25 行</strong>：参数改名了，头文件里的注释却还是"条目数"。这正是 16.2 节反对把接口注释放在 .h 里的理由：改 .cc 的人看不到它。无论团队约定放在哪，这次都只应该在一个地方写，并且写对。</li>
+  </ol>
+  <p>你可能还发现了一个代码问题：如果单个对象比 <code>capacityBytes_</code> 还大，循环会把它连同所有条目一起淘汰。这类问题恰恰是"顺手让设计好一点"的机会：在接口注释里写清楚超大对象的行为，或者直接拒绝放入。</p>
+</div></details>
+<div class="tip"><p>做本站的任何一个<a href="../project/index.html">项目任务</a>时，都可以把这一步变成习惯：<code>git add -p</code> 逐块确认，或者提交前跑一遍 <code>git diff --staged</code>，专门只看注释和文档有没有跟上。</p></div>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="C/C++：接口注释放头文件还是 .cc？">
+  <p>作者的观点要读准：作者认为<strong>最好</strong>的位置是代码文件里、紧挨方法体，因为改方法的人一定会看到；放在 .h 声明处是一种可选做法，但离代码太远，改方法体时看不到。对"使用者要从头文件学用法"，作者的回应是使用者应该读 Doxygen 一类工具生成的文档或 IDE 的提示，所以注释应该放在对改代码的人最方便的地方。</p>
+  <p>本站补充：这在 C++ 圈是有争议的。不少 C++ 风格指南（例如 Google C++ Style Guide）要求在声明处写说明用法的注释，在定义处写说明实现的注释；发布二进制库或 SDK 时，使用者手里往往只有头文件，头文件就是契约本身；很多人确实也是直接读头文件学 API 的。比较务实的做法是：团队选定一处，<strong>只写一份</strong>（避免作者在 16.4 节反对的重复），并在评审时检查改了方法行为的提交是否同步改了那份注释，就像上面那个练习的第 25 行。</p>
+</div>
+<div class="counter" data-title="最小改动并不总是错的">
+  <p>作者自己承认两种情况：正确的重构要三个月、快速修补只要两小时，而期限迫在眉睫；或者重构会给许多其他团队造成不兼容。作者要求的不是"永远重构"，而是尽量抵抗妥协：找一个几天能完成、几乎一样干净的方案，或者争取在期限之后安排时间回来做。书中还建议每个组织都拿出一小部分精力专门做清理和重构。</p>
+  <p>本站补充：线上事故中先用最小改动止血，几乎总是对的；关键在于事后的跟进有没有发生。把"回来做正确修法"写成一个有负责人的任务，而不是一个 TODO。</p>
+</div>
+<div class="counter" data-title="提交信息仍然有用">
+  <p>作者并不反对写详细的提交信息，并明确说在提交信息里也放一份没问题，最重要的是代码里得有。两者回答的问题不同：提交信息说明"这次改了什么、为什么在这个时候改"，是历史；代码注释说明"代码现在为什么是这个样子"，是现状。判断标准就是作者那个问题：将来改这段代码的人需不需要这条信息？</p>
+</div>
+<div class="counter" data-title="引用别处，也会断">
+  <p>"见某处的注释"、外部文档的链接都可能失效。作者的论点是：失效的引用是<strong>看得见</strong>的，读者找不到东西就知道出了问题，可以去查版本历史；而重复的副本有一份没更新，读者毫无察觉。本站补充：引用外部文档时写得具体一些（标准的版本号和章节，而不只是一个首页链接），能大大降低断链之后的损失。</p>
+</div>
+
+<h2>练一练</h2>
+<p>本章没有新的红旗。训练题都是"评审一份 diff"的场景，用到的是前面各章的红旗，正好检验你在修改代码时能不能认出它们。</p>
+<div class="drill-embed" data-ids="ch16-flag-01 ch16-ab-01 ch16-judge-02"></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="3"><div class="q">按作者的说法，一次理想的修改完成后，系统应该是什么样子？</div>
+  <div class="opts"><button>A. 所有相关模块都被重写成最新的风格</button><button>B. 新功能放在一个独立的新模块里，不碰旧代码</button><button>C. 改动的行数尽可能少，其他代码完全不动</button><button>D. 系统的结构就像从一开始设计时就考虑到了这个改动一样</button></div>
+  <div class="explain">这是 16.1 节给出的目标。为此要抵抗快速修补的诱惑，先想想现有设计在这个改动之下是否仍然是最好的，不是就重构。"重写所有相关模块"则走向另一个极端，作者要的是最好的设计，而不是最大的改动。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">一个方法分三个阶段。按 16.2 节的建议，实现注释应该怎么放？</div>
+  <div class="opts"><button>A. 全部写在方法开头，读者一次看完</button><button>B. 每个阶段的注释放在该阶段第一行代码的上方；方法开头可以有一段只讲整体思路的概述</button><button>C. 全部写在提交信息里</button><button>D. 写在头文件的声明处</button></div>
+  <div class="explain">把每条注释下沉到能覆盖它所说代码的最小范围，改这段代码的人才一定会看到它。离代码越远的注释越应该抽象，比如开头的概述只讲结构，不讲细节。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">下列哪种做法<strong>违反</strong>了 16.4 节的"避免重复"？</div>
+  <div class="opts"><button>A. 在调用某个方法之前，写注释解释这个方法内部会做什么</button><button>B. 命令的实现方法里写"实现 Foo 命令，详见用户手册"</button><button>C. 在实现 HTTP 协议的类里，放一个指向协议规范的链接，而不是重新描述协议</button><button>D. 把一个变量的微妙行为写在它的声明处，在使用它的地方写"见声明处的注释"</button></div>
+  <div class="explain">B、C、D 都是书中推荐的做法。A 是在一个模块里重述另一个模块的设计决定：想了解的人应该去看被调用方法的接口注释，好的开发工具也会自动显示它。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">你修了一个微妙的 bug，原因比较复杂。按 16.3 节，这个原因应该写在哪里？</div>
+  <div class="opts"><button>A. 写在项目的 wiki 上</button><button>B. 写进代码（放在相关代码附近）；提交信息里也写一份没问题</button><button>C. 不用写，代码本身就是最好的文档</button><button>D. 只写在提交信息里，代码保持干净</button></div>
+  <div class="explain">将来需要这条信息的人很少会去翻提交历史。如果原因不在代码里，后来的人可能会把修改撤回去，重新引入这个 bug。在提交信息里也放一份是可以的，但最重要的是写进代码。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">书中说提交前扫一遍 diff 除了能确认文档跟上改动，还能发现什么？</div>
+  <div class="opts"><button>A. 性能退化</button><button>B. 测试覆盖率不足</button><button>C. 遗留的调试代码和没有处理的 TODO</button><button>D. 合并冲突</button></div>
+  <div class="explain">16.5 节提到的正是这两类：忘了删的调试代码、没有修掉的 TODO。它们都是"写的时候顺手加上、提交前忘了处理"的东西，看一遍 diff 就能发现。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">为什么作者说比代码更高层、更抽象的注释更容易维护？</div>
+  <div class="opts"><button>A. 因为它们不反映代码细节，小的代码改动不会影响它们，只有整体行为变了才需要更新</button><button>B. 因为抽象的注释可以从代码自动生成</button><button>C. 因为抽象的注释不需要更新</button><button>D. 因为抽象的注释更短</button></div>
+  <div class="explain">高层注释描述的是"做什么、为什么"，而不是"怎么做"，所以只有整体行为变化才会让它失效。作者同时提醒，有些注释（第 13 章讨论过）必须详细精确；但总的来说，最有用的注释（不复述代码的那些）也是最容易维护的。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>系统的设计主要由一次次修改决定。改代码时也要战略式：改完后，结构应该像是从一开始就为这个改动设计的。</li>
+  <li>每次修改都顺手改进一点设计；被约束逼着妥协时，问"这是当前约束下最干净的设计吗"，并安排时间回来。</li>
+  <li>注释贴着代码放：接口注释挨着方法体，实现注释下沉到最小范围；离代码越远越抽象。</li>
+  <li>将来需要的信息写进代码，不只写在提交信息里；每个设计决定只记录一次，别处引用它。</li>
+  <li>提交前看一遍 diff：文档跟上了吗？有没有调试代码和 TODO？</li>
+</ul>
+<p>第 17 章讨论一致性。它和本章是同一个问题的两面：修改代码时最容易破坏的，就是系统里原有的约定。新代码要遵守旧约定，想改约定，就得把旧代码一起改过来。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你最近一次提交或评审。</p>
+<textarea class="note" data-key="ch16-oneline" placeholder="例如：上次那个修复其实是最小改动，如果战略式地改，应该……"></textarea>
+
+</main>
+</body>
+</html>

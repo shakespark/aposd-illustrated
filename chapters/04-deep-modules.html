@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 4 章 · 模块应该深</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch04.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.depth-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (min-width: 760px) { .depth-wrap { grid-template-columns: 300px minmax(0, 1fr); } }
+.depth-list { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.depth-list li { display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; }
+.depth-list li.rare { color: var(--muted); }
+.depth-list li.off { text-decoration: line-through; color: var(--faint); }
+.depth-list .k { font: 11px var(--mono); border-radius: 4px; padding: 0 5px; margin-top: 4px; white-space: nowrap; }
+.depth-list .k.f { background: var(--accent-soft); color: var(--accent); }
+.depth-list .k.i { background: var(--warn-soft); color: var(--warn); }
+.depth-list .k.r { background: var(--surface-2); color: var(--muted); }
+.depth-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.depth-presets button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+#depth-stage svg { display: block; margin: 0 auto; }
+.hidden-list { columns: 2; column-gap: 20px; font-size: 13.5px; color: var(--muted); margin: 8px 0 0; padding-left: 1.2em; }
+@media (max-width: 560px) { .hidden-list { columns: 1; } }
+</style>
+</head>
+<body data-chapter="4">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>怎样切分模块，才能让每个开发者在任何时候只需要面对系统复杂性的一小部分？</strong></p>
+</div>
+<p>第 2 章把复杂性拆成三种症状：改一处要动很多地方（变更放大）、要记住的东西太多（认知负担）、不知道自己不知道什么（未知的未知）。从这一章开始，书转向"怎么办"，而第一个、也是全书最核心的工具就是<strong>模块化设计</strong>：用接口把实现的复杂性挡在模块内部。</p>
+<p>这一章的全部内容可以压缩成一个比喻和一个判断标准：把模块想成一个矩形，<strong>顶边是接口，面积是功能</strong>。顶边越短、面积越大，模块越"深"，越值得存在。后面几章（信息隐藏、通用模块、分层、把复杂性往下拉）讲的其实都是"怎样把模块做深"。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>4.2 节"接口里有什么"</strong>：注意作者对接口的定义有多宽。不只是函数签名，调用顺序、副作用都算。读完试着回答：<code>strtok</code> 的接口有几条？</li>
+    <li><strong>4.3 节对"抽象"的定义</strong>里有一个词特别关键：<em>unimportant</em>（不重要的）。抽象出错的两种方式都和这个词有关。</li>
+    <li><strong>4.6～4.7 节</strong>：作者在这里公开反对一条流行的建议（类和方法要尽量小）。读的时候想想你团队的代码规范，看它站在哪一边。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>模块 = 接口 + 实现</h4><p>类、函数、子系统、网络服务都是模块。理想情况下，用一个模块只需懂它的接口，不必懂它的实现。</p></div>
+  <div class="card"><h4>接口 = 使用者必须知道的一切</h4><p>包括编译器能检查的<strong>正式部分</strong>（签名），也包括只能靠注释说明的<strong>非正式部分</strong>（行为、调用顺序、副作用）。后者通常更大。</p></div>
+  <div class="card"><h4>抽象 = 省略<em>不重要</em>的细节</h4><p>多放了不重要的细节，抽象就变重；漏掉了重要的细节，就成了<strong>虚假的抽象</strong>。</p></div>
+  <div class="card"><h4>深度 = 收益 / 成本</h4><p>收益是模块提供的功能，成本是它的接口给系统其他部分带来的复杂度。</p></div>
+  <div class="card"><h4>浅模块是红旗</h4><p>接口几乎和实现一样复杂时，学习接口的成本抵消了隐藏实现的好处。<span data-flag="shallow"></span></p></div>
+  <div class="card"><h4>类炎（classitis）</h4><p>"类越小越好、越多越好"会制造大量浅类，每个类各带一个接口，系统整体反而更复杂。</p></div>
+  <div class="card"><h4>让常见用法最简单</h4><p>接口功能再多，只要大多数人只用到其中几个，<strong>有效复杂度</strong>就只是这几个的复杂度。<span data-principle="5"></span></p></div>
+</div>
+
+<h2>心智模型：把模块画成矩形</h2>
+<p>先用书里的比喻建立直觉：把一个模块画成矩形，<strong>顶边长度</strong>代表接口的复杂度（使用者要学多少东西），<strong>面积</strong>代表它实现的功能（替使用者扛下了多少复杂性）。</p>
+<figure class="fig">
+<svg viewBox="0 0 640 250" width="640" role="img" aria-label="深模块与浅模块对比：深模块顶边短、矩形高；浅模块顶边长、矩形扁">
+  <defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" style="stroke:var(--border)" stroke-width="2"/></pattern></defs>
+  <text x="120" y="22" text-anchor="middle" font-weight="700">深模块</text>
+  <rect x="70" y="40" width="100" height="170" class="ok-soft" stroke-width="1.5"/>
+  <rect x="70" y="40" width="100" height="170" fill="url(#hatch)"/>
+  <line x1="70" y1="40" x2="170" y2="40" style="stroke:var(--ok)" stroke-width="6"/>
+  <text x="120" y="232" text-anchor="middle" font-size="12.5" class="t-muted">接口短，背后功能多</text>
+  <text x="182" y="45" font-size="12" style="fill:var(--ok)">← 接口</text>
+  <text x="120" y="130" text-anchor="middle" font-size="12.5">实现</text>
+
+  <text x="460" y="22" text-anchor="middle" font-weight="700">浅模块</text>
+  <rect x="300" y="40" width="320" height="45" class="bad-soft" stroke-width="1.5"/>
+  <rect x="300" y="40" width="320" height="45" fill="url(#hatch)"/>
+  <line x1="300" y1="40" x2="620" y2="40" style="stroke:var(--bad)" stroke-width="6"/>
+  <text x="460" y="68" text-anchor="middle" font-size="12.5">实现</text>
+  <text x="460" y="108" text-anchor="middle" font-size="12.5" class="t-muted">接口长，背后没藏多少东西</text>
+  <text x="460" y="150" text-anchor="middle" font-size="12.5" class="t-muted">使用者学接口的成本</text>
+  <text x="460" y="170" text-anchor="middle" font-size="12.5" class="t-muted">≈ 自己写一遍的成本</text>
+</svg>
+<figcaption>同样的面积（功能），顶边（接口）越短越好。本站自绘示意。</figcaption>
+</figure>
+
+<p>"接口复杂度"不是签名的字符数，而是<strong>使用者为了正确使用必须知道的条目数</strong>，包括那些只写在文档里的约束。下面这个小工具把几个模块的接口逐条列出来，按条目数画顶边、按实现规模画高度，右侧列出被藏起来的关注点。切换预设，然后打开"只看常见用法"，观察顶边怎么变化。</p>
+
+<section class="sim" id="sim-depth">
+  <div class="sim-head"><span class="tag">交互</span><h3>深度计：接口清单 → 矩形</h3>
+    <div class="desc">左边是使用者必须知道的条目（<b>正式</b> = 签名里能看到；<b>非正式</b> = 只能靠文档；<b>罕用</b> = 只有少数人需要）。点击条目可以划掉它，看看去掉某个接口条目后模块变深了多少。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <div class="depth-presets" id="depth-presets"></div>
+      <label><input type="checkbox" id="depth-common"> 只看常见用法（隐藏罕用条目）</label>
+    </div>
+    <div class="depth-wrap">
+      <div><ul class="depth-list" id="depth-list"></ul></div>
+      <div class="stage" id="depth-stage"></div>
+    </div>
+    <div class="narrate" id="depth-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="depth-if">0</div><div class="l">接口条目（顶边）</div></div>
+      <div class="stat"><div class="v" id="depth-fn">0</div><div class="l">实现规模（粗估）</div></div>
+      <div class="stat"><div class="v" id="depth-ratio">—</div><div class="l">矩形形状</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">矩形高度按实现规模的对数画（规模跨了好几个数量级）；条目数和规模都是本站为了比较而做的粗略估计，用来建立直觉，不是精确度量。真正重要的问题是：<strong>这个模块替使用者藏起来的东西，是否远多于它要求使用者学的东西？</strong></p>
+
+<h2>接口远不止签名</h2>
+<p>书中强调：只要使用者<strong>必须知道</strong>某个信息才能正确使用模块，这个信息就属于接口，不管它有没有出现在签名里。C 标准库里有一个很好的反面教材：</p>
+<pre><code class="lang-c">char *strtok(char *str, const char *delim);</code></pre>
+<p>签名只有两个参数，但想正确使用它，你还得知道：</p>
+<ol>
+  <li>第一次调用传字符串，之后要传 <code>NULL</code> 才是"继续切同一个字符串"；</li>
+  <li>它会把原字符串里的分隔符<strong>改写</strong>成 <code>'\0'</code>，所以不能传字符串字面量；</li>
+  <li>它用一个隐藏的静态变量记位置，所以不能嵌套切两个字符串，也不能在多线程里用；</li>
+  <li>连续的分隔符会被当成一个，空字段会被跳过。</li>
+</ol>
+<p>四条非正式接口，每一条都曾让很多人踩坑。后来 POSIX 增加了 <code>strtok_r</code>，把隐藏状态变成显式参数，第 3 条就从"必须记住的约束"变成了"签名里看得见的参数"。非正式接口仍然是接口，只是编译器帮不了你。所以第 12、13 章会花很大篇幅讲接口注释。</p>
+
+<div class="aside" data-title="对照 OSTEP">
+  <p>如果你读过 OSTEP，书中拿来当深模块典范的 Unix 文件 I/O（4.4 节）你应该很熟：<code>open/read/write/lseek/close</code> 五个调用背后，是 OSTEP 第 39～43 章讲的 inode、目录、缓存、日志、崩溃一致性。把两本书对照着看，你会对"接口有多短、背后有多深"有切身的体会。</p>
+</div>
+
+<h2>一个原创例子：类炎与深类</h2>
+<p>下面的场景在业务代码里很常见：读取 INI 配置。左边按"每个类只做一件事"拆成了 5 个类；右边只有一个类。先只看<strong>调用方</strong>的代码，体会使用者要学多少东西。</p>
+<div class="ba">
+  <div data-label="改之前：5 个小类">
+<pre><code class="lang-cpp">auto text  = FileLoader().load("app.ini");
+auto lines = LineSplitter().split(text);
+auto clean = CommentStripper('#', ';').strip(lines);  // 注释符号由调用者决定？
+auto pairs = KeyValueParser('=').parse(clean);
+auto table = SectionGrouper().group(pairs);
+int port = std::stoi(table["server"]["port"]);        // 不存在时？非数字时？</code></pre>
+    <p>调用者要学 5 个类的接口，要知道它们<strong>必须按这个顺序</strong>串起来（这也是接口的一部分），还要自己处理类型转换和缺失值。每个类单独看都很"整洁"，合起来却很重。</p>
+  </div>
+  <div data-label="改之后：1 个深类">
+<pre><code class="lang-cpp">// 一份已解析的配置。load 失败（文件不存在、语法错误）时抛 ConfigError，
+// 错误信息里带文件名和行号。
+class Config {
+public:
+    static Config load(const std::string&amp; path);
+    std::string getString(std::string_view key, std::string_view def = "") const;
+    int  getInt(std::string_view key, int def) const;   // 值不是整数时抛 ConfigError
+    bool getBool(std::string_view key, bool def) const; // 接受 true/false/yes/no/1/0
+};
+
+auto cfg = Config::load("app.ini");
+int port = cfg.getInt("server.port", 8080);</code></pre>
+    <p>换行符差异、注释语法、空白、分节规则、类型转换、带行号的错误报告，全都藏到了 <code>Config</code> 里面。实现可能比原来那 5 个类加起来还长，但这不要紧：<strong>复杂性在模块内部只需要被理解一次，在接口上却要被每个使用者理解一次。</strong></p>
+  </div>
+</div>
+<p>注意"改之后"的实现并不比"改之前"简单，可能更长。深模块的意思不是"代码少"，而是"<strong>使用者需要知道的少</strong>"。这一点第 8 章会推得更远：宁可实现复杂，也要让接口简单。</p>
+
+<h3>浅类与浅方法：没有收益的接口</h3>
+<p>浅的可以是一个方法，也可以是整个类。书里（4.5 节）举的是学生项目中一个只有一行的私有方法。下面这个类的每个方法都是这样的浅方法，合起来就是一个浅类。它常见于"不许直接用标准容器，要包一层有业务含义的类型"的规范：</p>
+<pre class="numbered" data-mark="4,5,6,7"><code class="lang-cpp">// 订单里的商品列表
+class ItemList {
+public:
+    void addItem(const Item&amp; item)      { items_.push_back(item); }
+    void removeLastItem()               { items_.pop_back(); }
+    size_t getItemCount() const         { return items_.size(); }
+    const Item&amp; getItem(size_t i) const { return items_[i]; }
+private:
+    std::vector&lt;Item&gt; items_;
+};</code></pre>
+<p>四个方法各自把 <code>std::vector</code> 的一个操作换了个名字。使用者要多学一套名字，可 <code>vector</code> 的规矩一条也没少：空列表上调用 <code>removeLastItem</code> 是未定义行为，<code>getItem</code> 不检查越界，这些照样得知道；原本现成的迭代器、范围 for 和标准算法反而用不了了。它增加了一个要学的接口，却没有替谁隐藏任何东西。要么直接用 <code>std::vector&lt;Item&gt;</code>，要么让这个类真正承担职责（比如合并同一商品的数量、维护"每单最多 100 件"的约束），它才值得存在。</p>
+<p class="small muted">这和下文"链表天生就浅"不是一回事：链表自己提供了基本功能，只是杠杆小；<code>ItemList</code> 是在一个现成的接口外面又包了一层，自己没有添加任何功能。</p>
+
+<h2>边界与反方：什么时候别生搬硬套</h2>
+<div class="counter" data-title="深 ≠ 大">
+  <p>深度是<strong>比值</strong>。一个 3000 行、带 80 个公开方法的类不一定深，可能只是一堆浅方法装在一起（看训练题里那个满是 getter/setter 的 <code>HttpRequest</code>）。反过来，一个只有一行声明的函数可能非常深。判断时只问一个问题：<strong>它替使用者藏起来的，是否远多于它要求使用者学的？</strong></p>
+</div>
+<div class="counter" data-title="浅模块有时无法避免">
+  <p>作者自己承认，链表这类数据结构天生就浅：插入、删除几行代码就能写完，接口几乎没法比实现更简单。它们仍然有用，只是对抗复杂性的杠杆很小。别为了"变深"去强行给它加功能。</p>
+</div>
+<div class="counter" data-title="与&quot;函数要短&quot;的冲突">
+  <p>很多代码规范要求"方法不超过 N 行"，有的 N 小到 10。作者认为这种规则会批量制造浅方法。注意作者反对的是<strong>把长度本身当目标</strong>，并不是提倡写长函数。什么时候拆、什么时候合，第 9 章给了更细的判断标准（例如：拆开后两段代码还能不能分开理解）。这场争论在本站的<a href="../topics/clean-code.html">专题：APOSD 与 Clean Code</a> 里有完整对照。</p>
+</div>
+<div class="counter" data-title="&quot;让常见用法简单&quot;不等于&quot;砍掉功能&quot;">
+  <p>书中批评 Java 多年来打开文件都要叠三层对象、缓冲还得自己加（4.7 节），重点不是"选项不好"，而是<strong>罕用的选项不该挡在常用路径上</strong>。好的做法是：默认就是大多数人想要的行为，罕见需求通过可选参数或单独的入口提供，大多数人根本不需要知道它们存在。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。先自己判断再看解析，答题记录会进入间隔复习。</p>
+<div class="drill-embed" data-ids="ch04-flag-02 ch04-ab-01 ch04-write-01"></div>
+
+<h2>动手：项目任务</h2>
+<p>本站的 <a href="../project/index.html">minikv</a> 是一个能跑、有测试、但按"战术式"风格写成的 C++ 键值存储。读完本章和第 5 章后，去做任务 m01：在它的日志读写代码里找出一串浅类、一个参数过多的 <code>open</code>，以及被好几个类同时知道的记录格式，把它们重构成更深的模块，测试保持全绿。</p>
+<div class="lab"><p>任务 m01：把浅类合成深模块，把泄漏的记录格式收进一个地方。详见 <a href="../project/m01.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">下列关于"模块"的说法，哪一项符合本书的用法？</div>
+  <div class="opts"><button>A. 任何有接口和实现之分的代码单元都是模块：类、函数、子系统、服务</button><button>B. 模块就是源代码文件</button><button>C. 只有类才算模块，函数不算</button><button>D. 模块指的是可以独立部署的服务</button></div>
+  <div class="explain">书中对模块的定义非常宽：只要有接口和实现之分就算。所以"模块应该深"这条原则对方法、类、子系统、HTTP 服务同样适用。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">一个方法要求"必须先调用 <code>init()</code> 才能调用它"，这条约束在本书的框架里属于什么？</div>
+  <div class="opts"><button>A. 一种红旗，叫"浅模块"</button><button>B. 实现细节，使用者不需要知道</button><button>C. 接口的非正式部分</button><button>D. 接口的正式部分</button></div>
+  <div class="explain">使用者必须知道才能正确使用，所以它是接口；编译器不检查它，只能靠文档说明，所以它是非正式部分。这样的约束越多，接口越"宽"，后面几章会讨论如何消除它们。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">"深度"在本章的比喻里怎么看？</div>
+  <div class="opts"><button>A. 继承层次越多越深</button><button>B. 接口（矩形顶边）相对于功能（矩形面积）越小越深</button><button>C. 公开方法越多越深</button><button>D. 代码行数越多越深</button></div>
+  <div class="explain">深度是收益与成本之比：功能是收益，接口是成本。行数、方法数、继承层次都不是深度。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">垃圾回收器为什么被书中视为深模块的例子？</div>
+  <div class="opts"><button>A. 因为它是用很多小类组合实现的</button><button>B. 因为它几乎没有接口，甚至让系统少了"手动释放内存"这一项接口</button><button>C. 因为它的性能很好</button><button>D. 因为它的实现代码很长</button></div>
+  <div class="explain">引入垃圾回收后，"释放对象"这项接口从整个系统中消失了，系统的总接口反而变小，同时它在内部隐藏了大量复杂的实现。C++ 里的 RAII 和智能指针也是类似思路。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">关于"类炎"（classitis），下列哪种说法最准确？</div>
+  <div class="opts"><button>A. 认为类越多越好，于是把功能切到大量小类里，每个类都带一个接口，系统整体复杂度上升</button><button>B. 继承层次太深</button><button>C. 类太大、承担了太多职责</button><button>D. 一个类里有太多私有方法</button></div>
+  <div class="explain">类炎的问题不在单个类，而在总量：类小了，每个类提供的功能就少，所以需要更多类，接口的总量随之膨胀，代码也因为每个类的样板而变得啰嗦。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">一个缓存库对外宣称"写入后即可读到"，但没有说明数据只在内存里，进程崩溃会丢失。按本章的说法，这是：</div>
+  <div class="opts"><button>A. 浅模块</button><button>B. 类炎</button><button>C. 一个好的抽象，因为它隐藏了持久化细节</button><button>D. 虚假的抽象：省略了对某些使用者很重要的细节</button></div>
+  <div class="explain">只有真正不重要的细节才能省略。对需要持久性的调用者来说，"会不会丢"非常重要，省略它会让抽象看起来简单，实际却让使用者无法正确使用。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>模块化的目标是减少模块间的依赖；接口就是"别人用你时必须知道的一切"，非正式部分往往比签名大。</li>
+  <li>好的抽象只省略<strong>不重要</strong>的细节；漏掉重要细节会得到虚假的抽象。</li>
+  <li>深模块用简单的接口提供强大的功能；浅模块（接口≈实现）是红旗。</li>
+  <li>"类和方法越小越好"会导致类炎；该追求的是深度，不是小。</li>
+  <li>让常见用法最简单：罕用功能可以有，但不要挡在常用路径上。</li>
+</ul>
+<p>接下来的第 5 章回答一个自然的问题：<strong>怎样才能把模块做深？</strong>答案是信息隐藏。同时它也会给出一个和深度密切相关的红旗：信息泄漏。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你写过的某段代码。</p>
+<textarea class="note" data-key="ch04-oneline" placeholder="例如：我们项目里那个 XxxHelper 其实是个浅模块，因为……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, s } = APOSD;
+  // 每个预设：接口条目 [文字, 类型 f正式/i非正式, 是否罕用]，以及隐藏的功能点
+  const PRESETS = [
+    { name: "Unix 文件 I/O", loc: 200000, locLabel: "数十万行", note: "书中 4.4 节的例子。五个系统调用、简单的签名；顺序访问是默认，随机访问才需要 lseek。",
+      items: [["open(path, flags, mode) → fd", "f"], ["read(fd, buf, n) → 读到的字节数", "f"], ["write(fd, buf, n) → 写入的字节数", "f"], ["close(fd)", "f"], ["返回 -1 时看 errno", "i"], ["read 返回 0 表示到达文件末尾", "i"], ["lseek(fd, off, whence) 随机访问", "f", 1], ["O_APPEND / O_SYNC 等标志的语义", "i", 1]],
+      hidden: ["磁盘上的文件布局", "目录与路径解析", "权限检查", "页缓存与预读", "块分配", "日志与崩溃一致性", "并发访问的调度", "中断与驱动", "多种设备与文件系统类型", "写回策略", "inode 管理", "空闲空间管理", "硬链接与重命名", "配额", "挂载点"] },
+    { name: "垃圾回收器", loc: 50000, locLabel: "数万行", note: "书中 4.4 节的另一个例子：几乎没有接口，反而让系统少了\"释放内存\"这一项接口。",
+      items: [["（不需要调用任何东西）", "i"], ["对象可能在不可达后的任意时刻被回收", "i"], ["调优参数（堆大小、GC 算法）", "f", 1]],
+      hidden: ["可达性分析", "分代收集", "写屏障", "并发标记", "压缩与搬移", "停顿时间控制", "终结器", "弱引用", "大对象处理", "线程本地分配"] },
+    { name: "本站：Config 深类", loc: 400, locLabel: "约 400 行", note: "上文\"改之后\"的设计：一个 load，加按类型取值。",
+      items: [["Config::load(path)，失败抛 ConfigError", "f"], ["getString(\"section.key\", def)", "f"], ["getInt(key, def)，非整数时抛异常", "f"], ["getBool(key, def)，接受 yes/no/1/0 等", "f"], ["键的写法是 \"section.key\"", "i"]],
+      hidden: ["读文件与编码", "换行符差异", "注释语法", "空白处理", "分节规则", "类型转换", "带行号的错误报告", "重复键处理"] },
+    { name: "本站：5 个配置小类", loc: 150, locLabel: "约 150 行", note: "上文\"改之前\"的设计。每个类都简单，但调用者要学所有接口和它们的调用顺序。",
+      items: [["FileLoader().load(path)", "f"], ["LineSplitter().split(text)", "f"], ["CommentStripper(c1, c2).strip(lines)", "f"], ["KeyValueParser(sep).parse(lines)", "f"], ["SectionGrouper().group(pairs)", "f"], ["五步必须按这个顺序调用", "i"], ["注释符号要调用者自己指定", "i"], ["类型转换由调用者自己做", "i"], ["键不存在时 operator[] 会插入空值", "i"], ["各阶段之间传递的中间数据格式", "i"]],
+      hidden: ["读文件", "按行切分", "去注释", "拆键值", "分节"] },
+    { name: "本站：ItemList 包装类", loc: 12, locLabel: "约 10 行", note: "上文的浅类：每个方法都只是把 std::vector 的一个操作换了个名字，vector 的约束一条也没藏住。",
+      items: [["addItem(item)", "f"], ["removeLastItem()", "f"], ["getItemCount()", "f"], ["getItem(i)", "f"], ["空列表上调用 removeLastItem 是未定义行为", "i"], ["getItem 不检查越界", "i"], ["没有迭代器：遍历只能按下标循环", "i"]],
+      hidden: ["转发给 std::vector 的四个调用"] },
+  ];
+  const presetsEl = document.getElementById("depth-presets"), listEl = document.getElementById("depth-list"), stage = document.getElementById("depth-stage"), narr = document.getElementById("depth-narrate"), common = document.getElementById("depth-common");
+  let cur = 0, off = new Set();
+  const btns = PRESETS.map((p, i) => h("button", { onclick: () => { cur = i; off = new Set(); draw(); } }, p.name));
+  presetsEl.append(...btns);
+  common.onchange = draw;
+  function draw() {
+    const p = PRESETS[cur];
+    btns.forEach((b, i) => b.classList.toggle("on", i === cur));
+    listEl.replaceChildren(...p.items.map(([t, k, rare], i) => {
+      const hide = rare && common.checked;
+      const li = h("li", { class: (rare ? "rare " : "") + (off.has(i) ? "off" : ""), style: { display: hide ? "none" : "", cursor: "pointer" }, title: "点击划掉/恢复这一条", onclick: () => { off.has(i) ? off.delete(i) : off.add(i); draw(); } },
+        h("span", { class: "k " + (rare ? "r" : k) }, rare ? "罕用" : k === "f" ? "正式" : "非正式"), h("span", {}, t));
+      return li;
+    }));
+    const n = p.items.filter(([, , rare], i) => !off.has(i) && !(rare && common.checked)).length;
+    // 画矩形：顶边宽度 ∝ 接口条目数；高度 ∝ log10(实现规模)。用对数是因为实现规模跨了 5 个数量级。
+    const W = Math.max(24, n * 30), H = Math.max(8, Math.log10(p.loc) * 50);
+    const svgW = Math.max(380, W + 80), svgH = H + 46;
+    const shape = H / W;
+    const tone = shape >= 0.6 ? "ok" : shape >= 0.4 ? "warn" : "bad";
+    const svg = s("svg", { viewBox: `0 0 ${svgW} ${svgH}`, width: svgW, role: "img", "aria-label": `${p.name} 的深度矩形` });
+    const x = (svgW - W) / 2;
+    svg.append(
+      s("rect", { x, y: 30, width: W, height: H, class: tone + "-soft", "stroke-width": 1.5 }),
+      s("line", { x1: x, y1: 30, x2: x + W, y2: 30, style: `stroke:var(--${tone})`, "stroke-width": 6 }),
+      s("text", { x: svgW / 2, y: 20, "text-anchor": "middle", "font-size": 12.5, class: "t-muted", text: `接口：${n} 条` }),
+      s("text", { x: svgW / 2, y: 30 + H / 2 + 5, "text-anchor": "middle", "font-size": 12.5, text: H >= 22 ? `实现 ${p.locLabel}` : "" }));
+    if (H < 22) svg.append(s("text", { x: x + W + 8, y: 30 + H / 2 + 4, "font-size": 12.5, class: "t-muted", text: `实现 ${p.locLabel}` }));
+    const verdict = tone === "ok" ? "深：接口很窄，背后藏了大量实现" : tone === "warn" ? "一般：接口和实现的比例不算理想" : "浅：接口几乎和实现一样宽";
+    stage.replaceChildren(svg, h("ul", { class: "hidden-list" }, p.hidden.map((t) => h("li", {}, t))));
+    document.getElementById("depth-if").textContent = n;
+    document.getElementById("depth-fn").textContent = p.locLabel;
+    document.getElementById("depth-ratio").textContent = verdict.split("：")[0];
+    narr.textContent = verdict + "。" + p.note + (common.checked ? " 现在隐藏了罕用条目：这就是大多数使用者实际感受到的接口宽度。" : "") + (off.size ? ` 你划掉了 ${off.size} 条：想一想，现实中可以用什么设计把它们从接口里真正去掉？` : "");
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

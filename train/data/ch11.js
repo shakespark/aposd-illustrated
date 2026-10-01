@@ -1,0 +1,129 @@
+// 第 11 章 设计两次 —— 训练题。代码均为本站原创示例。
+(window.APOSD_DRILLS = window.APOSD_DRILLS || []).push(
+{
+  id: "ch11-judge-01", ch: 11, type: "judge", title: "哪一组算\"设计两次\"？",
+  prompt: "<p>你要为一个服务设计\"读取配置\"的模块接口。下面哪一组草案最符合本章对备选方案的要求？</p>",
+  options: [
+    "<code>getString/getInt</code> 对比 <code>getStr/getInteger</code>：两套命名各写一份",
+    "接口不变，分别用 <code>std::map</code> 和 <code>std::unordered_map</code> 实现",
+    "调用者按键逐个取值；启动时把整份配置解析进一个强类型结构体 <code>AppConfig</code>；各组件声明自己需要的配置项，由框架注入",
+    "先按第一个想法实现并上线，出了问题再写第二版",
+  ],
+  answer: 2,
+  explain: `<p>作者要求备选方案之间<strong>差别要大</strong>（radically different），这样学到的东西最多。只改名字的两份草案几乎没有可比之处；换一种容器是实现层面的选择，而且接口完全一样，并不是在比较接口。"按键取值 / 整体结构体 / 声明式注入"三者对调用者的影响完全不同，比较它们才能暴露各自的优缺点。</p>
+<p>"先上线再说"恰恰是本章反对的做法：设计两次发生在动手实现之前，那时换方案几乎没有成本。另外别忘了，实现阶段同样可以设计两次，那时比较的就是不同的容器、数据结构了，标准也换成了简单和性能。</p>`,
+},
+{
+  id: "ch11-judge-02", ch: 11, type: "judge", title: "比较接口时看什么",
+  prompt: "<p>你已经为一个模块画出了三份接口草案。按作者的说法，比较它们时<strong>最重要</strong>的标准是什么？</p>",
+  options: [
+    "对使用这个模块的上层代码来说，哪一个最容易用",
+    "哪一个的实现代码最短",
+    "哪一个的运行速度最快",
+    "哪一个支持的功能最多",
+  ],
+  answer: 0,
+  explain: `<p>对接口来说，作者把"上层软件用起来是否方便"放在第一位。其他值得考虑的因素还有：哪个接口更简单、哪个更通用、哪个能支持更高效的实现，但它们排在后面。功能最多不在其中，功能多往往意味着接口更复杂。</p>
+<p>注意这是<strong>接口</strong>的标准。到了设计<strong>实现</strong>的时候，作者说最重要的变成了简单和性能。两个阶段都可以设计两次，但标准不同。</p>`,
+},
+{
+  id: "ch11-judge-03", ch: 11, type: "judge", title: "\"这里只有一种合理做法\"",
+  prompt: "<p>设计评审会上，一位很有经验的同事说：\"这个问题只有一种合理的做法，不必再想别的方案了。\"按本章的观点，最恰当的回应是：</p>",
+  options: [
+    "同意，经验丰富的人第一个想法通常就是最好的，省下的时间可以用来实现",
+    "让这位同事去写第二个方案，其他人继续按第一个方案实现",
+    "等实现完成、遇到问题以后，再考虑别的方案",
+    "即使确信只有一种合理方案，也值得再勾勒一个不同的方案，哪怕它看起来很糟：分析它的弱点，能让人更清楚第一个方案好在哪里、还缺什么",
+  ],
+  answer: 3,
+  explain: `<p>作者明确说：即使你确信只有一种合理的做法，也要再考虑第二种，不管你觉得它会多差。思考它的弱点并和其他方案对比，本身就很有启发。</p>
+<p>作者还专门讨论了"聪明人"的陷阱：很多人从小靠第一个想法就能拿好成绩，于是养成了只用第一个想法的习惯；但大型软件设计这类问题难到谁都不可能一次做对。这不说明你不聪明，而是问题真的很难。</p>`,
+},
+{
+  id: "ch11-ab-01", ch: 11, type: "ab", title: "读取一个不断增长的日志文件",
+  prompt: "<p>一个监控程序要跟踪（tail）应用日志，对每一行做模式匹配。日志跟踪模块的两种接口草案：</p>",
+  a: { label: "按字节块", code: `// 读取文件新追加的内容，最多 cap 字节。可能在一行中间截断。
+size_t LogTail::read(char* buf, size_t cap);
+
+// 调用者：
+std::string pending;
+char buf[4096];
+while (size_t n = tail.read(buf, sizeof buf)) {
+    pending.append(buf, n);
+    size_t pos;
+    while ((pos = pending.find('\\n')) != std::string::npos) {
+        match(std::string_view(pending).substr(0, pos));
+        pending.erase(0, pos + 1);
+    }
+}` },
+  b: { label: "按行", code: `// 返回下一整行（不含换行符；下次调用前有效）。暂时没有新的完整行时返回 nullopt；
+// 文件被轮转（截断或替换）时自动从新文件开头继续。
+std::optional<std::string_view> LogTail::nextLine();
+
+// 调用者：
+while (auto line = tail.nextLine())
+    match(*line);` },
+  answer: "b",
+  explain: `<p>A 让每个调用者都去做"跨块拼接行"这件事，而这正是日志跟踪模块该做的。书中文本编辑器的例子揭示了同样的信号：如果一个方案逼着上层代码做额外的文本处理，就说明接口和上层实际的操作没有对上。比较时问一句"上层代码到底在做什么操作"，就能看出 B 更合适。B 还顺手藏起了日志轮转这个调用者很容易忘掉的情况。</p>
+<p>A 什么时候更合理？如果上层根本不关心行，比如把原始字节原样转发到远端的日志收集器，按块读取反而更自然、更高效。接口应该贴合上层真正的操作，这也是为什么要先列出几种方案再比较。</p>`,
+},
+{
+  id: "ch11-write-01", ch: 11, type: "write", title: "取消一个长时间运行的任务",
+  prompt: `<p>一个 C++ 服务里有很多耗时的后台任务（重建索引、导出报表）。需要一个机制让外部可以取消正在运行的任务。请勾勒<strong>至少两种差别很大</strong>的接口方案（每种只写最重要的一两个声明），从调用者（写任务代码的人）的角度比较它们，最后给出你的选择或者组合方案。</p>`,
+  reference: `<p><strong>方案一：轮询标志</strong></p>
+<pre><code class="lang-cpp">class CancelToken { public: bool cancelled() const; };
+void rebuildIndex(const CancelToken&amp; tok) {
+    for (auto&amp; seg : segments) { if (tok.cancelled()) return; process(seg); }
+}</code></pre>
+<p>简单、可预测，任务自己决定在哪里停、怎样清理。缺点：任务阻塞在 I/O 或等锁时检查不到标志，取消要等到下一个检查点。</p>
+<p><strong>方案二：取消时回调</strong></p>
+<pre><code class="lang-cpp">class CancelToken { public: Registration onCancel(std::function&lt;void()&gt; fn); };
+auto reg = tok.onCancel([&amp;] { socket.shutdown(); });  // 让阻塞的读立刻返回</code></pre>
+<p>能打断阻塞操作。缺点：回调在发起取消的线程上执行，要处理并发；注册和注销的生命周期容易出错。</p>
+<p><strong>方案三：在检查点抛异常</strong>（<code>tok.throwIfCancelled()</code>）：清理靠 RAII，代码最短，但把"被取消"变成了一种要在上层区分的异常。</p>
+<p><strong>组合</strong>：以方案一为主（绝大多数任务只需要偶尔检查一下），再提供方案二给少数需要打断阻塞操作的任务。C++20 的 <code>std::stop_token</code> 正是这样的组合：<code>stop_requested()</code> 用来轮询，<code>std::stop_callback</code> 用来注册回调。</p>`,
+  rubric: ["至少有两种方案在机制上差别很大（不只是改名或改参数）", "从写任务代码的人（调用者）的角度比较了易用性", "指出了各方案的具体弱点（阻塞时检查不到、回调并发、异常传播等）", "最后做出了选择，或者把几种方案的优点组合成新方案"],
+  explain: `<p>这道题里"组合方案"不是凑数：比较之后你会发现两种机制各自覆盖一类任务，把它们组合起来比任何一个单独的方案都好。作者在本章说过，最好的选择可能是把几个方案的特点组合成一个新设计。</p>`,
+},
+{
+  id: "ch11-write-02", ch: 11, type: "write", title: "比较三个限流器接口",
+  prompt: `<p>要给公司的服务写一个按 key 限流的库。下面是三份草案。已知有两类主要使用者：<strong>API 网关</strong>（超限时要立即拒绝，并在响应里告诉客户端多久以后再试）和<strong>批量爬虫</strong>（超限时愿意等待）。请按"对调用者是否易用"为主、兼顾简单性、通用性和效率，比较这三个方案，然后给出你的设计。</p>`,
+  code: `// 方案 A：立即返回是否放行
+bool RateLimiter::tryAcquire(std::string_view key);
+
+// 方案 B：阻塞直到放行
+void RateLimiter::acquire(std::string_view key);
+
+// 方案 C：预约一个令牌，返回还要等多久（0 表示可以立即执行）
+std::chrono::milliseconds RateLimiter::reserve(std::string_view key);`,
+  reference: `<ul>
+<li><strong>A</strong>：网关用起来很顺手，但拿不到"多久以后再试"的信息；爬虫只能自己写"失败就睡一会儿再试"的循环，睡多久全靠猜。</li>
+<li><strong>B</strong>：爬虫最省事；网关绝对不能用，超限时会占住处理线程。</li>
+<li><strong>C</strong>：两类调用者都能用（网关在等待时间大于 0 时拒绝并设置 <code>Retry-After</code>，爬虫就睡那么久）。但有一个陷阱：预约会<strong>消耗</strong>令牌，网关拒绝了请求，令牌却已被占用，需要再加一个"退还"接口，调用者容易忘。</li>
+</ul>
+<pre><code class="lang-cpp">struct Decision { bool allowed; std::chrono::milliseconds retryAfter; };
+// 放行时消耗一个令牌；拒绝时不消耗，并给出最早可以重试的时间。
+Decision RateLimiter::check(std::string_view key);
+// 便捷封装：阻塞直到放行（基于 check 实现，供愿意等待的调用者使用）。
+void RateLimiter::acquire(std::string_view key);</code></pre>
+<p>组合后的设计从 C 借来了"告诉调用者还要等多久"，又避免了"拒绝也消耗令牌"的问题；B 作为建立在它之上的便捷函数保留下来。</p>`,
+  rubric: ["分别从网关和爬虫两类调用者的角度评价了每个方案", "发现了 B 不适合网关、A 缺少重试时间信息", "注意到 C 的\"拒绝也消耗令牌\"问题（或类似的语义陷阱）", "给出的最终设计组合了多个方案的优点，而不是简单地选一个"],
+},
+{
+  id: "ch11-write-03", ch: 11, type: "write", title: "实现层面也设计两次",
+  prompt: `<p>接口已经定好了：一个追加写日志的键值存储，内存里维护 key → 文件偏移量 的索引，支持 <code>get(key)</code>，以后<strong>可能</strong>需要按 key 前缀扫描。请列出至少两种差别很大的索引<strong>实现</strong>方案并比较。想一想：这一次比较的标准和比较接口时有什么不同？</p>`,
+  reference: `<ul>
+<li><strong>哈希表</strong>（<code>std::unordered_map&lt;std::string, Offset&gt;</code>）：最简单，单点查找最快。不支持前缀扫描；扩容时会有一次停顿；每个节点单独分配，内存开销偏大。</li>
+<li><strong>有序树</strong>（<code>std::map</code>）：同样很简单，天然支持前缀扫描。单点查找慢一些，每个节点的指针开销更大。</li>
+<li><strong>有序数组 + 小的写缓冲</strong>：新键先进一个小的哈希表，攒够后合并进有序数组；查找时两边都查。内存紧凑、扫描快，但实现明显更复杂（合并、两处查找）。</li>
+</ul>
+<p>比较的标准从"对调用者是否易用"换成了作者说的实现阶段的两个标准：<strong>简单</strong>和<strong>性能</strong>。在"以后可能需要扫描"还没确定的时候，<code>std::map</code> 往往是很好的折中：简单，并且不会把将来的扫描需求堵死；等性能测量证明它是瓶颈，再换第三种。</p>`,
+  rubric: ["列出了至少两种机制差别很大的实现方案", "比较时用的是实现层面的标准（简单、性能、内存），而不是接口易用性", "考虑了\"可能需要前缀扫描\"这个不确定的需求对选择的影响", "做出了选择并说明了理由"],
+},
+{ id: "ch11-card-01", ch: 11, type: "card",
+  front: "\"设计两次\"的基本步骤是什么？",
+  back: "<p>① 对每个重要的设计决定，勾勒几个<b>差别很大</b>的方案，只写最重要的几个方法即可。② 列出每个方案的优缺点：接口首先看上层用起来是否方便，其次看简单性、通用性、能否高效实现。③ 选出最好的，或者把几个方案的优点<b>组合</b>成新方案；如果都不满意，就用已发现的问题驱动新的方案。接口、实现、系统分解、用户界面等各个层次都适用。</p>" },
+{ id: "ch11-card-02", ch: 11, type: "card",
+  front: "为什么\"设计两次\"值得花时间？为什么聪明人反而常常抗拒它？",
+  back: "<p>时间成本很小：对一个类来说，比较几个方案可能只要一两个小时，而实现它要花几天甚至几周；更好的设计足以收回成本，长期还能提升设计能力。抗拒的原因：很多聪明人从小靠第一个想法就能拿好成绩，养成了坏习惯，潜意识里觉得\"聪明人一次就该做对\"。但大型软件设计难到没有人能一次做对，这不是不够聪明，而是问题真的难。</p>" },
+);

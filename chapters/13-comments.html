@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 13 章 · 注释应描述代码里看不出来的东西</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch13.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.xr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.xr-chips button { min-width: 38px; font-size: 15px; }
+.xr-chips button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.xr-chips button.ok { border-color: var(--ok); color: var(--ok); }
+.xr-chips button.bad { border-color: var(--bad); color: var(--bad); }
+.xr-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+#xr-code pre { max-height: 330px; overflow: auto; margin: 0; font-size: 12.5px; }
+#xr-code .ln { cursor: pointer; }
+.xr-panel h4 { margin: 0 0 6px; }
+.xr-quote { background: var(--surface-2); border-left: 3px solid var(--accent); padding: 8px 10px; font: 13px/1.6 var(--mono); white-space: pre-wrap; margin: 0 0 10px; border-radius: 4px; }
+.xr-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.xr-cats button.right { border-color: var(--ok); background: var(--ok-soft); }
+.xr-cats button.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.xr-fb { margin-top: 10px; font-size: 14px; }
+.lvl-table td:first-child { white-space: nowrap; font-weight: 600; }
+</style>
+</head>
+<body data-chapter="13">
+<main>
+
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>代码已经写在那里了，注释还能补充什么？怎样判断一条注释是在帮读者，还是只在占地方？</strong></p>
+</div>
+<p>第 12 章论证了"为什么要写注释"：注释是抽象的一部分，代码表达不了接口的非正式部分。这一章回答"写什么、怎么写"，是全书最长、例子最多的一章，也是最能直接改变你明天写代码方式的一章。</p>
+<p>全章围绕一条原则展开：<strong>注释应该描述代码里看不出来的东西</strong>。由此推出两类坏注释（重复代码的注释、把实现写进接口的注释）和两类好注释（比代码更精确的、比代码更抽象的）。本页把这四类整理成<strong>审一条注释时依次要问的四个问题</strong>，再用一个交互练一遍。第 14～16 章（名字、先写注释、注释的维护）都建立在这个框架上。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>13.2 节</strong>里有一个检验问题，作者建议每写完一条注释都问一次。读的时候记下它，然后翻翻你最近写的代码，用它检验几条注释。</li>
+    <li>"看不出来"有两个参照物：<strong>13.3 节</strong>说"代码"指的是<em>注释旁边的代码</em>，<strong>13.8 节</strong>说"明显"要从<em>第一次读的人</em>的角度判断。想想去掉任何一个，这条原则会怎样被滥用。</li>
+    <li><strong>13.5 节</strong>中间有一个五道小题的练习（某个类的接口注释该不该写某条信息）。<strong>先自己作答，再翻到 13.9 节看答案</strong>，尤其留意作者对"是否并发请求"和"服务器崩溃"两题的回答。</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>只写代码里看不出来的</h4><p>一个下标区间含不含端点、一段看似多余的代码为什么必须在、"rotate() 之前必须先 flush()"这类约定：代码要么表达不了，要么要读很多代码才能推出来。<span data-principle="13"></span></p></div>
+  <div class="card"><h4>"明显"由读者判断</h4><p>参照物是注释旁边的那几行，和第一次读它的人。审查者说看不懂，就是看不懂：别争论，弄清对方卡在哪，用注释或更好的代码解决。</p></div>
+  <div class="card"><h4>换一个细节层次</h4><p>低一层的注释补充<strong>精确性</strong>（单位、边界、空值、归属、不变量）；高一层的注释提供<strong>直觉</strong>（意图、原因、整体框架）。同一层的注释多半在重复。</p></div>
+  <div class="card"><h4>不要重复代码</h4><p>如果没见过这段代码的人只看旁边那行就能写出这条注释，它就没有价值。用名字里的词造句是最常见的形式。<span data-flag="comment-repeats"></span></p></div>
+  <div class="card"><h4>接口注释定义抽象</h4><p>只读声明和注释，就应该能理解一个模块提供的抽象。接口注释写给使用者，实现注释写给维护者，两者必须分开。<span data-flag="impl-contaminates"></span></p></div>
+  <div class="card"><h4>每个声明都有注释</h4><p>每个类、每个类成员变量、每个方法都应该有注释（接口注释与数据成员注释最重要）；方法体内的实现注释反而常常不需要。</p></div>
+  <div class="card"><h4>跨模块的决定要有家</h4><p>影响多个模块的设计决定，最难的是找一个开发者一定会经过的地方放文档；实在没有，就集中写一份设计说明，代码里留指引。</p></div>
+  <div class="card"><h4>实现注释：做什么、为什么</h4><p>不是"怎么做"。长方法给每个主要代码块一句概括；难懂的修复说明原因；短方法通常不需要实现注释。</p></div>
+</div>
+
+<h2>心智模型：注释和代码的细节层次</h2>
+<p>把代码想成一个固定的"细节层次"。注释的价值来自于它和代码<strong>不在同一层</strong>：要么往下钻，把代码没说死的地方说死；要么往上走，告诉读者这些细节合起来是为了什么。</p>
+<figure class="fig">
+<svg viewBox="0 0 660 300" width="660" role="img" aria-label="三层示意：高一层的注释提供直觉，中间是代码本身，同层注释只是重复，低一层的注释提供精确性">
+  <rect x="20" y="20" width="620" height="78" rx="8" class="ok-soft" stroke-width="1.5"/>
+  <text x="36" y="44" font-weight="700">高一层：直觉</text>
+  <text x="36" y="66" font-size="12.5">这段代码想做什么？为什么需要它？最重要的是什么？</text>
+  <text x="36" y="86" font-size="12" class="t-muted mono">// 回收空闲太久的连接，但至少保留 minIdle_ 个，免得重新握手</text>
+
+  <rect x="20" y="111" width="620" height="78" rx="8" class="bad-soft" stroke-width="1.5"/>
+  <text x="36" y="135" font-weight="700">同一层：代码本身</text>
+  <text x="36" y="157" font-size="12.5">注释如果停在这一层，只是把代码换成自然语言再说一遍</text>
+  <text x="36" y="177" font-size="12" class="t-muted mono">// 如果 state == Idle 并且超时，就 close 并 erase</text>
+
+  <rect x="20" y="202" width="620" height="78" rx="8" class="accent-soft" stroke-width="1.5"/>
+  <text x="36" y="226" font-weight="700">低一层：精确性</text>
+  <text x="36" y="248" font-size="12.5">单位？边界含不含？空值代表什么？谁释放？有什么不变量？</text>
+  <text x="36" y="268" font-size="12" class="t-muted mono">// 要下载的字节范围 [begin_, end_)；end_ == 0 表示到文件末尾</text>
+
+  <text x="610" y="66" text-anchor="end" font-size="22" style="fill:var(--ok)">↑</text>
+  <text x="610" y="157" text-anchor="end" font-size="20" style="fill:var(--bad)">✕</text>
+  <text x="610" y="248" text-anchor="end" font-size="22" style="fill:var(--accent)">↓</text>
+</svg>
+<figcaption>好注释离开代码所在的那一层，往上提供直觉，或往下提供精确性。本站自绘示意。</figcaption>
+</figure>
+<p>很多人觉得"注释都是废话"（第 12 章的第四个借口），是因为见到的注释大多停在中间那一层。把这张图变成审查动作，就是本页的骨架。<strong>看到一条注释时，依次问自己：</strong></p>
+<ol>
+  <li><strong>只看旁边的代码，能写出它吗？</strong>能，它就是<em>重复代码</em>，删掉或重写。</li>
+  <li><strong>它写给谁，放对地方了吗？</strong>写给调用者的注释里出现了实现，就是<em>污染接口</em>。</li>
+  <li><strong>往下：读者会在哪里猜错？</strong>回答这个问题的注释在<em>补充精确性</em>。</li>
+  <li><strong>往上：读者缺一个框架吗？</strong>回答这个问题的注释在<em>补充直觉</em>。</li>
+</ol>
+
+<h2>问题一：只看旁边的代码，能写出它吗？</h2>
+<p>这是作者在 13.2 节给的检验：<strong>一个从没见过这段代码的人，只看注释旁边的代码，能不能写出这条注释？</strong>能，它就没有让代码更好懂。这个问题里有两个参照物，都不能换：</p>
+<ul>
+  <li><strong>"旁边的代码"</strong>是注释紧挨着的那行声明或那段代码，而不是整个程序（13.3 节的澄清）。翻遍所有用到某个变量的地方也许能推出它的含义，但那费时又容易出错；声明处的注释就是为了让人不必去翻。</li>
+  <li><strong>"没见过这段代码的人"</strong>不是你。作者在 13.8 节说，"明显"是从第一次读这段代码的人的角度判断的；你觉得显然的东西，多半是因为你刚写完它。</li>
+</ul>
+<p>重复最常见的伪装，是用被注释对象<strong>名字里的词</strong>造句：</p>
+<pre><code class="lang-cpp">// 刷新间隔（毫秒）。
+int flushIntervalMs_ = 200;</code></pre>
+<p>这条注释看起来认真（还写了单位！），但"毫秒"已经在名字里了。读者真正想知道的是：刷新什么？间隔从什么时候算起？到点时缓冲区是空的会怎样？设为 0 呢？换一组不同于名字的词来写：</p>
+<pre><code class="lang-cpp">// 后台线程把写缓冲刷到磁盘的最长间隔：缓冲区里最早的一条数据，
+// 最晚在写入后这么久落盘（缓冲区写满时会提前刷）。0 表示每次写入都立即刷。
+int flushIntervalMs_ = 200;</code></pre>
+<p>书中 13.2 节举了几条从名字和参数类型里拼出来的注释，其中一条比代码多出来的只有一个介词。<strong>写注释的第一步，就是避开名字里已经有的词。</strong></p>
+
+<h3>另一种伪装：描述"谁在改它"</h3>
+<p>作者在 13.3 节提醒，给变量写注释要<strong>想名词，不要想动词</strong>：写它<strong>代表什么</strong>，而不是它<strong>在哪里被怎么改</strong>。作者说动词式注释在照搬代码结构；本站因此把它算作重复的变体：它说的每件事都能从那几个写入点抄出来。</p>
+<div class="ba">
+  <div data-label="动词：描述谁改它">
+<pre><code class="lang-cpp">// 收到同步完成消息时置为 true；开始新一轮同步时置为 false；
+// replicate() 会检查它决定是否走增量路径。
+bool caughtUp_;</code></pre>
+    <p>读者要从几个动作里自己归纳出含义；改代码时多一个写入点，注释就过期了。</p>
+  </div>
+  <div data-label="名词：描述它是什么">
+<pre><code class="lang-cpp">// true 表示这个副本已经拥有主节点截至上一轮同步的全部日志，
+// 可以只接收增量；false 时需要先做一次全量同步。
+bool caughtUp_;</code></pre>
+    <p>定义清楚了，"什么时候该置 true、什么时候置 false"读者自己就能推出来。</p>
+  </div>
+</div>
+<p>同样的标准也适用于局部变量（13.6 节）：几行之内就用完的变量，起好名字就够了；跨越很长一段代码、含义又不明显的，值得一句"它代表什么"的注释。</p>
+
+<h2>问题二：它写给谁，放对地方了吗？</h2>
+<p>作者在 13.1 节把注释分成四类：接口注释、数据成员注释、实现注释、跨模块注释。本站换一个角度，按<strong>读者</strong>来排，因为"写给谁"决定了"放在哪"和"写什么"：</p>
+<div class="table-wrap">
+<table class="lvl-table">
+  <thead><tr><th>读者</th><th>放在哪</th><th>写什么</th><th>典型错误</th></tr></thead>
+  <tbody>
+    <tr><td>调用者</td><td>头文件里类和方法的声明前（接口注释）</td><td>抽象：调用者感知到的行为和约定</td><td>讲实现</td></tr>
+    <tr><td>维护者</td><td>成员变量声明旁；方法体内（实现注释）</td><td>成员的精确含义；代码块在做什么、为什么</td><td>逐行复述怎么做</td></tr>
+    <tr><td>以后改别处的人</td><td>改动时一定会经过的地方</td><td>跨模块的约定：改这里还得改哪里</td><td>散落各处、互相不全</td></tr>
+  </tbody>
+</table>
+</div>
+<p>对写给调用者的那一行，作者的标准是：</p>
+<blockquote class="quote">Developers should be able to understand the abstraction provided by a module without reading any code other than its externally visible declarations.<cite>— 第 13 章开篇</cite></blockquote>
+<p>代码太底层，还夹带了不该出现在抽象里的实现细节，所以描述抽象的唯一方式是注释（13.5 节）。最常见的错误，是把写给维护者的内容写进了写给调用者的位置：</p>
+<div class="ba">
+  <div data-label="改之前：描述了实现">
+<pre><code class="lang-cpp">// 从连接池获取连接。先检查 idle_ 列表，非空就 pop_back()；
+// 否则如果 total_ &lt; maxConns_ 就调用 dial() 新建；
+// 否则在 cv_ 上 wait_until(deadline)。
+PooledConn acquire(Deadline deadline);</code></pre>
+    <p>第一句重复了名字；其余全是实现。调用者真正需要的（等不到怎么办、连接怎么还、能不能多线程调用）一条都没有。</p>
+  </div>
+  <div data-label="改之后：接口注释">
+<pre><code class="lang-cpp">/**
+ * 取得一条到后端的可用连接；池中暂时没有时会等待。
+ *
+ * @param deadline  最多等到这个时刻；传入已经过去的时刻表示不等待。
+ * @return  一条已建立的连接。PooledConn 析构时自动归还到池中，
+ *          不要自己关闭它；如果用的过程中连接出错，调用 discard()，
+ *          池会丢弃这条连接而不是归还。
+ * @throws PoolTimeout  到 deadline 仍没有空闲连接，且连接数已达上限。
+ * @throws DialError    需要新建连接，但建立失败。
+ *
+ * 可以从多个线程同时调用。
+ */
+PooledConn acquire(Deadline deadline);</code></pre>
+  </div>
+  <div data-label="实现注释去哪了" data-tone="neutral">
+<pre><code class="lang-cpp">PooledConn ConnectionPool::acquire(Deadline deadline) {
+    std::unique_lock lk(mu_);
+    // 优先复用空闲连接；从尾部取，因为最近归还的连接
+    // 最不可能已被服务端因空闲超时关闭。
+    ...
+    // 没有空闲连接、但还没到上限：先占住名额再解锁去建连，
+    // 以免建连期间别的线程也来建，超出 maxConns_。
+    ...
+}</code></pre>
+    <p>原来那些"怎么做"的信息并不都是废话，有些值得保留，但应该放进方法体，并且改成"做什么、为什么"。</p>
+  </div>
+</div>
+<p>审查一条方法接口注释时，可以按<strong>一次调用的时间线</strong>逐段对照它缺了什么（内容来自 13.5 节的要求，分组是本站的）：</p>
+<ul>
+  <li><strong>一句话总括</strong>：调用者感知到的行为。这是高层的部分，属于问题四。</li>
+  <li><strong>调用前</strong>：前置条件（例如必须先调用另一个方法；能消掉就消掉，留下的必须写）；每个参数的取值约束，以及参数之间的依赖。</li>
+  <li><strong>调用后</strong>：返回值的精确含义；副作用，即不体现在返回值里、却会影响系统之后行为的后果（往内部结构里加了东西、写了文件……）。</li>
+  <li><strong>出错时</strong>：可能抛出的异常。</li>
+</ul>
+<p><strong>类的接口注释</strong>则站得更高：这个类整体提供什么能力、每个实例代表什么、有哪些局限（例如不支持多线程并发访问），不必逐个讲方法；对用法不明显的深类，可以加一段"这些方法怎么配合"的示例。被模块自动处理、使用者感知不到的故障（如服务器崩溃）不必提；感知得到的，描述它<strong>表现为什么</strong>，而不是恢复机制（13.9 节）。</p>
+<p>反过来用：如果接口注释<strong>不描述实现就写不下去</strong>，说明这个方法（或类）是浅的，没有真正藏住什么。写注释因此也在检查设计，第 15 章会展开。</p>
+<p><strong>第三种读者</strong>最难照顾。跨模块的设计决定（例如一种网络协议同时影响发送方和接收方）复杂又容易出 bug，难点是找一个改动者必经的位置（13.7 节）。有天然中心位置就放那里：书中在一个状态码枚举末尾列出"新增状态码时还要改的其他地方"。没有时，作者在尝试一份按主题分节的集中设计说明（designNotes），代码里只留一行 <code>// 见 design-notes 中的"副本追赶"一节</code> 这样的指引；代价见"边界与反方"。</p>
+<div class="tip">
+  <p><strong>C++ 里的约定</strong>：接口注释和实现注释要分开，实现注释写在 <code>.cpp</code> 的函数体里。接口注释放哪儿，常见做法是头文件的声明前（不少团队规范如此）；作者本人则主张放在 <code>.cpp</code> 里紧挨方法体，让改代码的人一眼看到，使用者读 Doxygen 生成的文档（16.2 节，第 16 章会讨论）。选一种，全团队一致。书中建议使用语言现成的文档工具约定，C++ 就是 Doxygen（<code>@param</code> 或 <code>\param</code> 都行）。约定的价值有两个：风格一致更好读；有了明确的约定，你才会真的去写（13.1 节）。</p>
+</div>
+
+<h2>问题三：往下钻，读者会在哪里猜错？</h2>
+<p>变量、参数、返回值的声明只有名字和类型，通常不够精确（13.3 节）。最常见的毛病是<strong>含糊</strong>："当前位置""范围"这类词，读者只能猜。下表是作者列的几项，本站按"C++ 类型能分担多少"排序：</p>
+<div class="table-wrap">
+<table class="lvl-table">
+  <thead><tr><th>要问的问题</th><th>含糊的写法</th><th>精确的写法</th><th>C++ 类型能帮忙吗？</th></tr></thead>
+  <tbody>
+    <tr><td>单位是什么？</td><td><code>int timeout; // 超时</code></td><td>单次请求的超时，毫秒</td><td>能：<code>std::chrono::milliseconds</code></td></tr>
+    <tr><td>资源由谁释放？</td><td><code>FILE* fp_; // 文件</code></td><td>由本对象拥有，析构时关闭</td><td>能：<code>std::unique_ptr</code> 及自定义删除器</td></tr>
+    <tr><td>空值代表什么？</td><td><code>Peer* leader_;</code></td><td><code>nullptr</code> 表示当前不知道谁是主节点（选举中）</td><td>部分：<code>std::optional</code> 说明"可能没有"，但"没有"代表什么仍需注释</td></tr>
+    <tr><td>边界含不含？</td><td><code>// 起止位置</code></td><td>字节范围 <code>[begin, end)</code>，左闭右开</td><td>部分：可以约定统一用半开区间，但仍要写明</td></tr>
+    <tr><td>有什么不变量？</td><td><code>std::vector&lt;Range&gt; free_;</code></td><td>按起点升序、互不重叠、相邻区间已合并</td><td>基本不能：只能靠注释（和断言）</td></tr>
+  </tbody>
+</table>
+</div>
+<p>表越往下，注释越不可替代。对容器类成员还要多问一句：<strong>某一项不存在</strong>代表什么（书中改写一个统计行长度的映射表时特意写明了这一点）。方法的参数和返回值同样适用这张表。</p>
+<div class="aside" data-title="对照 OSTEP">
+  <p>OSTEP 第 29 章的并发数据结构里，每个共享字段"由哪把锁保护"就是一条典型的<strong>不变量</strong>注释：类型系统表达不了它，读声明的人却必须知道。Linux 内核的结构体里大量注释都是这种形式（"protected by xxx_lock"）。参见 <a href="https://t.miaowuao.cn/ostep/chapters/29-lock-data-structures.html">OSTEP 学习站第 29 章</a>。</p>
+</div>
+
+<h2>问题四：往上走，读者缺一个框架吗？</h2>
+<p>另一类好注释站得比代码高：省略细节，告诉读者这些细节合起来<strong>要做什么</strong>、<strong>为什么</strong>。方法体里的注释和接口注释的开头一句都靠它。这类注释比低层注释难写，因为你得换一种方式思考代码。作者建议先问自己三个问题：这段代码想做什么？能解释全部代码的最简单说法是什么？关于这段代码，最重要的一件事是什么？书中 13.4 节用一个循环的两种注释说明效果：一句话说出目的的那条，让读者能自己解释几乎每个条件，还能据此判断代码对不对。下面用这三个问题改一条原创的注释：</p>
+<div class="ba">
+  <div data-label="改之前：和代码同一层">
+<pre><code class="lang-cpp">// 如果 resp.term &gt; term_，把 term_ 设为 resp.term，role_ 设为
+// Follower，votedFor_ 清空，然后 persist()。
+if (resp.term &gt; term_) {
+    term_ = resp.term;
+    role_ = Role::Follower;
+    votedFor_.reset();
+    persist();
+    return;
+}</code></pre>
+    <p>注释是代码的同义复述。读者还是不知道：这段代码为什么在这里？漏了哪一步会出什么问题？</p>
+  </div>
+  <div data-label="改之后：说意图和原因">
+<pre><code class="lang-cpp">// 对方的任期比我们新，说明集群里已经有了更新的主节点或选举：
+// 立即退回跟随者，并在回复任何请求之前把新任期落盘，
+// 否则重启后可能在同一任期里投出第二票。
+if (resp.term &gt; term_) {
+    ...
+}</code></pre>
+    <p>第一句是"我们是怎么走到这里的"（书中说这类注释特别有用；方法注释里说明它通常在什么情况下被调用也是同理），第二句说清要做什么，第三句解释最容易被删掉的那一步（<code>persist()</code>）为什么必须在。</p>
+  </div>
+</div>
+<p>上面那条注释的第三句就是一条"为什么"。在方法体里，这个问题落实为 13.6 节的"写做什么和为什么，不写怎么做"：知道了意图，看懂做法通常不难。值得写的位置：</p>
+<ul>
+  <li><strong>为什么</strong>：看起来多余、删掉会出事的代码，要说明原因。修 bug 加的代码可以直接引用缺陷单号，而不是把缺陷报告抄一遍：<code>// 见 KV-1182：部分内核版本上 O_DIRECT 写入在这种情况下会返回 EINVAL</code>。</li>
+  <li><strong>代码块概括</strong>：长方法里每个主要代码块前一句话（"第 2 步：把过期的段移到回收队列"），方便读者跳到关心的部分。</li>
+  <li><strong>循环说明</strong>：对复杂的长循环，说明"每一轮做什么"。简单的循环不需要。</li>
+</ul>
+<p>短方法通常不需要实现注释：它只做一件事，接口注释已经说过了。</p>
+
+<h2>交互：注释 X 光</h2>
+<p>把四个问题用一遍。下面是一个原创的带过期时间的缓存（头文件 + 实现），里面有 11 条注释，每条前面标了编号。逐条判断它属于哪一类：</p>
+<section class="sim" id="sim-xray">
+  <div class="sim-head"><span class="tag">交互</span><h3>注释 X 光：这条注释在做什么？</h3>
+    <div class="desc">点编号（或直接点代码里的注释行）选中一条注释，然后从四类里选一个：<b>重复代码</b>、<b>补充精确性</b>（低一层）、<b>补充直觉</b>（高一层）、<b>污染接口</b>（接口注释里写了实现）。选完会看到解析。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <div class="xr-chips" id="xr-chips"></div>
+      <button id="xr-reset">全部重来</button>
+    </div>
+    <div class="xr-wrap">
+      <div class="stage" id="xr-code"></div>
+      <div class="xr-panel" id="xr-panel"></div>
+    </div>
+    <div class="narrate" id="xr-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="xr-done">0 / 11</div><div class="l">已判断</div></div>
+      <div class="stat"><div class="v" id="xr-right">0</div><div class="l">判断正确</div></div>
+      <div class="stat"><div class="v" id="xr-keep">0</div><div class="l">值得保留的注释</div></div>
+    </div>
+  </div>
+</section>
+<p class="small muted">分类不是唯一的：一条方法接口注释往往同时有高层的一句话和低层的精确描述，这里按它<strong>主要</strong>的贡献归类。重要的是判断理由。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="真的要给每个成员都写注释吗？">
+  <p>作者的立场比很多团队规范更强：每个类、每个类成员变量、每个方法都应该有注释。作者也承认偶尔会有显而易见、实在没什么可补充的声明（某些 getter/setter），但认为这很少见，<strong>全部都写比逐个纠结"这里要不要写"更省力</strong>。很多规范（以及第 12 章的 Clean Code）主张"只在必要时写"。本站的看法：对类成员和公开方法，作者的默认值更安全，因为"必要"往往是写的人判断的，而写的人恰恰最难看出哪里不明显。</p>
+</div>
+<div class="counter" data-title="能放进类型的，就别只写在注释里（本站补充）">
+  <p>书的例子多是 Java 和较老的 C++，没有展开这一点。问题三的表已经显示，单位、所有权、"可能没有"都能放进类型；<code>noexcept</code>、<code>[[nodiscard]]</code> 也是编译器能检查、不会过期的接口信息。这和本章原则不冲突：类型让信息变成"代码里看得出来"的，注释就把篇幅留给类型表达不了的部分。但类型再丰富，也写不出"为什么"。</p>
+</div>
+<div class="counter" data-title="&quot;明显&quot;由读者判断，但不是给初学者写教程">
+  <p>作者在 13.8 节说：审查者觉得不明显，那就是不明显。另一方面，作者也批评过"告诉 C++ 程序员要 include 头文件"这种注释：对目标读者来说太显而易见。两者的共同点是<strong>站在实际读者的位置</strong>：你的读者是懂这门语言、但第一次读这段代码的同事。语言本身的知识不用解释，这段代码特有的意图和约定要解释。</p>
+  <blockquote class="quote">if a reader thinks it’s not obvious, then it’s not obvious.<cite>— 第 13.8 节</cite></blockquote>
+</div>
+<div class="counter" data-title="跨模块文档没有完美的位置">
+  <p>作者对 designNotes 并不是无保留地推荐，用的词是"在尝试"：集中写一份，只有一个副本、容易找到，但离代码远，改代码的人未必记得去更新；在每处代码里各写一份，又是重复，同样难以同步。如果可以，更好的出路往往是<strong>减少跨模块的决定本身</strong>：例如把两边共享的协议格式收进一个共享头文件（这也是第 5 章说的消除信息泄漏），文档就自然有了中心位置。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场：一道识别实现污染、一道"名词还是动词"、一道真正动手写接口注释。本章题库以写作题为主，建议去训练场把 5 道写作题都做一遍。</p>
+<div class="drill-embed" data-ids="ch13-flag-03 ch13-ab-02 ch13-write-01"></div>
+
+<h2>动手：项目任务</h2>
+<p>第 12～15 章对应 minikv 的任务 m07。minikv 是按"战术式"风格写成的，本章的几种问题在它的头文件里都能找到：有的方法注释只是把方法名念一遍，有的成员变量注释和变量名一样含糊，还有接口注释在一步步复述实现。读完本章后，可以先做任务里的注释部分：用 X 光的四个类别给头文件里的注释逐条分类，删改重复代码的注释，按精确性清单重写成员注释，把混进接口注释的实现细节挪走、换成调用者需要的信息；第 14、15 章读完后再回来处理命名。</p>
+<div class="lab"><p>任务 m07：给 minikv 补上真正有用的接口注释和成员注释，删改重复代码的注释，并修正含糊的名字。详见 <a href="../project/m07.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="2"><div class="q">按书中 13.2 节的检验问题，判断一条注释是否"重复代码"，应该问什么？</div>
+  <div class="opts"><button>A. 这条注释是否比代码短</button><button>B. 删掉这条注释后，代码是否还能编译</button><button>C. 一个没见过这段代码的人，只看注释旁边的代码，能否写出这条注释</button><button>D. 这条注释是否用了和代码不同的语言</button></div>
+  <div class="explain">如果只看旁边的代码就能写出来，注释就没有提供新的信息。长短、语言都不是标准：一条很长的注释也可能全是重复，一条短注释也可能补上关键的边界语义。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">一个方法的接口注释写道："内部用一个最小堆维护定时器，每次调用把新节点上浮到合适位置。" 这属于哪种问题？</div>
+  <div class="opts"><button>A. 没有问题：说明了算法，调用者能估计性能</button><button>B. 实现细节污染接口注释：调用者不需要知道最小堆和上浮</button><button>C. 注释重复代码：注释和接口声明说的是同一件事</button><button>D. 注释太高层，缺少精确性</button></div>
+  <div class="explain">接口注释应该只包含使用者需要知道的信息。如果性能特征对调用者重要，应该写成调用者能用的形式（例如"插入是 O(log n)"），而不是描述内部数据结构如何操作。实现细节可以放到方法体里的实现注释中。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">你的接口注释怎么也绕不开对内部数据结构的描述，否则调用者就会用错。按本章的说法，这最可能说明什么？</div>
+  <div class="opts"><button>A. 这个类或方法是浅的：它没有真正把实现藏起来，设计可能需要调整</button><button>B. 注释写得太短，需要更详细</button><button>C. 应该改用 Doxygen 格式</button><button>D. 应该把这些内容改写成实现注释，放到方法体里，问题就解决了</button></div>
+  <div class="explain">如果调用者确实需要知道实现才能正确使用，那么把注释挪到方法体里只是把问题藏起来了。书中 13.5 节说，接口注释不得不描述实现时，说明这个类或方法是浅的；第 15 章会把"注释难写"进一步当成设计问题的信号。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">一个对象存储 SDK 提供分页列举某个前缀下所有对象的类 <code>ObjectLister</code>。下面哪条信息<strong>最不应该</strong>出现在它的类接口注释里？</div>
+  <div class="opts"><button>A. 列举进行期间新上传的对象，可能出现也可能不出现在结果里</button><button>B. 每个实例代表一次列举；所有结果返回完之后，调用者如何得知已经结束</button><button>C. 结果按什么顺序返回（按键的字典序，还是按上传时间）</button><button>D. 内部每次向服务端请求多少条的私有常量 <code>kPageSize</code></button></div>
+  <div class="explain">私有常量只和维护者有关（如果分页大小真的影响使用者，应该在高层描述它带来的可感知行为，而不是给出常量名）。结果顺序和"列举期间的新对象"都是使用者看得见、会影响正确性的行为，必须写；实例代表什么和如何结束是基本用法。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">一个约定影响客户端和服务端两个模块，代码里没有任何一个地方是"改它时必然会经过的"。书中 13.7 节提到的做法是？</div>
+  <div class="opts"><button>A. 写进一份按主题分节的集中设计说明文件，在每处相关代码里留一行指引</button><button>B. 不写，靠代码审查发现不一致</button><button>C. 只写在其中一边，另一边不写</button><button>D. 在两边各写一份完整说明，保证都能看到</button></div>
+  <div class="explain">两边各写一份会重复、难以同步；只写一边，另一边的人看不到也不知道去哪找。集中设计说明只有一份、容易找到，代价是离代码远，更新可能被遗忘。作者对这个方法的措辞是"正在尝试"。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q"><code>uint64_t end_; // 结束位置</code>。下面哪个改写最好地补充了<strong>精确性</strong>？</div>
+  <div class="opts"><button>A. <code>// 在 seek() 和 truncate() 里会被修改</code></button><button>B. <code>// 用 uint64_t 是为了支持大文件</code></button><button>C. <code>// 范围的终点（字节偏移，不含）：有效数据是 [begin_, end_)</code></button><button>D. <code>// end_ 是结束位置，用来表示结束</code></button></div>
+  <div class="explain">C 回答了单位（字节）和边界含不含（不含），并给出了它和 begin_ 的关系。D 重复了名字；A 描述的是"谁在改它"（动词），而不是它代表什么（名词）；B 解释了类型选择，对理解这个变量的含义帮助不大。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">关于实现注释（方法体内的注释），下列哪项最符合书中的建议？</div>
+  <div class="opts"><button>A. 每个局部变量都应该写注释</button><button>B. 主要说明代码在做什么和为什么，而不是怎么做；短方法往往不需要实现注释</button><button>C. 详细描述每一步的做法，方便新人理解</button><button>D. 每个循环前都应该写注释</button></div>
+  <div class="explain">作者认为读者知道了代码要做什么，通常就能看懂怎么做。循环注释只在长而复杂的循环上需要；局部变量只有跨度很大、含义不明显时才需要注释。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>注释应该描述代码里看不出来的东西；"看不出来"是相对注释旁边的代码、从第一次读的人的角度判断的。</li>
+  <li>问题一（重复）：只看旁边的代码就能写出来的注释没有价值。名字里的词造句、描述"谁在改它"的动词式注释，都是重复的变体。</li>
+  <li>问题二（写给谁）：调用者、维护者、改别处的人各有位置。接口注释定义抽象，按"总括 / 调用前 / 调用后 / 出错时"检查；不描述实现就写不下去，说明设计是浅的。</li>
+  <li>问题三（往下）：单位、归属、空值、边界、不变量；类型能分担前几项，最后一项只能靠注释。</li>
+  <li>问题四（往上）：意图、原因、"怎么走到这里的"；方法体里写做什么和为什么，不写怎么做。</li>
+</ul>
+<p>本章不断提到"用不同于名字的词"。那名字本身该怎么起？第 14 章专门讨论命名：好名字是一种不需要单独维护的文档，它和注释分工合作。</p>
+<p><strong>读后一句话</strong>：从你最近的代码里挑一条注释，用四个问题给它分个类，写下你会怎么改。</p>
+<textarea class="note" data-key="ch13-oneline" placeholder="例如：我们的 Session 类里 // 当前状态 这条注释属于重复代码，应该改成……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, codeBlock } = APOSD;
+  const SRC = `// ===== ttl_cache.h =====
+// ① 带过期时间的键值缓存：每一项写入后只在 ttl 内可见，过期后
+// 表现得和从未写入过一样。适合缓存"短时间内可以重复使用"的远程数据。
+// 容量满时淘汰最久没被访问（读或写）的项。可以从多个线程同时使用。
+class TtlCache {
+public:
+    // ② 构造函数，创建一个 TtlCache 对象。
+    TtlCache(size_t capacity, std::chrono::seconds ttl);
+
+    // ③ 返回 key 对应的值；key 不存在或已过期时返回 std::nullopt。
+    // 命中会让这一项变成"最近访问"，但不会推迟它的过期时刻。
+    std::optional<std::string> get(const std::string& key);
+
+    // ④ 先在 index_（std::unordered_map）里查 key：找到就改写节点并
+    // splice 到 lru_ 头部；找不到就 emplace_front，再循环 pop_back。
+    void put(const std::string& key, std::string value);
+
+    // ⑤ 返回 index_.size()：unordered_map 的 size() 是 O(1)，
+    // 比遍历 lru_ 快。
+    size_t size() const;
+
+private:
+    struct Entry {
+        std::string key, value;
+        // ⑥ 在这个时刻及之后，这一项就视为已过期、不存在。
+        Clock::time_point expiresAt;
+    };
+    // ⑦ 最多保存的项数，包括已过期但还没被清理的项；构造时保证 >= 1。
+    size_t capacity_;
+    // ⑧ 链表
+    std::list<Entry> lru_;
+    std::unordered_map<std::string, std::list<Entry>::iterator> index_;
+    mutable std::mutex mu_;
+};
+
+// ===== ttl_cache.cpp =====
+std::optional<std::string> TtlCache::get(const std::string& key) {
+    std::lock_guard lk(mu_);
+    auto it = index_.find(key);
+    // ⑨ 如果没找到，返回 nullopt
+    if (it == index_.end()) return std::nullopt;
+    // ⑩ 过期项在被读到时顺手删除，而不是开后台线程定期清理：
+    // 缓存通常很小，不值得多一个线程；代价是过期项会多占一会儿容量。
+    if (Clock::now() >= it->second->expiresAt) {
+        lru_.erase(it->second);
+        index_.erase(it);
+        return std::nullopt;
+    }
+    lru_.splice(lru_.begin(), lru_, it->second);
+    return it->second->value;
+}
+
+void TtlCache::put(const std::string& key, std::string value) {
+    std::lock_guard lk(mu_);
+    // ...（写入或更新这一项，过期时刻设为 now + ttl）
+    // ⑪ 腾出空间：从最久没被访问的一端开始淘汰，直到不超过容量。
+    while (lru_.size() > capacity_) {
+        index_.erase(lru_.back().key);
+        lru_.pop_back();
+    }
+}`;
+  const CATS = [["repeats", "重复代码"], ["precision", "补充精确性"], ["intuition", "补充直觉"], ["contaminates", "污染接口"]];
+  const CAT_NAME = Object.fromEntries(CATS);
+  const ITEMS = [
+    { tag: "①", cat: "intuition", why: "类的接口注释：说明这个类整体提供什么（过期后\"像从未写入\"）、适合什么场景、容量满时的策略和线程安全性。没有一个字讲实现，是站在比代码高的层次上给出抽象。" },
+    { tag: "②", cat: "repeats", why: "\"构造函数，创建一个 TtlCache 对象\"：看一眼声明就能写出来。真正缺的是参数的精确含义：capacity 能不能为 0？ttl 从什么时候开始算（写入时，还是最后一次读取时）？" },
+    { tag: "③", cat: "precision", why: "这是一条混合型的方法接口注释：开头半句是高层的行为描述，但主要贡献是精确：nullopt 的两种来源（不存在、已过期），以及一个容易猜错的副作用边界（命中会影响淘汰顺序，但不会续期）。这些从签名里完全看不出来。" },
+    { tag: "④", cat: "contaminates", why: "这是公开方法 put 的接口注释，却全是实现：index_、splice、emplace_front、pop_back。调用者需要的是：key 已存在时会覆盖并重新计算过期时刻吗？容量满时会淘汰谁？这些内容应该替换掉现在的注释；实现步骤如有必要，写进 .cpp 的方法体里。" },
+    { tag: "⑤", cat: "contaminates", why: "size() 的接口注释在讲实现和性能理由。调用者真正需要知道的反而没写：返回值<strong>包括</strong>已过期但还没被清理的项（因为过期项是读到时才删的）。好的写法：\"当前保存的项数，可能包括已过期但尚未清理的项。\"" },
+    { tag: "⑥", cat: "precision", why: "expiresAt 这个名字没说清边界：恰好在这个时刻，这一项还算有效吗？注释回答了\"含\"：到这个时刻就过期。这正是\"边界含不含\"那一条精确性问题，和 get 里的 now >= expiresAt 一致。" },
+    { tag: "⑦", cat: "precision", why: "补充了两条声明里看不出来的信息：容量把\"已过期未清理\"的项也算在内（这会影响淘汰行为），以及不变量 capacity_ >= 1。" },
+    { tag: "⑧", cat: "repeats", why: "\"链表\"只是把类型 std::list 又说了一遍。读者需要的是：链表的顺序代表什么？比如\"按最近访问（get 命中或 put）的时间排列，头部最新，淘汰从尾部开始\"。这条精确性信息正好能让 get 里的 splice 和 put 里的 pop_back 变得一目了然。" },
+    { tag: "⑨", cat: "repeats", why: "逐字复述了下一行代码。删掉它，什么也不会损失。" },
+    { tag: "⑩", cat: "intuition", why: "实现注释里最有价值的一种：解释<strong>为什么</strong>选了这个做法（惰性删除而不是后台线程），以及它的代价。这是代码本身永远表达不了的设计理由，也提醒了后来的维护者别\"顺手\"加一个清理线程。" },
+    { tag: "⑪", cat: "intuition", why: "代码块前的一句概括：说明这段循环<strong>要做什么</strong>（腾出空间、从最久没被访问的一端淘汰），而不是逐行念 erase 和 pop_back。有了它，读者马上知道 back() 代表\"最久没被访问\"。" },
+  ];
+  // 从源码里算出每条注释占的行（1 基）：从带编号的那一行开始，连续的 // 行都算，遇到下一个编号为止
+  const lines = SRC.split("\n");
+  ITEMS.forEach((it) => {
+    const start = lines.findIndex((l) => l.includes("// " + it.tag));
+    const ls = [start + 1];
+    for (let k = start + 1; k < lines.length && /^\s*\/\//.test(lines[k]) && !ITEMS.some((o) => lines[k].includes("// " + o.tag)); k++) ls.push(k + 1);
+    it.lines = ls;
+    it.text = ls.map((n) => lines[n - 1].trim()).join("\n");
+  });
+  const chipsEl = document.getElementById("xr-chips"), codeEl = document.getElementById("xr-code"), panel = document.getElementById("xr-panel"), narr = document.getElementById("xr-narrate");
+  let cur = 0, picks = {};
+  const chips = ITEMS.map((it, i) => h("button", { title: "选中注释 " + it.tag, onclick: () => { cur = i; draw(); } }, it.tag));
+  chipsEl.append(...chips);
+  document.getElementById("xr-reset").onclick = () => { picks = {}; cur = 0; draw(); };
+  function pick(cat) {
+    if (picks[cur] !== undefined) return;
+    picks[cur] = cat;
+    draw();
+  }
+  function draw() {
+    const it = ITEMS[cur];
+    chips.forEach((b, i) => {
+      b.classList.toggle("on", i === cur);
+      b.classList.toggle("ok", picks[i] !== undefined && picks[i] === ITEMS[i].cat);
+      b.classList.toggle("bad", picks[i] !== undefined && picks[i] !== ITEMS[i].cat);
+    });
+    const pre = codeBlock(SRC, { mark: it.lines });
+    pre.addEventListener("click", (e) => {
+      const ln = e.target.closest(".ln");
+      if (!ln) return;
+      const n = Number(ln.dataset.n), k = ITEMS.findIndex((o) => o.lines.includes(n));
+      if (k >= 0) { cur = k; draw(); }
+    });
+    codeEl.replaceChildren(pre);
+    const first = pre.querySelector(`.ln[data-n="${it.lines[0]}"]`);
+    if (first) pre.scrollTop = Math.max(0, first.offsetTop - 60);
+    const mine = picks[cur];
+    const btns = CATS.map(([k, name]) => {
+      const cls = mine === undefined ? "" : k === it.cat ? "right" : k === mine ? "wrong" : "";
+      return h("button", { class: cls, disabled: mine !== undefined && k !== it.cat && k !== mine, onclick: () => pick(k) }, name);
+    });
+    const fb = mine === undefined
+      ? h("div", { class: "xr-fb muted" }, "这条注释主要在做什么？")
+      : h("div", { class: "xr-fb" }, h("p", {}, h("strong", {}, mine === it.cat ? "判断正确。" : `参考答案：${CAT_NAME[it.cat]}。`)), h("p", { html: it.why }));
+    const next = h("button", { class: "primary", style: { marginTop: "10px" }, onclick: () => { const k = ITEMS.findIndex((o, i) => picks[i] === undefined); cur = k >= 0 ? k : (cur + 1) % ITEMS.length; draw(); } }, "下一条");
+    panel.replaceChildren(h("h4", {}, `注释 ${it.tag}（第 ${it.lines[0]}${it.lines.length > 1 ? "～" + it.lines[it.lines.length - 1] : ""} 行）`), h("div", { class: "xr-quote" }, it.text), h("div", { class: "xr-cats" }, btns), fb, mine === undefined ? null : next);
+    const done = Object.keys(picks).length, right = ITEMS.filter((o, i) => picks[i] === o.cat).length;
+    const keep = ITEMS.filter((o, i) => picks[i] !== undefined && (o.cat === "precision" || o.cat === "intuition")).length;
+    document.getElementById("xr-done").textContent = `${done} / ${ITEMS.length}`;
+    document.getElementById("xr-right").textContent = right;
+    document.getElementById("xr-keep").textContent = keep;
+    if (done === ITEMS.length) narr.textContent = `全部判断完毕，答对 ${right} / ${ITEMS.length}。这个文件里 11 条注释只有 6 条值得保留（3 条补充精确性、3 条补充直觉）；3 条重复代码可以直接删掉或重写，2 条污染接口的需要换成调用者需要的信息。注意被污染的恰好都是公开方法的接口注释：这是最常见、也最值得在代码审查时盯住的错误。`;
+    else narr.textContent = `已判断 ${done} 条。提示：先问"它是不是只看旁边那一行就能写出来"（重复代码）；再问"它是接口注释吗？如果是，它讲的是调用者需要的东西，还是实现？"；剩下的看它是往下补细节，还是往上讲意图。`;
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

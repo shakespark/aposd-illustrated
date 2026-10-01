@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>专题 · 在 AI 写代码的时代读这本书 · APOSD 精读</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.view { border: 1px dashed var(--accent); border-radius: var(--radius); padding: 12px 16px; margin: 18px 0; background: var(--accent-soft); }
+.view::before { content: "本站看法"; display: block; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.view > :last-child { margin-bottom: 0; }
+.said { border-left: 4px solid var(--c1); background: var(--surface); border-radius: var(--radius); padding: 12px 16px; margin: 16px 0; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.said::before { content: "有出处的事实"; display: block; font-size: 12px; font-weight: 700; color: var(--c1); margin-bottom: 4px; }
+.said > :last-child { margin-bottom: 0; }
+.ts { font: 12.5px var(--mono); color: var(--muted); white-space: nowrap; }
+table.check td:first-child { white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part5)"></span>专题 · 争议与对照<span>Topic</span></div>
+  <h1>在 AI 写代码的时代读这本书</h1>
+  <p class="en">Reading A Philosophy of Software Design when code is cheap</p>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#said">Ousterhout 本人说过什么</a></li>
+  <li><a href="#scarce">代码变便宜之后，什么变稀缺</a></li>
+  <li><a href="#tornado">机器速度的战术龙卷风</a></li>
+  <li><a href="#checklist">用红旗审 AI 生成的代码：清单</a></li>
+  <li><a href="#example">完整示例：一段"AI 写的"会话缓存</a></li>
+  <li><a href="#workflow">把书里的方法接进 AI 工作流</a></li>
+  <li><a href="#practice">练习</a></li>
+</ol></nav>
+
+<p>这本书第 2 版出版于 2021 年，书里没有任何关于大语言模型（LLM）或 AI 编程助手的内容。本页分成两种性质完全不同的材料，请注意区分：</p>
+<ul>
+  <li>蓝色左边框的<strong>"有出处的事实"</strong>：Ousterhout 公开说过的话，附链接和时间点，只转述能核实的部分。</li>
+  <li>虚线框的<strong>"本站看法"</strong>：本站用书中框架做的推演，不代表作者观点。</li>
+</ul>
+
+<h2 id="said">Ousterhout 本人说过什么</h2>
+<p>截至本页写作时（2026 年 10 月），本站能找到并核实的、Ousterhout 关于 AI 编程工具的公开表态，主要来自一次访谈：Gergely Orosz 主持的播客 <a href="https://newsletter.pragmaticengineer.com/p/the-philosophy-of-software-design">The Pragmatic Engineer：The Philosophy of Software Design – with John Ousterhout</a>（2025-04-09，<a href="https://www.youtube.com/watch?v=lz451zUlF-k">YouTube 视频</a>）。下面的转述依据节目页面提供的自动转写稿，时间点取自转写稿（与节目页面的章节标注基本对齐）。</p>
+
+<div class="said">
+  <p><span class="ts">约 11:51 起</span>　主持人问：AI 工具生成代码又快又多，有点像书里的"战术龙卷风"，长期看会怎样改变软件工程？Ousterhout 的回答要点：</p>
+  <ol>
+    <li>坦言自己不知道答案，只能猜，未来五到十年会有大变化，方向很难预测。</li>
+    <li>比较清楚的一点：AI 工具会让<strong>写底层代码</strong>更容易，自动补全会越来越好；并特别补充，这<strong>不一定</strong>是战术龙卷风式的东西，产出的也可能是质量相当不错的代码。</li>
+    <li>大问题是 AI 能在多大程度上取代<strong>更高层的设计工作</strong>。回答是不知道，到目前为止在现有工具里没看到能说明会这样的迹象，但也说"永远不要低估可能发生的事"。</li>
+    <li>如果 AI 承担越来越多的底层编程，开发者的工作里设计所占的比例会越来越大，软件设计会变得更重要；而大学几乎不教软件设计，现在教给学生的技能反倒可能正是会被 AI 取代的那些。</li>
+  </ol>
+</div>
+<blockquote class="quote">So I think software design is going to become more and more important.<cite>— John Ousterhout，The Pragmatic Engineer 访谈，约 13:49（据节目自动转写稿）</cite></blockquote>
+
+<div class="said">
+  <p><span class="ts">约 1:08:22 起</span>　谈到注释时，主持人说 AI 助手生成代码时常顺手加上解释性注释，这让自己更容易核对 AI 的产出。Ousterhout 的回答要点：</p>
+  <ol>
+    <li>先说"有点犹豫说这个，怕是在给坏习惯找理由"：发现 AI 工具<strong>在一定程度上能弥补注释的缺失</strong>。</li>
+    <li>Ousterhout 当时在 Linux 内核里实现一个新的网络传输协议（Homa），认为 Linux 内核注释明显不足，大量时间花在弄清接口和挂载点上；ChatGPT 成了"最好的朋友"，能回答许多用搜索引擎答不了的内核问题。</li>
+    <li>它并不总是对，有时会幻觉，但常常是对的；即使错了，通常也能把人带到正确的位置附近。</li>
+    <li>但接着又说：如果内核开发者当初花一点点时间写注释，会比用 ChatGPT 去猜容易得多。所以不认为注释的必要性会完全消失。</li>
+  </ol>
+</div>
+<blockquote class="quote">And we shouldn't use AI tools as an excuse for people not to write comments.<cite>— John Ousterhout，同一访谈，约 1:10:33（据自动转写稿；紧接着还补了一句"至少现在还不行"）</cite></blockquote>
+
+<div class="warn">
+  <p>该节目页面自己的文字总结把"AI 编程工具像战术龙卷风"列为要点之一，却没有标明是谁的说法，很容易被读成"Ousterhout 认为 AI 编程工具就像战术龙卷风"。根据转写稿，这个类比是<strong>主持人</strong>提出的；Ousterhout 的回应恰恰是"不一定是战术龙卷风式的东西"。引用时请别把这句话安到 Ousterhout 头上。</p>
+</div>
+
+<p>另外几条"没有"的事实，同样有用：</p>
+<ul>
+  <li>Ousterhout 和 Robert Martin 2024–2025 年的长篇讨论（<a href="https://github.com/johnousterhout/aposd-vs-clean-code">aposd-vs-clean-code</a>，见本站<a href="clean-code.html">专题</a>）全文没有涉及 AI。</li>
+  <li>Ousterhout 在 Stanford 的<a href="https://web.stanford.edu/~ouster/cgi-bin/aposd.php">本书主页</a>（本站查阅时最后更新于 2025-02）也没有相关内容。</li>
+  <li>除上述访谈外，本站没有找到其他可核实的、Ousterhout 关于 LLM 编程的公开发言。如果你找到了，以原始来源为准。</li>
+</ul>
+
+<h2 id="scarce">代码变便宜之后，什么变稀缺</h2>
+<p>以下全部是本站看法。出发点很简单：书里几乎所有原则针对的都不是"打字"，而是<strong>决定</strong>。当打字的成本趋近于零，决定的分量就相对变重了，这也和 Ousterhout 在访谈里"设计比例会变大"的判断一致。</p>
+<div class="cards">
+  <div class="card"><h4>判断什么是重要的</h4><p>生成器会忠实地实现你说出口的一切，包括不重要的。区分重要与不重要（<a href="../chapters/21-decide-what-matters.html">第 21 章</a>）是提示词之前的工作，模型替不了你。<span data-principle="16"></span></p></div>
+  <div class="card"><h4>接口</h4><p>实现可以重新生成，接口一旦被几十个调用点依赖就很难改。把精力花在接口上（<a href="../chapters/04-deep-modules.html">第 4 章</a>），是在投资最难重来的那部分。<span data-principle="4"></span></p></div>
+  <div class="card"><h4>认得出红旗</h4><p>审阅者面对的代码量成倍增长。能在几秒内认出浅模块、信息泄漏、透传方法的人，才审得过来。</p></div>
+  <div class="card"><h4>注释即规格</h4><p>"先写注释"（<a href="../chapters/15-comments-first.html">第 15 章</a>）写下的接口注释，恰好也是最好的提示词；而且它会留在代码里，不像对话记录那样消失。</p></div>
+  <div class="card"><h4>设计两次变便宜了</h4><p>以前比较三种接口方案要花一两个小时，现在几分钟就能让模型各写一份草图（<a href="../chapters/11-design-twice.html">第 11 章</a>）。挑选和综合仍然是你的事。<span data-principle="12"></span></p></div>
+  <div class="card"><h4>读者永远是人</h4><p>"为读而设计"（<a href="../chapters/18-obvious.html">第 18 章</a>）在 AI 时代变成了字面意思：写的是机器，读、审、改、出事时排查的仍然是人。<span data-principle="14"></span></p></div>
+</div>
+
+<h2 id="tornado">机器速度的战术龙卷风</h2>
+<p>书中第 3 章把"战术龙卷风"（tactical tornado）描述为写代码极快、但完全战术式工作的程序员，留下的烂摊子要别人收拾。前面说过，把 AI 比作战术龙卷风的是访谈主持人，Ousterhout 本人并不同意代码一定差。</p>
+<div class="view">
+  <p>本站认为两种说法可以同时成立，因为它们说的是不同层面：<strong>单个函数</strong>的质量可以很好，而<strong>系统层面</strong>的复杂性照样会累积。书中 2.4 节说复杂性是一点点累积起来的，每一处小妥协单看都无伤大雅。AI 辅助开发恰好放大了这种累积的速度：</p>
+  <ul>
+    <li><strong>以功能为增量</strong>：一次提示通常对应一个功能（"加一个管理员绕过""支持批量导入"），而书中 <a href="../chapters/19-trends.html">19.2 节</a>说增量应该是抽象，不是功能。<span data-principle="15"></span></li>
+    <li><strong>上下文有限</strong>：模型未必知道仓库里已经有一个合适的抽象，于是写出一个近似的副本（重复），或者把同一个格式约定写进三个文件（信息泄漏）。</li>
+    <li><strong>倾向于"能跑"</strong>：生成的代码通常以通过测试、满足描述为目标，正是第 3 章所说"能跑的代码还不够"的反面。<span data-principle="2"></span></li>
+    <li><strong>阻力消失</strong>：手写时，"再加一个特例分支"需要打字、需要犹豫；生成时这点阻力没了，特例分支会更快地堆起来。</li>
+  </ul>
+  <p>所以本站的结论不是"别用 AI"，而是：<strong>第 3 章建议的那 10%～20% 设计投资，比例不该因为写得快而降低</strong>。产出翻倍，用于重构和审阅的绝对时间也该跟着涨。</p>
+</div>
+
+<h2 id="checklist">用红旗审 AI 生成的代码：清单</h2>
+<p>下表把书末的 14 个红旗翻译成审阅 AI 生成代码时的具体症状和提问（本站整理）。点击红旗名称可跳到<a href="../cheatsheet.html">速查页</a>看定义。</p>
+<div class="table-wrap"><table class="check">
+  <thead><tr><th>红旗</th><th>在生成代码里常见的样子</th><th>审阅时问自己</th></tr></thead>
+  <tbody>
+    <tr><td><a href="../cheatsheet.html#flag-shallow">浅模块</a></td><td>一个需求生成了 <code>XxxManager</code>、<code>XxxHelper</code>、<code>XxxUtil</code> 好几个类，每个只包一层</td><td>去掉它，调用方会多写几行？如果几乎不变，它就不该存在</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-leakage">信息泄漏</a></td><td>同一个文件格式、键名约定、魔数出现在几个分别生成的文件里</td><td>如果这个格式要改，要改几个地方？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-temporal">按时间顺序分解</a></td><td>函数按提示词的叙述顺序切成 <code>step1Load</code>、<code>step2Parse</code>、<code>step3Validate</code></td><td>这些步骤是否共享同一份知识？调用者是否必须按顺序调用？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-overexposure">过度暴露</a></td><td>一个塞满开关的 <code>Config</code> 结构；每个调用都要传的输出参数</td><td>多数调用者需要知道这些吗？默认值能不能直接替他们决定？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-passthrough">透传方法</a></td><td>按"分层架构"模板生成的 Controller → Service → Manager → Repository，每层只转手</td><td>这一层提供了什么新的抽象？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-repetition">重复</a></td><td>仓库里已有的工具函数被重新实现一遍，或几段近似的代码在不同文件里</td><td>搜一下：这个逻辑是不是已经存在？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-special-general">通用与专用混杂</a></td><td>提示词里提到一个特例（"VIP 用户不限流"），它就被写进了通用机制内部</td><td>这个特例属于这个模块，还是属于调用它的业务层？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-conjoined">连体方法</a></td><td>辅助函数只在主函数特定的调用顺序下才正确，依赖成员变量的中间状态</td><td>能否不看调用方就确信它正确？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-comment-repeats">注释重复代码</a></td><td><code>// 检查会话是否过期</code> 写在 <code>if (isExpired(s))</code> 上面</td><td>删掉这条注释，读者会少知道什么？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-impl-contaminates">实现细节污染接口注释</a></td><td>函数头注释逐步复述算法步骤，却没说前置条件、错误和副作用</td><td>调用者读完能正确使用它吗？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-vague-name">名字含糊</a></td><td><code>data</code>、<code>info</code>、<code>result</code>、<code>handle()</code>、<code>process()</code></td><td>只看名字，能猜对它是什么吗？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-hard-name">名字难起</a></td><td><code>getFromCacheOrLoadAndUpdate</code> 这类把实现步骤串起来的长名字</td><td>名字长是因为这个函数做了几件不相干的事吗？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-hard-describe">难以描述</a></td><td>你试着给它补接口注释，发现要写一大段</td><td>接口是不是本身就不干净？</td></tr>
+    <tr><td><a href="../cheatsheet.html#flag-nonobvious">代码不明显</a></td><td>巧妙的一行写法、隐式转换、来历不明的常数</td><td>换一个没参与对话的同事，能一遍读懂吗？</td></tr>
+  </tbody>
+</table></div>
+<p>还有两条书里有、但不在 14 个红旗之列的检查，在生成代码里特别常见：<strong>到处 <code>try/catch</code> 再打日志</strong>（第 10 章：异常应该被定义掉、屏蔽或聚合，而不是在每个调用点各处理一遍），以及<strong>巫毒常数</strong>（这个叫法出自 OSTEP 对 Ousterhout 的引用，书中没有用；对应第 8 章 8.2 节：重试次数、超时、阈值被做成参数，却没有人知道该设多少）。</p>
+
+<h2 id="example">完整示例：一段"AI 写的"会话缓存</h2>
+<p>下面是本站原创的示例，模拟一段很常见的生成结果。提示词大意是："用 C++ 写一个会话缓存，命中时直接返回，未命中从数据库加载；会话 30 分钟过期；管理员的会话不过期；数据库失败要重试。"代码能编译、能通过简单测试，单看每个函数也不算差。先自己找找红旗，再看分析。</p>
+<pre class="numbered" data-mark="8,9,17,18,24,35,40,46,58,62"><code class="lang-cpp">// SessionCacheManager: manages session caching with database fallback.
+// 会话缓存管理器
+struct SessionCacheConfig {
+    int ttlSeconds = 1800;
+    int maxEntries = 10000;
+    double cleanupThreshold = 0.8;
+    int cleanupBatchSize = 500;
+    bool enableAdminBypass = true;
+    int dbRetryCount = 3;
+    int dbRetryDelayMs = 100;
+};
+
+class SessionCacheManager {
+public:
+    SessionCacheManager(Database* db, SessionCacheConfig config);
+    // 获取会话数据
+    std::optional&lt;SessionData&gt; getSessionData(const std::string&amp; sessionId,
+                                              bool&amp; fromCache, ErrorCode&amp; err);
+    // 从数据库加载会话
+    std::optional&lt;SessionData&gt; loadSessionFromDatabase(const std::string&amp; sessionId, ErrorCode&amp; err);
+    void putSessionInCache(const std::string&amp; sessionId, const SessionData&amp; data);
+    bool isSessionExpired(const CacheEntry&amp; entry);
+    void cleanupExpiredSessions();
+    std::unordered_map&lt;std::string, CacheEntry&gt;&amp; getCache() { return cache_; }
+    void setConfig(const SessionCacheConfig&amp; c) { config_ = c; }
+private:
+    Database* db_;
+    SessionCacheConfig config_;
+    std::unordered_map&lt;std::string, CacheEntry&gt; cache_;
+};
+
+std::optional&lt;SessionData&gt; SessionCacheManager::getSessionData(
+        const std::string&amp; sessionId, bool&amp; fromCache, ErrorCode&amp; err) {
+    // 检查是否需要清理
+    if (cache_.size() &gt; config_.maxEntries * config_.cleanupThreshold) cleanupExpiredSessions();
+    // 在缓存中查找会话
+    auto it = cache_.find(sessionId);
+    if (it != cache_.end()) {
+        // 检查是否为管理员
+        if (config_.enableAdminBypass &amp;&amp; it-&gt;second.data.role == "admin") {
+            fromCache = true;
+            return it-&gt;second.data;
+        }
+        // 检查会话是否过期
+        auto now = std::chrono::system_clock::now();
+        if (now - it-&gt;second.insertedAt &lt; std::chrono::seconds(config_.ttlSeconds)) {
+            fromCache = true;
+            return it-&gt;second.data;
+        }
+    }
+    fromCache = false;
+    auto data = loadSessionFromDatabase(sessionId, err);
+    if (data) putSessionInCache(sessionId, *data);
+    return data;
+}
+
+bool SessionCacheManager::isSessionExpired(const CacheEntry&amp; entry) {
+    return std::chrono::system_clock::now() - entry.insertedAt &gt; std::chrono::seconds(config_.ttlSeconds);
+}
+
+// SessionService.cpp
+std::optional&lt;SessionData&gt; SessionService::getSession(const std::string&amp; id, bool&amp; fromCache, ErrorCode&amp; err) {
+    return cacheManager_-&gt;getSessionData(id, fromCache, err);
+}</code></pre>
+
+<h3>逐条分析</h3>
+<ol>
+  <li><strong>巫毒常数 + 过度暴露</strong>（第 4～10 行）<span data-flag="overexposure"></span>：七个参数，其中 <code>cleanupThreshold</code>、<code>cleanupBatchSize</code>、<code>dbRetryDelayMs</code> 没有任何调用者能比模块自己定得更好（第 8 章 8.2 节的检验问题）。<code>enableAdminBypass</code> 根本不是性能参数，而是一条安全策略。</li>
+  <li><strong>注释重复代码</strong>（第 16、19、34、36、39、44 行一类的注释）<span data-flag="comment-repeats"></span>：每条都在复述下一行。真正需要说明的事却一条没写：<code>fromCache</code> 有什么用、<code>err</code> 何时被设置、失效会话返回什么、线程安全吗。</li>
+  <li><strong>过度暴露（输出参数）</strong>（第 17～18 行）：每个调用者都必须准备 <code>bool fromCache</code> 和 <code>ErrorCode err</code>，而关心"是否命中缓存"的大概只有监控代码。</li>
+  <li><strong>浅方法 + 按时间顺序分解</strong>（第 20～23 行）<span data-flag="temporal"></span>：<code>loadSessionFromDatabase</code>、<code>putSessionInCache</code>、<code>cleanupExpiredSessions</code> 是 <code>getSessionData</code> 内部的步骤，却被公开了，等于邀请调用者自己拼流程（拼错顺序就会读到过期数据）。</li>
+  <li><strong>信息泄漏</strong>（第 24～25 行）<span data-flag="leakage"></span>：<code>getCache()</code> 把内部的 <code>unordered_map</code> 以可修改引用交出去，缓存的表示方式从此成了接口的一部分；<code>setConfig</code> 允许运行中改 TTL，已缓存条目的语义随之变得模糊。</li>
+  <li><strong>通用与专用混杂</strong>（第 39～43 行）<span data-flag="special-general"></span>：提示词里的"管理员不过期"被写进了通用缓存的命中路径。后果不只是复杂：管理员被撤权或登出后，缓存里的旧会话依然永远有效。这是业务策略，不属于缓存。</li>
+  <li><strong>重复</strong>（第 46 行与第 58 行）<span data-flag="repetition"></span>：过期判断写了两遍，一处用 <code>&lt;</code> 判断"未过期"，一处用 <code>&gt;</code> 判断"已过期"，恰好在边界上两者都不成立。重复的逻辑迟早会这样悄悄分叉。</li>
+  <li><strong>代码不明显</strong>（第 35、45 行）<span data-flag="nonobvious"></span>：在 <code>get</code> 里顺手触发全表清理，会让某些请求的延迟突然变高，读代码的人很难从名字想到；用 <code>system_clock</code> 计算过期，系统时间被回拨时会话会"返老还童"。</li>
+  <li><strong>透传方法</strong>（第 62～64 行）<span data-flag="passthrough"></span>：<code>SessionService::getSession</code> 签名和下层完全一样，只是转手。</li>
+  <li><strong>名字</strong>：<code>SessionCacheManager</code>、<code>SessionData</code> 里的 Manager、Data 不提供信息 <span data-flag="vague-name"></span>；而公开方法一多，<code>getSessionData</code> 和 <code>getSession</code> 哪个该用也成了要记的东西。</li>
+</ol>
+
+<h3>重构后</h3>
+<pre><code class="lang-cpp">// 已登录会话的缓存，位于 SessionStore（数据库）之前。
+// 会话从加载起 ttl 时间内有效；条目数超过 capacity 时淘汰最久未访问的条目。
+// 线程安全。时间一律用 steady_clock，不受系统时间调整影响。
+// 数据库的瞬时故障由 SessionStore 内部重试；仍然失败时 find 抛 StoreUnavailable，
+// 由请求分发层统一转成 503（不需要每个调用点处理）。
+class SessionCache {
+public:
+    explicit SessionCache(SessionStore&amp; store,
+                          std::chrono::seconds ttl = std::chrono::minutes(30),
+                          size_t capacity = 10'000);
+
+    // 返回 id 对应的有效会话；会话不存在或已过期时返回 std::nullopt。
+    std::optional&lt;Session&gt; find(std::string_view id);
+
+    // 让 id 的缓存条目立即失效。登出、改密码、权限变更后必须调用。
+    // id 不在缓存中时什么也不做。
+    void invalidate(std::string_view id);
+
+    CacheStats stats() const;   // 命中数、未命中数、淘汰数，供监控使用
+};</code></pre>
+<ul>
+  <li><strong>接口从 7 个公开方法缩到 3 个（不算构造函数）</strong>，没有输出参数，没有配置结构；两个真正可能需要调整的值（ttl、capacity）是带默认值的构造参数。</li>
+  <li><strong>"是否命中缓存"</strong>从每次调用的输出参数，变成了供少数监控代码使用的 <code>stats()</code>（第 4、5 章：让常见用法简单，罕见需求另开入口）。</li>
+  <li><strong>错误</strong>：重试被推到真正知道如何重试的 <code>SessionStore</code> 里（屏蔽，10.6 节）；剩下的不可恢复错误在请求层统一处理（聚合，10.7 节）。</li>
+  <li><strong>管理员特例</strong>从缓存里删掉了。如果确实需要"管理员会话更长"，那是会话签发时决定的过期时间，应该存在 <code>Session</code> 里，由业务层设置；缓存只认过期时间，不认角色。审阅 AI 代码时，提示词里的特例是最该追问"它属于哪一层"的地方。</li>
+  <li><strong>新增的 <code>invalidate</code></strong> 是原版缺失的重要功能，原版根本没法让一个会话提前失效。书中 21.4 节说，没认出重要的东西也是一种错误；这一点往往要靠人来想到，因为提示词里没写。</li>
+  <li><strong>代价</strong>：实现会比原版长（LRU 链表、互斥锁、统计），但这些复杂性被关在一个类里。这正是 <span data-principle="6"></span> 的意思。</li>
+</ul>
+
+<h2 id="workflow">把书里的方法接进 AI 工作流</h2>
+<p>以下是本站建议的做法，每一条都对应书中的某个原则：</p>
+<ol>
+  <li><strong>接口和接口注释自己写</strong>（第 15 章"先写注释"）。写下类注释、公开方法的签名和注释，再让模型生成实现。如果注释怎么写都很长，先停下来：<span data-flag="hard-describe"></span> 说明设计本身需要再想。</li>
+  <li><strong>让模型提供备选方案，而不是直接要答案</strong>（第 11 章"设计两次"）。例如："给出三种差异很大的接口设计，各写出公开方法和一段使用示例，不要实现。"然后用书里的标准（调用方是否最简单、接口是否深）来挑。</li>
+  <li><strong>按上面的清单审阅每一次生成</strong>，尤其盯住公开接口的变化：新增了哪些公开成员？每一个都值得存在吗？</li>
+  <li><strong>每次改动都顺手改善一点设计</strong>（第 3 章、16.1 节）。生成的代码合入后，别让"以后再整理"变成永远不整理。</li>
+  <li><strong>把 AI 给你的解释沉淀成注释</strong>。如果你像 Ousterhout 读 Linux 内核那样，靠模型才搞懂了一段代码，核实之后把关键结论写成注释，下一个读者（人或模型）就不用再猜一次。</li>
+</ol>
+
+<h3>示例：用接口注释当提示词</h3>
+<p>下面是第 1 步的一个具体样子（本站示例）。注意提示词的主体就是将来要留在头文件里的接口注释，额外的要求只有几行，而且都在约束<strong>不要扩大接口</strong>：</p>
+<pre><code class="lang-cpp">// ===== 交给模型的内容：头文件草稿 + 要求 =====
+// 按固定窗口统计每个 key 的请求次数，用于限流判断。
+// 窗口长度在构造时给定；计数在窗口结束时整体清零（不是滑动窗口）。
+// 线程安全；内存占用与"当前窗口内出现过的 key 数"成正比，窗口切换时释放。
+class WindowCounter {
+public:
+    explicit WindowCounter(std::chrono::milliseconds window);
+
+    // 把 key 在当前窗口的计数加 1，返回加 1 之后的值。
+    // now 必须来自 steady_clock；早于上次调用的 now 按上次的时间处理。
+    uint64_t hit(std::string_view key, std::chrono::steady_clock::time_point now);
+};
+// 要求：
+// 1. 只实现上面的公开接口，不要新增公开方法、配置项或输出参数。
+// 2. 不要在实现里写复述代码的注释；只在不明显的地方说明"为什么"。
+// 3. 如果你认为接口本身有问题（例如某个约束无法高效实现），先指出来，不要自行修改接口。</code></pre>
+<p>第 3 条要求很关键：它把"发现设计问题"留给对话，而不是让模型悄悄绕过去。模型的反馈有时正是书里说的"难以描述""名字难起"一类的信号。</p>
+
+<h2 id="practice">练习</h2>
+<div class="exercise">
+  <p class="q">你让 AI 给一个已有的 <code>HttpClient</code> 加"失败重试"，它生成了一个新类 <code>RetryingHttpClient</code>，包住原类，公开方法和原类一一对应，每个方法里是同样的重试循环。你会接受吗？如果不接受，打算怎么改？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>这是书中 7.3 节讨论的装饰器（decorator）：签名完全相同的包装层，容易变浅，而且每个方法里的重试循环是重复代码 <span data-flag="repetition"></span>。先问 7.3 节的问题：重试是不是几乎所有使用者都需要？如果是，就把它做进 <code>HttpClient</code> 内部（只在一个私有的发送函数里实现一次），默认开启，罕见情况可以关掉；如果只有少数调用方需要，再考虑独立的包装，但也只在一个地方实现重试逻辑。顺便检查：重试是否只针对幂等请求（参考 OSTEP 49.7 节）？重试间隔是参数还是自适应的（第 8 章）？</p>
+  </div></details>
+</div>
+<div class="exercise">
+  <p class="q">同事说："AI 能随时帮我解释代码，所以接口注释不重要了。"根据本页，Ousterhout 本人会怎么回应？你自己怎么看？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>有出处的部分：Ousterhout 承认 AI 在一定程度上能弥补注释缺失（自己读 Linux 内核时就这么用），但认为花一点时间写注释比事后让 ChatGPT 去猜容易得多，AI 不应成为不写注释的理由，"至少现在还不行"。</p>
+    <p>本站补充：接口注释记录的是<strong>契约</strong>（哪些行为是承诺、哪些只是当前实现碰巧如此），这一点从代码里推不出来，无论读者是人还是模型。模型能解释代码<em>在做什么</em>，但无法告诉你作者<em>承诺了什么</em>。</p>
+  </div></details>
+</div>
+
+<p class="quiz-score"></p>
+<div class="mcq" data-answer="0"><div class="q">在 The Pragmatic Engineer 的访谈里，"AI 编程工具像战术龙卷风"这个说法是怎么出现的？</div>
+  <div class="opts"><button>A. 主持人提出这个类比，Ousterhout 回应说不一定是那样，产出也可能是质量不错的代码</button><button>B. 出自 APOSD 第 2 版第 3 章</button><button>C. Ousterhout 主动提出，并认为 AI 代码质量普遍很差</button><button>D. 出自 Ousterhout 和 Robert Martin 的 GitHub 讨论</button></div>
+  <div class="explain">根据节目转写稿，类比来自主持人；Ousterhout 的回答是 AI 会让写底层代码更容易，而且"不一定是战术龙卷风式的东西"。书（2021 年）和 GitHub 讨论都没有谈 AI。</div></div>
+<div class="mcq" data-answer="2"><div class="q">在本页的会话缓存示例里，为什么把"管理员会话不过期"从缓存里移走，而不是保留开关 <code>enableAdminBypass</code>？</div>
+  <div class="opts"><button>A. 因为 C++ 不适合写布尔配置</button><button>B. 因为管理员会话应该完全不缓存</button><button>C. 因为它是业务策略，混进通用缓存既让缓存变复杂，又造成了"撤权后旧会话仍有效"的问题</button><button>D. 因为开关会降低缓存命中率</button></div>
+  <div class="explain">这是"通用与专用混杂"：缓存的职责是按过期时间管理条目，至于谁的会话过期时间更长，应在签发会话时由业务层决定并写进 Session。</div></div>
+<div class="mcq" data-answer="1"><div class="q">本站认为"单个函数质量不错"和"系统复杂性仍会快速累积"可以同时成立，主要依据书中的哪个观点？</div>
+  <div class="opts"><button>A. 性能优化应该尽早做</button><button>B. 复杂性是一点点累积起来的（2.4 节），而且增量应该是抽象，不是功能（19.2 节）</button><button>C. 注释总是失败</button><button>D. 模块应该深，所以函数越长越好</button></div>
+  <div class="explain">复杂性来自许多小决定的叠加，而不是某一个糟糕的函数。以功能为单位快速生成代码，正好加快了这种叠加。D 曲解了第 4 章，C 是《Clean Code》的说法（书中反对），A 与第 20 章不符。</div></div>
+
+</main>
+</body>
+</html>

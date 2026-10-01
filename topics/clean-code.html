@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>专题 · APOSD 与 Clean Code：三处分歧 · APOSD 精读</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.vs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 16px 0; }
+@media (min-width: 720px) { .vs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.vs > div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; font-size: 14.5px; }
+.vs > div > h4 { margin: 0 0 6px; font-size: 13px; letter-spacing: .04em; }
+.vs > div.jo { border-top: 3px solid var(--c1); }
+.vs > div.ub { border-top: 3px solid var(--c2); }
+.vs > div.jo > h4 { color: var(--c1); }
+.vs > div.ub > h4 { color: var(--c2); }
+.vs ul { margin: 0; padding-left: 1.2em; }
+.vs li { margin: 3px 0; }
+.view { border: 1px dashed var(--accent); border-radius: var(--radius); padding: 12px 16px; margin: 18px 0; background: var(--accent-soft); }
+.view::before { content: "本站看法"; display: block; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.view > :last-child { margin-bottom: 0; }
+.src { font-size: 13.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part5)"></span>专题 · 争议与对照<span>Topic</span></div>
+  <h1>APOSD 与 Clean Code：三处分歧</h1>
+  <p class="en">A Philosophy of Software Design vs. Clean Code</p>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">这场讨论是什么</a></li>
+  <li><a href="#common">出发点其实一样</a></li>
+  <li><a href="#length">分歧一：方法该多短</a></li>
+  <li><a href="#comments">分歧二：注释是不是失败</a></li>
+  <li><a href="#rewrite">插曲：两次重写与一次性能回退</a></li>
+  <li><a href="#tdd">分歧三：TDD</a></li>
+  <li><a href="#verdict">两人各自的总结与本站看法</a></li>
+  <li><a href="#practice">判断练习</a></li>
+</ol></nav>
+
+<h2 id="bg">这场讨论是什么</h2>
+<p>《A Philosophy of Software Design》（下文简称 APOSD）第 2 版里有两节标题叫"A different opinion"，专门反驳 Robert C. Martin（"Uncle Bob"）的《Clean Code》：一节谈函数长度（<a href="../chapters/09-together-apart.html">9.8 节</a>），一节谈注释（<a href="../chapters/12-why-comments.html">12.6 节</a>）。另外 <a href="../chapters/19-trends.html">19.4 节</a>批评了测试驱动开发（TDD），而 Martin 是 TDD 最著名的倡导者之一。</p>
+<p>2024 年 9 月到 2025 年 2 月，两位作者就这三点做了一系列线上和线下讨论，整理成一篇很长的对话，公开在 GitHub 上：</p>
+<ul>
+  <li>主要来源：<a href="https://github.com/johnousterhout/aposd-vs-clean-code">johnousterhout/aposd-vs-clean-code</a>（README 全文，对话体，双方逐段回应）。</li>
+  <li>后续：两人一起上了 Book Overflow 播客，聊这次讨论的过程（<a href="https://www.youtube.com/watch?v=3Vlk6hCWBw0">YouTube，2025-03-30</a>）。本页不引用播客内容，只列出供你自己去听。</li>
+  <li>Ousterhout 在 <a href="https://newsletter.pragmaticengineer.com/p/the-philosophy-of-software-design">The Pragmatic Engineer 访谈</a>（2025-04）里也简短回顾过这次讨论。</li>
+</ul>
+<p>本页按对话的结构梳理三处分歧：每一处先摆出<strong>双方各自的论证</strong>（尽量用他们自己的理由，而不是对方转述的版本），再用一组原创 C++ 代码把两种风格放在一起，最后单独给出<strong>本站看法</strong>。对话里的代码（<code>PrimeGenerator</code> 等）是两位作者的，这里只点名，不搬运；建议你直接去读原文，它本身就是很好的设计评审示范。</p>
+<div class="tip"><p>读这页之前，最好已经读过原书第 4、9、12、13、19 章。下面凡是"书中"指 APOSD 第 2 版；凡是"对话中"指上面那份 GitHub 文档。</p></div>
+
+<h2 id="common">出发点其实一样</h2>
+<p>对话开头，Ousterhout 先问：你判断一个设计主张值不值得支持，标准是什么？Ousterhout 自己的回答就是书的主线：复杂性主要和<strong>信息</strong>有关，一是开发者为了完成任务脑子里必须装多少信息，二是这些信息是否容易找到、是否明显（对照<a href="../chapters/04-deep-modules.html">第 4 章</a>的"接口 = 使用者必须知道的一切"）。</p>
+<p>Martin 表示同意，并补了一句：最需要照顾的不是作者，而是以后要<strong>读</strong>这段代码的人，包括一周后的作者自己。这和书中"为读而设计，而不是为写而设计"（第 18 章）几乎是同一句话。</p>
+<p>所以这不是两种价值观的冲突，而是<strong>同一个目标下对手段的不同押注</strong>。记住这一点，后面的分歧会更容易看清：他们争的是"怎样才算让读者轻松"。</p>
+
+<h2 id="length">分歧一：方法该多短</h2>
+
+<div class="vs">
+  <div class="jo"><h4>Ousterhout 的论证</h4><ul>
+    <li>《Clean Code》给出的是强烈、量化、单方向的建议（函数要非常短、if 块只放一行），却几乎没讲"拆过头"是什么样子。</li>
+    <li>方法越拆越小，每个接口背后藏的功能越少，接口反而可能更复杂，模块变浅。</li>
+    <li>拆过头会导致<strong>纠缠</strong>（entanglement，书中叫连体方法 conjoined methods）：读一个方法必须同时读另一个，读者在几个方法之间来回跳，等于在脑子里把它们重新拼回一个大函数。</li>
+    <li>"一个方法只做一件事"（One Thing）太模糊，"能起个名字"也拦不住什么：什么都能起名字。反例：线程安全的方法先加锁再干活，这是两件事，但应该放在一起。</li>
+    <li>方法在文件里的排列顺序救不了纠缠。</li>
+  </ul></div>
+  <div class="ub"><h4>Martin 的论证</h4><ul>
+    <li>书里那些两到四行的函数出自一个具体例子（Martin 和 Kent Beck 写的一个小程序），不是硬性上限；书中的建议本来就是"供参考"。</li>
+    <li>Martin 承认确实可能拆过头。判断标准是：如果能从一个方法里<strong>有意义地</strong>抽出另一个（抽出的部分能起一个描述性的名字，并且比原方法做得少），原方法就做了不止一件事。</li>
+    <li>加锁的例子 Martin 会拆：把临界区单独抽出来，单线程或已持锁时可以直接调用。</li>
+    <li>如果你信任被调用方法的名字，就不必读它的实现也能看懂调用方；把调用替换成实现只会遮住意图。</li>
+    <li>2008 年写书时，Martin 要对抗的是当时到处都是的超长函数；第 2 版写得更平衡。真要犯错，宁可拆多了，因为拆多了还可以内联回去。</li>
+  </ul></div>
+</div>
+
+<p>对话里双方争论的核心样本是《Clean Code》中的 <code>PrimeGenerator</code>（Martin 说它改编自 Knuth 文学编程论文里的素数程序，在书中是讲"把大函数拆成类"的教学例子）。Ousterhout 指出其中几个小方法层层调用、带有从名字看不出来的副作用，而且只有在调用方按递增顺序传参时才正确；Martin 承认那个副作用"经你指出后，我也不太喜欢"，但认为按调用顺序排列方法、加上读者都知道候选数每次加 2，可以缓解这个问题。最终两人<strong>都同意</strong>那个类内部的方法拆分有问题。</p>
+
+<blockquote class="quote">We both value decomposition, and we both avoid entanglement; but we disagree on the relative weighting of those two values.<cite>— Robert C. Martin，对话"Method Length Summary"一节（<a href="https://github.com/johnousterhout/aposd-vs-clean-code#method-length-summary">原文</a>）</cite></blockquote>
+
+<h3>用一段原创代码对比两种风格</h3>
+<p>场景：一个追加写日志文件的读取器（和本站<a href="../project/index.html">项目</a>里的 KV 存储是同一类问题）。日志由"定长头部 + 变长负载"的记录组成；崩溃可能在文件末尾留下写了一半的记录（撕裂的尾部，torn tail），读取时要在那里停下，并记住有效数据的终点，以便写入方截断。两个面板的功能相同，第一个按"小而命名良好的方法"写，第二个按"一个深函数 + 接口注释"写。</p>
+
+<div class="ba">
+  <div data-label="风格 A：小方法" data-tone="neutral">
+<pre class="numbered" data-mark="4,20,23,25,27"><code class="lang-cpp">std::vector&lt;Record&gt; LogReader::readAll() {
+    std::vector&lt;Record&gt; records;
+    while (hasMoreBytes()) {
+        if (!headerFits()) break;
+        RecordHeader header = consumeHeader();
+        if (!payloadFits(header) || !checksumMatches(header)) {
+            markTornTailBeforeHeader();
+            break;
+        }
+        records.push_back(consumePayload(header));
+    }
+    return records;
+}
+
+bool LogReader::hasMoreBytes() const { return pos_ &lt; buf_.size(); }
+bool LogReader::headerFits() const { return buf_.size() - pos_ &gt;= sizeof(RecordHeader); }
+RecordHeader LogReader::consumeHeader() {
+    RecordHeader h;
+    std::memcpy(&amp;h, &amp;buf_[pos_], sizeof h);
+    pos_ += sizeof h;
+    return h;
+}
+bool LogReader::payloadFits(const RecordHeader&amp; h) const { return buf_.size() - pos_ &gt;= h.len; }
+bool LogReader::checksumMatches(const RecordHeader&amp; h) const {
+    return crc32(&amp;buf_[pos_], h.len) == h.crc;
+}
+void LogReader::markTornTailBeforeHeader() { validEnd_ = pos_ - sizeof(RecordHeader); }
+Record LogReader::consumePayload(const RecordHeader&amp; h) {
+    Record r(&amp;buf_[pos_], h.len);
+    pos_ += h.len;
+    return r;
+}</code></pre>
+    <p><strong>它的长处是真实的</strong>：<code>readAll</code> 本身读起来像一段说明文，循环的骨架一眼可见，这正是 Martin 说的"信任名字就够了"。</p>
+    <p><strong>它的问题也是真实的</strong>：<code>payloadFits</code> 和 <code>checksumMatches</code> 只有在 <code>consumeHeader</code> 已经把 <code>pos_</code> 推过头部之后才正确；<code>markTornTailBeforeHeader</code> 要减去头部长度，因为它"知道"前面推进过。三个方法通过成员变量 <code>pos_</code> 隐式耦合，要确认正确性就得把它们一起读。再看第 4 行（假设构造时 <code>validEnd_</code> 初始化为 <code>buf_.size()</code>）：末尾只写了半个头部时直接 <code>break</code>，<code>validEnd_</code> 仍然指向文件末尾、越过了那半个头部，写入方据此截断就会留下垃圾，这是一个 bug，而它恰好藏在"每个方法单独看都没错"的缝隙里。</p>
+  </div>
+  <div data-label="风格 B：一个深函数" data-tone="neutral">
+<pre class="numbered" data-mark="1,2,3,4,5,19"><code class="lang-cpp">// 按顺序解析 buf_ 中所有完整的记录并返回。
+// 崩溃可能在末尾留下不完整或校验失败的记录（撕裂的尾部）：解析在那里停止，
+// 并把 validEnd_ 设为第一个不属于有效记录的字节偏移；写入方重新追加之前
+// 应先把文件截断到 validEnd_。记录格式：RecordHeader{len, crc} 紧跟 len 字节负载，
+// crc 只覆盖负载。
+std::vector&lt;Record&gt; LogReader::readAll() {
+    std::vector&lt;Record&gt; records;
+    size_t pos = 0;
+    while (pos &lt; buf_.size()) {
+        if (buf_.size() - pos &lt; sizeof(RecordHeader)) break;
+        RecordHeader h;
+        std::memcpy(&amp;h, &amp;buf_[pos], sizeof h);
+        size_t avail = buf_.size() - pos - sizeof h;
+        const uint8_t* payload = &amp;buf_[pos + sizeof h];
+        if (avail &lt; h.len || crc32(payload, h.len) != h.crc) break;
+        records.emplace_back(payload, h.len);
+        pos += sizeof h + h.len;
+    }
+    validEnd_ = pos;   // 无论从哪里退出循环，pos 都停在最后一条有效记录之后
+    return records;
+}</code></pre>
+    <p>不到 20 行代码，所有关于 <code>pos</code> 的推理都在一屏之内；循环无论从哪里退出，之后都只有一处给 <code>validEnd_</code> 赋值，上一版那个 bug 在这种结构下很难出现。代价是：循环体比风格 A 的 <code>readAll</code> 更"密"，第一次读时要看懂偏移计算，而接口注释承担了解释"为什么"的工作。</p>
+    <p>注意它并没有拒绝抽取：<code>crc32</code> 仍然是独立函数，因为它<strong>不依赖调用方的状态</strong>，接口（一段字节 → 校验值）远比实现简单。这正是书中 <a href="../chapters/09-together-apart.html">9.7 节</a>认可的那种拆分。</p>
+  </div>
+</div>
+
+<div class="view">
+  <p>两种风格的分界线不在行数，而在<strong>被抽出的部分能不能被单独理解</strong>。一个简单的自检：遮住被调用方的实现，能否确信调用方正确？再遮住调用方，能否确信被调用方正确？两个答案都是"能"，抽取就是好的（<code>crc32</code>、Martin 举的员工发薪例子）；任何一个是"不能"，就是在制造连体方法（风格 A 里围绕 <code>pos_</code> 的那几个）。One Thing 规则告诉你<em>可以</em>在哪里切，深/浅的判断告诉你<em>该不该</em>切。前者擅长生成候选，后者擅长否决候选，两者其实可以配合使用。</p>
+  <p>另外，Martin 的"拆多了可以再内联"在理论上成立，但现实中内联很少发生：拆开的方法有了名字、有了调用点、有了测试，删掉它需要的勇气比当初抽出它大得多。这一点上本站更认同 Ousterhout 的风险判断。</p>
+</div>
+
+<h2 id="comments">分歧二：注释是不是失败</h2>
+<p>书中 <a href="../chapters/12-why-comments.html">12.6 节</a>引用了《Clean Code》"注释总是失败"（comments are always failures）的说法并表示反对。对话里，这是两人分歧最深的一处，Ousterhout 在小结里直说"我们很难找到共识"。</p>
+
+<div class="vs">
+  <div class="jo"><h4>Ousterhout 的论证</h4><ul>
+    <li>把注释叫作"失败"会让新人得出"不写最安全"的结论。</li>
+    <li>有大量重要信息<strong>根本无法</strong>用代码表达；没有注释就没有抽象：只靠方法签名就足以说明怎么用它的情况很少见。</li>
+    <li>按 Ousterhout 自己的经验，缺注释造成的损失是错误注释的 10 到 100 倍；过时注释确实存在，但很少因此耗费多少时间。</li>
+    <li>超长方法名（如书中提到的 <code>isLeastRelevantMultipleOf…</code>）读起来费劲、信息量反而不如一句注释，调用者每次调用都等于重抄一遍文档；方法越拆越小、名字越来越长，恰好说明接口变复杂了。</li>
+    <li>"复杂性取决于读者"：如果读者说看不懂，作者就该当真，而不是说"多练练就习惯了"。</li>
+  </ul></div>
+  <div class="ub"><h4>Martin 的论证</h4><ul>
+    <li>《Clean Code》注释一章开头就说恰当的注释极有帮助；Martin 反对的是<strong>无谓的</strong>注释，以及上世纪七八十年代流行的"注释天然是好东西、默认就该写"。</li>
+    <li>注释用自然语言写，不精确、有歧义、没有编译器检查；Martin 不相信注释会被维护、会被读，所以宁可把信息放进名字，因为名字更难被忽略。</li>
+    <li>命名规则：作用域越小，名字可以越长；私有小方法通常只有一处调用，长名字没有记忆负担。</li>
+    <li>公开 API、给别的团队用的接口确实需要注释；团队内部，好的名字和参数通常就够了。</li>
+    <li>Martin 把每条注释都当作<strong>可能的错误信息</strong>，用来和代码交叉核对；最好的注释告诉你一些出人意料、又能被验证的东西。</li>
+  </ul></div>
+</div>
+
+<p>两人在注释问题上也有真正的共识：方法<strong>内部</strong>的注释只在代码不明显时才需要；重复代码的注释没有价值（书中 <a href="../chapters/13-comments.html">13.2 节</a>的红旗 <span data-flag="comment-repeats"></span>）；注释和代码都应该接受别人的评审。分歧集中在<strong>接口注释</strong>和<strong>是否信任注释</strong>上。Ousterhout 的小结里估计，同样一段代码，自己写的注释行数大约是 Martin 的 5 到 10 倍，Martin 认可这份小结是公平的。</p>
+
+<h3>原创对比：名字能承载多少信息</h3>
+<p>场景：服务端的令牌桶限流器（token bucket），每个 worker 线程持有一个。两个面板是同一个方法的两种写法。</p>
+
+<div class="ba">
+  <div data-label="风格 A：信息放进名字" data-tone="neutral">
+<pre><code class="lang-cpp">class TokenBucket {
+public:
+    TokenBucket(double tokensPerSecond, double maxBurstTokens);
+
+    bool tryConsumeTokensAfterRefillingSince(Clock::time_point now,
+                                             double tokensRequested);
+private:
+    void refillTokensForElapsedTimeSinceLastRefill(Clock::time_point now);
+    bool enoughTokensAvailableFor(double tokensRequested) const;
+    ...
+};</code></pre>
+    <p>名字确实说清了不少：单位是令牌、会先补充再扣减、构造参数的含义。对一个只在本模块内部用的类，这可能已经够了，这正是 Martin 的立场。</p>
+    <p>但调用者最需要知道的几件事，名字里一件都没有：失败时扣不扣令牌？<code>now</code> 能不能倒退（比如传进来的是 <code>system_clock</code>，被 NTP 往回调了）？能不能多线程共用？这些只能去读实现，而实现又分散在三个方法里。</p>
+  </div>
+  <div data-label="风格 B：短名字 + 接口注释" data-tone="neutral">
+<pre><code class="lang-cpp">// 令牌桶限流器。令牌以 rate（个/秒）连续补充，最多攒到 burst 个。
+// 非线程安全：每个 worker 线程各持有一个实例。
+class TokenBucket {
+public:
+    TokenBucket(double rate, double burst);   // 初始为满桶
+
+    // 尝试为一次请求扣除 cost 个令牌，成功返回 true。
+    // 令牌不足时返回 false，且不扣除任何令牌（调用方可以稍后重试）。
+    // now 必须来自 steady_clock 且单调不减；若比上次调用更早，按"没有经过时间"处理。
+    bool tryAcquire(Clock::time_point now, double cost = 1.0);
+    ...
+};</code></pre>
+    <p>四行注释交代了三条签名表达不了的契约：失败无副作用、时间来源与单调性、线程模型。它们正是书里说的接口的<strong>非正式部分</strong>（<a href="../chapters/04-deep-modules.html">4.2 节</a>）。</p>
+    <p>Martin 那条"可交叉验证"的标准在这里也成立：每一句都能对着实现或测试核对，而不是空泛的"获取令牌"。</p>
+  </div>
+</div>
+
+<div class="view">
+  <p>对 C/C++ 程序员来说，这场争论的天平明显偏向 Ousterhout，原因很具体：C/C++ 接口里有大量<strong>名字装不下</strong>的契约：所有权（谁释放）、生命周期（返回的指针什么时候失效）、线程安全、错误时状态是否回滚、单位与时钟来源。把这些塞进名字，只会得到 Ousterhout 所说的"超长名字"；不写，就只能逼每个调用者去读实现。</p>
+  <p>但 Martin 的怀疑态度里有一个值得吸收的部分：<strong>写可以被核对的注释</strong>。陈述不变量、前置条件、单位，而不是复述步骤。这样的注释过时了容易被发现，也常常可以直接变成断言或测试。书中 <a href="../chapters/13-comments.html">13.3 节</a>"低层注释增加精确性"讲的就是这类注释。</p>
+</div>
+
+<h2 id="rewrite">插曲：两次重写与一次性能回退</h2>
+<p>对话中段是全文最精彩的部分，建议一定去读原文。简述发生了什么（细节以原文为准）：</p>
+<ol>
+  <li>Ousterhout 拿出自己课上布置的重写版：<strong>一个方法、大量注释</strong>。Ousterhout 特别说明这种注释密度对自己来说也非常少见，是因为这个算法本身很难懂；注释写得长，本身就是"难以描述"的信号（书中第 15 章的红旗 <span data-flag="hard-describe"></span>）。</li>
+  <li>Martin 承认这一版比 Knuth 的原版和自己的版本都好，但说自己读注释时同样卡住了：其中一处说法和代码对不上（有一个首项的特例没写），还有一处用词让 Martin 误解了循环在比较什么，最后是骑了很久的车才想明白算法的。</li>
+  <li>Martin 由此得出"两个程序员的故事"：两人都以为自己的写法（一方的名字、另一方的注释）能把意图讲清楚，因为<strong>作者自己懂</strong>；而对不在"盒子"里的人，这些都不够。</li>
+  <li>Ousterhout 接受批评、修正了那两条注释，但坚持：解释困难的东西本来就是程序员的责任，放弃尝试是失职。</li>
+  <li>Martin 在 IDE 里加了测试、抽了几个方法重写了一版。Ousterhout 测出这一版<strong>慢了 3 到 4 倍</strong>：原本一个能提前退出的循环被拆成了两个循环，其中一个每次都要走完。Martin 承认问题，很快给出合并后的新版本（Martin 称比 Ousterhout 的版本还快），方法数从最初的 8 个降到了 4 个。</li>
+</ol>
+<blockquote class="quote">If there is one thing more likely to result in bugs than not understanding code, it's thinking you understand it when you don't.<cite>— John Ousterhout，对话"Method Length"一节（<a href="https://github.com/johnousterhout/aposd-vs-clean-code#method-length">原文</a>）</cite></blockquote>
+<p>Ousterhout 对这次性能回退的解读，直接连到书中第 21 章（判断什么是重要的）：这个算法之所以复杂，<strong>全部理由</strong>就是性能；只盯着"把方法拆到最小"这种不太重要的事，就容易把真正重要的东西弄坏。</p>
+<div class="view">
+  <p>这一段对两种立场都不太客气，也正因如此最有价值：<strong>名字和注释都无法替代"换一个人来读"</strong>。两位经验极其丰富的作者，都高估了自己代码的明显程度。书中 <a href="../chapters/13-comments.html">13.8 节</a>和第 18 章说的"评审者觉得不明显，那就是不明显"，在这里被两个人用各自的教训验证了一遍。</p>
+</div>
+
+<h2 id="tdd">分歧三：TDD</h2>
+<p>这一节有一个很少见的细节：Martin 指出书中 <a href="../chapters/19-trends.html">19.4 节</a>对 TDD 的描述不准确（书里写的是"先写好一个类的全部测试，再逐个让它们通过"）；Ousterhout 当场认错，说下一版会修正，但表示这不改变自己的担忧。</p>
+<p>Martin 给出的定义是自己的"三条定律"：没有一个失败的测试就不写产品代码；测试只写到足以失败为止（编译不过也算失败）；产品代码只写到足以让当前测试通过为止。再往外一层是"红—绿—重构"循环，每几分钟停下来审视设计。Ousterhout 偏好的替代做法，双方同意叫作<strong>bundling</strong>（打包）：一次写几十到几百行代码（几个方法或一个类），然后为它写全面的单元测试，测试写完之前代码不算"完成"。</p>
+
+<div class="vs">
+  <div class="jo"><h4>Ousterhout 的论证</h4><ul>
+    <li>Ousterhout 是单元测试的坚定支持者；反对的是"以单个测试为开发单位"。</li>
+    <li>设计的自然单位是类或方法，对应很多个测试；只盯着下一个测试，就只在思考设计问题的一小块。</li>
+    <li>"只写刚好通过的代码"压制了提前设计；重构该何时做、做到什么程度几乎没有指引，容易一拖再拖。</li>
+    <li>TDD 保证你一开始写出不好的代码，而且这些代码<strong>能跑、有测试证明能跑</strong>，人性不愿意改能跑的东西。</li>
+    <li>Ousterhout 坦承自己没有亲身实践过 TDD，判断依据是"战术式编程很少有好结局"（书中第 3 章），以及一些自己信任的资深工程师的反馈。</li>
+  </ul></div>
+  <div class="ub"><h4>Martin 的论证</h4><ul>
+    <li>TDD 的收益：几乎不用调试；测试是可靠的底层文档；为了可测而解耦；有一套敢托付身家的测试，因而可以放心重构。</li>
+    <li>每个人写代码都是一行一行写的，这也很"战术"，并不妨碍设计；一次一个测试为什么就会妨碍？</li>
+    <li>设计当然在编码之前；Martin 会用简化的 UML 记录早期设计，甚至写伪代码放在文本文件里，边做 TDD 边参考。</li>
+    <li>不重视设计的人用什么方法都不会设计；Martin 见过很多 TDD 用得很好的项目。</li>
+    <li>Martin 认为一个自律的 bundling 实践者，产出可能和 TDD 实践者难以区分。</li>
+  </ul></div>
+</div>
+<p>两人逐条过了 Martin 列的四项收益：Ousterhout 认为"少调试"来自任何形式的单元测试；测试作为文档远不如注释；"解耦"这一点没有体会过；"放心重构"则完全同意，认为单元测试的价值几乎都在这里。最终双方同意的结论是：单元测试必不可少；用 TDD 也可能得到好的设计；Martin 也认为熟练的 bundling 实践者能得到和 TDD 相当的结果（只是测试覆盖可能略少）。分歧在于风险：Ousterhout 认为两者最好结果相近，但 TDD 的平均和最坏情况差得多；Martin 不同意，认为 TDD 如果有差别也是略好，而且个人偏好和性格的影响更大。Ousterhout 明确说，没有实证数据，这个分歧解决不了。</p>
+
+<h3>原创对比：同一个函数的两种诞生方式</h3>
+<p>场景：解析配置里的时长字符串，如 <code>"90s"</code>、<code>"1h30m"</code>。下面不是"TDD 一定写成这样"，而是 Ousterhout 担心的那种<strong>中间状态</strong>：测试全绿，看起来可以提交了。</p>
+<div class="ba">
+  <div data-label="以测试为单位推进（第 4 个测试后）" data-tone="neutral">
+<pre><code class="lang-cpp">// 测试：parse("5s")==5s, parse("2m")==120s, parse("1h")==3600s, parse("1h30m")==5400s
+std::chrono::seconds parseDuration(std::string_view s) {
+    if (s.size() &gt;= 2 &amp;&amp; s.back() == 's')
+        return std::chrono::seconds(std::stoi(std::string(s.substr(0, s.size() - 1))));
+    if (s.back() == 'm' &amp;&amp; s.find('h') != std::string_view::npos) {
+        auto h = s.find('h');
+        return std::chrono::hours(std::stoi(std::string(s.substr(0, h))))
+             + std::chrono::minutes(std::stoi(std::string(s.substr(h + 1, s.size() - h - 2))));
+    }
+    if (s.back() == 'm')
+        return std::chrono::minutes(std::stoi(std::string(s.substr(0, s.size() - 1))));
+    if (s.back() == 'h')
+        return std::chrono::hours(std::stoi(std::string(s.substr(0, s.size() - 1))));
+    throw std::invalid_argument("bad duration");
+}</code></pre>
+    <p>每一步都是"让下一个测试通过的最少代码"，所以每加一种组合就多一个特例分支。<code>"1m30s"</code>、<code>"1h30m15s"</code>、空串都还没处理（空串时 <code>s.back()</code> 是未定义行为）。红—绿—重构里的"重构"一步本该把它改成下一版；Ousterhout 担心的是，四个绿灯之下，很多人会直接提交。</p>
+  </div>
+  <div data-label="先想清楚抽象，再写实现和测试" data-tone="neutral">
+<pre><code class="lang-cpp">// 解析形如 "1h30m"、"90s"、"2h5s" 的时长：一个或多个 &lt;非负整数&gt;&lt;单位&gt; 依次拼接，
+// 单位为 h/m/s，同一单位不能重复，必须按 h、m、s 的顺序出现。
+// 格式不符（含空串、溢出）时抛 std::invalid_argument，消息里带原始字符串。
+std::chrono::seconds parseDuration(std::string_view s) {
+    static constexpr std::pair&lt;char, int&gt; kUnits[] = {{'h', 3600}, {'m', 60}, {'s', 1}};
+    auto fail = [&amp;] { return std::invalid_argument("bad duration: '" + std::string(s) + "'"); };
+    long long total = 0;
+    size_t i = 0, nextUnit = 0;
+    if (s.empty()) throw fail();
+    while (i &lt; s.size()) {
+        long long n = 0;
+        size_t start = i;
+        while (i &lt; s.size() &amp;&amp; std::isdigit(static_cast&lt;unsigned char&gt;(s[i]))) {
+            n = n * 10 + (s[i++] - '0');
+            if (n &gt; 1'000'000'000) throw fail();
+        }
+        if (i == start || i == s.size()) throw fail();
+        while (nextUnit &lt; 3 &amp;&amp; kUnits[nextUnit].first != s[i]) ++nextUnit;
+        if (nextUnit == 3) throw fail();
+        total += n * kUnits[nextUnit++].second;
+        ++i;
+    }
+    return std::chrono::seconds(total);
+}</code></pre>
+    <p>先把"语法"想清楚（一串 数字+单位，单位有序），特例就不存在了，<code>"1m30s"</code> 和 <code>"2h5s"</code> 不需要额外代码。测试随后成组地写：合法组合、顺序错误、重复单位、空串、溢出。这就是书中 <a href="../chapters/19-trends.html">19.2 节</a>说的"开发的增量应该是抽象，而不是功能"。</p>
+    <p>公平地说：一个认真执行重构步骤的 TDD 实践者完全可能得到同样的代码，Martin 正是这么主张的。两人争的是<strong>哪种流程更容易让普通人走到这里</strong>。</p>
+  </div>
+</div>
+
+<div class="view">
+  <p>这一处分歧最缺证据：Ousterhout 自己说没有实践过 TDD，Martin 的证据是自己经历过的项目；Ousterhout 明确说，没有实证数据，这个分歧解决不了。所以本站不判输赢，只指出两点可以立即照做的事（第一点两人的做法本来一致，第二点是本站建议）：</p>
+  <ol>
+    <li><strong>修 bug 时先写一个能复现它的失败测试</strong>：书中 19.4 节明确推荐，这本身也正是 TDD 的做法。</li>
+    <li><strong>在写第一行实现之前，先把接口和接口注释写出来</strong>（书中<a href="../chapters/15-comments-first.html">第 15 章</a>"先写注释"）。这一步之后，你用 TDD 还是 bundling 去填实现，差别就小多了，因为 Ousterhout 担心的"没有设计"已经不成立。</li>
+  </ol>
+</div>
+
+<h2 id="verdict">两人各自的总结与本站看法</h2>
+<p>在对话结尾，Ousterhout 把自己的所有意见归结为《Clean Code》的两个一般性错误：一是<strong>没有聚焦于真正重要的事</strong>（把十行方法拆成五行、消灭英文注释、以测试而不是抽象为开发单位，这些都不重要）；二是<strong>没有平衡取舍</strong>（向一个方向给出强烈建议，却没有同样强度的反向提醒，也没讲怎么判断走过了头）。</p>
+<p>Martin 的结语则说，两人共享的价值观远多于分歧；Martin 不同意上述结论，但已经把 Ousterhout 的一些想法和整份讨论吸收进了《Clean Code》第 2 版。</p>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>话题</th><th>两人都同意</th><th>仍然分歧</th></tr></thead>
+  <tbody>
+    <tr><td>方法长度</td><td>模块化是好事；可能拆过头；《Clean Code》第 1 版对"拆过头"缺少指引；<code>PrimeGenerator</code> 的内部拆分有问题</td><td>拆到多细；One Thing 规则是否够用；纠缠能否被拆分的好处抵消；方法排列能否缓解纠缠</td></tr>
+    <tr><td>注释</td><td>方法内部注释只在代码不明显时写；公开 API 需要注释；注释需要评审</td><td>注释的总体价值；团队内部接口要不要注释；超长名字 vs 短名字加注释；是否默认信任注释</td></tr>
+    <tr><td>TDD</td><td>单元测试必不可少；TDD 可以产出好设计；bundling 也能达到与 TDD 相当的结果</td><td>TDD 是否压制设计；两种做法的平均与最坏情况谁更差</td></tr>
+  </tbody>
+</table></div>
+
+<div class="view">
+  <p>读完全文，本站的总体判断是：<strong>Ousterhout 的框架更适合当检查工具，Martin 的规则更适合当起手习惯</strong>。深/浅、连体方法、"注释描述代码看不出来的东西"都是双向的判据，能告诉你什么时候做过头；"函数要短""用名字代替注释""先写测试"是单向的推力，在长函数和废话注释泛滥的环境里很有用，但需要一个刹车。书里给的正是刹车。</p>
+  <p>对本站的读者（C/C++、系统方向）：接口契约复杂、性能常常就是需求本身、代码寿命很长，这三点都让 Ousterhout 那一边的论证更贴近日常。但别把这页当成"站队"材料。对话里最该学的，是两个人如何<strong>拿具体代码说话、承认自己的错误、把分歧精确地写下来</strong>。这本身就是一次示范性的设计评审。</p>
+</div>
+
+<h2 id="practice">判断练习</h2>
+<p>下面每题都没有"按规则套"的标准答案，先写下你的判断和理由，再展开对照。</p>
+
+<div class="exercise">
+  <p class="q">一个 RPC 处理函数 70 行，依次做五件事：解码请求、鉴权、查缓存、查数据库、编码响应。五段之间只通过几个局部变量传递数据，每段 10～15 行。Code review 里有人要求"拆成五个函数"。你怎么回复？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>先做上面那个"双向遮挡"测试。如果五段几乎独立（比如鉴权只需要解码出的 <code>userId</code>），抽成五个函数后每个的接口都很小，调用方读起来像目录，那么拆分也说得过去，这时拆不拆都不会出大问题。书中 9.7 节的态度更保守：按顺序执行、彼此相对独立的几段代码留在一个方法里也能逐段读懂，拆开的好处不大；长度本身很少是拆分的理由。</p>
+    <p>如果"查缓存"和"查数据库"共享一套复杂的回填逻辑（缓存未命中时查库并写回、处理并发填充），那它们应该一起抽成一个深函数 <code>loadUser()</code>，而不是拆成两个互相知道对方细节的函数。重点是按<strong>知识</strong>分组，而不是按步骤数分组。</p>
+  </div></details>
+</div>
+
+<div class="exercise">
+  <p class="q">团队内部的一个函数：<code>size_t compactSegments(std::vector&lt;Segment&gt;&amp; segs);</code> 只有本模块调用。同事说"名字很清楚，团队都知道它干什么，不用注释"。你会坚持加接口注释吗？如果加，写什么？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>这正是两人分歧的核心场景（Martin：团队内部通常不用；Ousterhout：没有接口注释就没有抽象）。判断的关键不是"团队熟不熟"，而是<strong>签名里缺了哪些调用者必须知道的事</strong>：返回值是什么（合并掉的段数？回收的字节数？）；<code>segs</code> 里的元素会被移动、删除还是原地修改，迭代器是否失效；是否会做磁盘 I/O、会不会阻塞；失败时 <code>segs</code> 处于什么状态。只要其中有一条不能从名字推出，就值得写注释。几个月后的你自己也是"团队外"的读者。</p>
+  </div></details>
+</div>
+
+<div class="exercise">
+  <p class="q">你要修一个 bug：<code>parseDuration("0s")</code> 抛了异常。你会先写测试还是先改代码？这件事上 Ousterhout 和 Martin 的立场一样吗？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>先写一个会失败的测试，再修。这是书中 19.4 节明确推荐的场景（不先写测试，你无法确定新测试真的触发了那个 bug），也正是 TDD 的做法，两人在这里没有分歧。分歧只在"开发新模块时，开发单位是测试还是抽象"。</p>
+  </div></details>
+</div>
+
+<div class="exercise">
+  <p class="q">一个类里有 <code>void transfer(Account&amp; a, Account&amp; b, Money m)</code>：先锁两个账户（按 id 顺序加锁防死锁），再改余额。有人提议把改余额的部分抽成 <code>transferLocked()</code>。什么情况下这个抽取是 Martin 那种"有意义的抽取"，什么情况下是 Ousterhout 担心的浅方法？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>对话里两人恰好争过加锁的例子。Martin 抽出临界区的理由是：有时调用者已经持有锁，或者在单线程场景下不需要锁。所以要问的是：<strong>现在是否真有这样的调用者</strong>？如果批量转账的代码已经一次性锁住了所有账户，需要一个"已持锁版本"，那么 <code>transferLocked()</code> 有真实的第二个用途，并且接口注释可以写明前置条件（"调用者必须已按顺序持有两把锁"），这是一个有价值的抽取。</p>
+    <p>如果没有这样的调用者，只是"加锁和改余额是两件事"，那么拆开后多了一个带隐含前置条件的接口，读 <code>transfer</code> 的人还得跳过去确认锁覆盖了哪些操作，这就是浅而且连体的拆分。C++ 里用 <code>std::scoped_lock</code> 同时锁两个互斥量，加锁本身只有一行，留在一起最清楚。</p>
+  </div></details>
+</div>
+
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="1"><div class="q">以下哪一项是 Ousterhout 和 Martin 在对话中<strong>都同意</strong>的？</div>
+  <div class="opts"><button>A. TDD 的平均结果比 bundling 差</button><button>B. 代码可能被拆得过细，而《Clean Code》第 1 版对如何识别这一点讲得不多</button><button>C. 团队内部的接口通常不需要注释</button><button>D. 方法的排列顺序可以弥补方法之间的纠缠</button></div>
+  <div class="explain">B 出自双方认可的"Method Length Summary"。C 是 Martin 的立场、D 是 Martin 的主张（Ousterhout 明确不同意）、A 是 Ousterhout 的判断（Martin 不同意）。区分"谁说的"和"谁都同意的"，是公平阅读这类争论的第一步。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">Ousterhout 认为 Martin 改写的版本慢了 3～4 倍，并用这件事支持哪个更一般的观点？</div>
+  <div class="opts"><button>A. Java 不适合写性能敏感的代码</button><button>B. 长函数天然比短函数快</button><button>C. 过分关注不重要的事（把方法拆到最小），容易弄坏重要的事（这里是性能）</button><button>D. 应该先优化再写测试</button></div>
+  <div class="explain">回退的原因是一个能提前退出的循环被拆成了两个循环，与"函数长短天然决定快慢"无关。Ousterhout 把它连到"判断什么是重要的"（书中第 21 章）。Martin 合并循环之后，性能就恢复了。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">关于对话中的 TDD 部分，下列哪一项描述<strong>不准确</strong>？</div>
+  <div class="opts"><button>A. Martin 承认 TDD 会压制设计，但认为可以靠纪律弥补</button><button>B. Ousterhout 坦承自己没有亲身实践过 TDD</button><button>C. Ousterhout 承认书中对 TDD 的描述不准确，并表示会在后续版本修正</button><button>D. 双方都认为单元测试必不可少</button></div>
+  <div class="explain">Martin 从未承认 TDD 压制设计，并明确表示不同意这一判断，认为不重视设计的人用什么方法都不会设计。Martin 同意的是 Ousterhout 给 TDD 使用者的那些建议（持续重构、提前规划），但不同意"TDD 可能导致坏代码"的归因。</div></div>
+
+<p class="src">本页对两位作者观点的转述全部基于 <a href="https://github.com/johnousterhout/aposd-vs-clean-code">aposd-vs-clean-code</a> 原文（2025 年版本）与 APOSD 第 2 版；两处直接引用均来自该 GitHub 文档。所有代码为本站原创。</p>
+
+</main>
+</body>
+</html>

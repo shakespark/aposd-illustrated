@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 15 章 · 先写注释</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch15.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.exercise h3 { margin-top: 0; }
+.exercise .step { display: inline-block; font: 12px var(--mono); color: var(--on-accent); background: var(--accent); border-radius: 4px; padding: 0 6px; margin-right: 6px; vertical-align: 2px; }
+.exercise textarea.note { min-height: 110px; }
+.spec { margin: 0; padding-left: 1.2em; font-size: 14.5px; }
+.spec li { margin: 2px 0; }
+</style>
+</head>
+<body data-chapter="15">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>注释应该在什么时候写？能不能让写注释这件事反过来帮我们做设计？</strong></p>
+</div>
+<p>第 12、13 章回答了"为什么要写注释"和"注释该写什么"。但即使认同这两章，大多数人仍然会把注释留到最后。这一章只讲一件事：<strong>写注释的时机</strong>。作者的主张是把它挪到最前面，在写实现之前先用注释把抽象写出来。</p>
+<p>这一章很短，却是第 4 章"深模块"和第 13 章"接口注释"的交汇点：接口注释写出来有多长，几乎就是接口有多复杂的直接读数。所以先写注释不只是个文档习惯，而是<strong>一种廉价的设计评审</strong>：在一行实现都没有的时候，就能看出这个抽象深不深。它和第 11 章"设计两次"一样，都是在设计阶段多花一点时间的方法。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>15.1 节</strong>：作者认为大家推迟写注释有两个原因，一个是嘴上说的，一个是心里想的。留意作者分别怎么回应，以及所描述的"事后补注释"的三个毛病。</li>
+    <li><strong>15.3 节</strong>是全章最重要的一节。注意红旗"难以描述"后面紧跟的那个限制条件：什么样的注释<strong>不能</strong>拿来衡量复杂性？</li>
+    <li><strong>15.5 节</strong>的估算很粗糙，但值得用你自己的数字重算一遍：上周你有多少时间真正在敲键盘？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>推迟 = 不写，或写得差</h4><p>拖到最后的注释，要么永远没写，要么是收尾时看着代码匆匆补的：复述代码，设计时的考虑已经想不起来了。</p></div>
+  <div class="card"><h4>顺序：先接口注释，后实现</h4><p>类注释 → 关键方法的签名和注释（方法体空着）→ 关键成员变量 → 最后写方法体。写完代码时，注释也写完了。</p></div>
+  <div class="card"><h4>注释是设计工具</h4><p>作者认为抽象只有靠注释才能完整记下来。先写出来，就能在写实现之前审查、调整抽象。</p></div>
+  <div class="card"><h4>注释是复杂性的预警器</h4><p>方法或变量要写很长的注释才说得清，说明抽象不好。接口注释必须描述实现的主要机制，说明方法浅。<span data-flag="hard-describe"></span></p></div>
+  <div class="card"><h4>量尺要准，注释先要完整</h4><p>只有完整、清楚的注释才能衡量复杂性。缺信息或含糊的短注释说明不了任何问题。</p></div>
+  <div class="card"><h4>省不了多少时间</h4><p>敲代码和注释只占开发时间的一小部分。推迟注释省下的很少，抽象早早稳定下来反而可能更快。</p></div>
+</div>
+
+<h2>心智模型：问题在哪一步被发现</h2>
+<p>两种做法写出来的注释，篇幅可能差不多。真正的差别在于<strong>"接口设计得别扭"这件事在哪一步被发现</strong>，以及发现时要改多少东西。</p>
+<figure class="fig">
+<svg viewBox="0 0 640 250" width="640" role="img" aria-label="两种工作顺序对比：先写代码时，接口问题到最后补注释才暴露；先写注释时，接口问题在写方法注释那一步就暴露">
+  <text x="12" y="66" font-weight="700">做法一</text>
+  <text x="12" y="84" font-size="12" class="t-muted">先代码，后注释</text>
+  <rect x="140" y="48" width="250" height="40" rx="5" class="box"/>
+  <text x="265" y="73" text-anchor="middle" font-size="13">写实现（接口边写边定）</text>
+  <rect x="395" y="48" width="120" height="40" rx="5" class="box"/>
+  <text x="455" y="73" text-anchor="middle" font-size="13">调试、测试</text>
+  <rect x="520" y="48" width="100" height="40" rx="5" class="bad-soft"/>
+  <text x="570" y="73" text-anchor="middle" font-size="13">补注释</text>
+  <text x="620" y="108" text-anchor="end" font-size="12" style="fill:var(--bad)">到这里才发现接口说不清：改接口 = 改实现 + 改调用方</text>
+
+  <text x="12" y="166" font-weight="700">做法二</text>
+  <text x="12" y="184" font-size="12" class="t-muted">先注释，后代码</text>
+  <rect x="140" y="148" width="80" height="40" rx="5" class="ok-soft"/>
+  <text x="180" y="173" text-anchor="middle" font-size="13">类注释</text>
+  <rect x="225" y="148" width="110" height="40" rx="5" class="ok-soft"/>
+  <text x="280" y="173" text-anchor="middle" font-size="13">方法注释</text>
+  <path d="M 255 148 C 258 126, 302 126, 305 148" fill="none" class="stroke" stroke-width="1.5"/>
+  <text x="280" y="124" text-anchor="middle" font-size="11.5" class="t-muted">反复改</text>
+  <rect x="340" y="148" width="90" height="40" rx="5" class="ok-soft"/>
+  <text x="385" y="173" text-anchor="middle" font-size="13">变量注释</text>
+  <rect x="435" y="148" width="185" height="40" rx="5" class="box"/>
+  <text x="527" y="173" text-anchor="middle" font-size="13">写实现 + 实现注释</text>
+  <text x="140" y="208" font-size="12" style="fill:var(--ok)">注释写不短？就在这里改设计，只需要改几行注释</text>
+
+  <line x1="140" y1="232" x2="610" y2="232" class="stroke" stroke-width="1.2"/>
+  <path d="M 610 227 L 620 232 L 610 237 Z" style="fill:var(--muted)"/>
+  <text x="140" y="247" font-size="11.5" class="t-muted">时间</text>
+</svg>
+<figcaption>同一个"接口说不清"的问题，越晚发现，修改波及的范围越大。本站自绘示意。</figcaption>
+</figure>
+
+<blockquote class="quote">Comments serve as a canary in the coal mine of complexity.<cite>— 第 15.3 节</cite></blockquote>
+<p>矿井里的金丝雀会比人更早对毒气起反应。注释也一样：在接口复杂到伤害调用者之前，<strong>写注释的人会先感到别扭</strong>。前提是你在设计阶段就写，并且认真写完整。</p>
+
+<h2>跟着做：用注释设计一个类</h2>
+<p>读这一章最好的方式是真的试一次。下面按书中 15.2 节的顺序走一遍，每一步先在文本框里写（自动保存在本机），写完再展开参考。不必追求和参考一致，重要的是你在写的过程中<strong>被迫做出了哪些决定</strong>。</p>
+
+<div class="exercise">
+  <h3><span class="step">需求</span>可续传的分块上传</h3>
+  <p>移动端要上传最大 4 GB 的视频。网络随时会断，客户端会把文件切成固定大小的块，可能乱序发送，也可能重发同一块。服务端为每次上传创建一个 <code>UploadSession</code> 对象。方法签名已经有了，方法体还没写：</p>
+<pre><code class="lang-cpp">// ① 类注释：？
+class UploadSession {
+public:
+    // ② ？
+    UploadSession(std::string uploadId, uint64_t totalBytes, uint32_t chunkBytes);
+    // ③ ？
+    void putChunk(uint32_t index, std::span&lt;const std::byte&gt; data);
+    // ④ ？
+    std::vector&lt;uint32_t&gt; missingChunks() const;
+    // ⑤ ？
+    std::filesystem::path commit();
+};</code></pre>
+</div>
+
+<div class="exercise">
+  <h3><span class="step">第 1 步</span>类注释</h3>
+  <p>用两三句话说清楚：这个类代表什么？调用者用它能得到什么？有没有使用上的大前提（线程安全、生命周期）？</p>
+  <textarea class="note" data-key="ch15-lab-class" placeholder="// 一次……"></textarea>
+  <details class="reveal"><summary>展开参考</summary><div>
+<pre><code class="lang-cpp">// 一次可续传的分块上传。客户端可以按任意顺序上传各块，也可以重传；
+// 所有块到齐后调用 commit() 得到拼好的完整文件。
+// 不是线程安全的：同一个 uploadId 同一时刻只应由一个线程操作。</code></pre>
+    <p>注意参考里<strong>没有</strong>的东西：块存在哪个临时目录、用什么数据结构记录收到了哪些块。那些是实现，类注释只写抽象。</p>
+  </div></details>
+</div>
+
+<div class="exercise">
+  <h3><span class="step">第 2 步</span>方法的接口注释（②～⑤）</h3>
+  <p>逐个写。每个方法问自己：调用者要知道什么才能<strong>正确地</strong>调用它？参数有什么约束？出错时会怎样？调用之后对象处于什么状态？</p>
+  <textarea class="note" data-key="ch15-lab-methods" placeholder="// ② totalBytes ……&#10;// ③ ……&#10;// ④ ……&#10;// ⑤ ……"></textarea>
+  <details class="reveal"><summary>展开参考</summary><div>
+<pre><code class="lang-cpp">// ② totalBytes 是文件总大小；除最后一块外，每块都是 chunkBytes 字节。
+//    块的个数为 ceil(totalBytes / chunkBytes)，下标从 0 开始。
+
+// ③ 保存第 index 块。重传同一块时，新数据覆盖旧数据。
+//    index 越界、或 data 长度不等于该块应有的长度（最后一块可能较短）时
+//    抛 std::invalid_argument，已收到的数据不受影响。
+//    commit() 成功之后再调用，抛 std::logic_error。
+
+// ④ 还没收到的块的下标，升序。客户端断线重连后据此决定从哪里续传。
+
+// ⑤ 把所有块拼成一个文件，返回它的路径；之后这个对象不能再使用。
+//    仍有块缺失时抛 std::logic_error，对象状态不变，可以继续 putChunk()。</code></pre>
+    <p>大多数人写到这一步会第一次认真考虑这些问题：重传是覆盖还是忽略？长度不对算谁的错？commit 失败后还能不能继续？这些都是<strong>设计决定</strong>。如果先写实现，它们会在写代码时被顺手、甚至无意识地决定掉，事后补注释时也未必想得起来写。</p>
+  </div></details>
+</div>
+
+<div class="exercise">
+  <h3><span class="step">第 3 步</span>让金丝雀叫一次</h3>
+  <p>一位同事觉得四个方法太多，提议合成一个：</p>
+<pre><code class="lang-cpp">// ？
+int put(uint32_t index, std::span&lt;const std::byte&gt; data, bool isLast, bool dryRun);</code></pre>
+  <p>其中 <code>isLast</code> 为真时自动尝试拼接文件，<code>dryRun</code> 为真时只检查长度不保存。请试着给它写一份<strong>完整的</strong>接口注释：返回值在各种情况下分别是什么意思？<code>isLast</code> 为真但还有块没到怎么办？两个开关都为真呢？</p>
+  <textarea class="note" data-key="ch15-lab-canary" placeholder="// 写到第几行时你开始觉得不对劲？"></textarea>
+  <details class="reveal"><summary>展开讨论</summary><div>
+    <p>完整的注释至少要写清：返回值在"保存成功""拼接成功""还缺块""dryRun 检查通过/失败"几种情况下的编码；<code>isLast</code> 只能在最后一块上传吗？还是任意一块都行？两个开关组合的四种情况各自的语义……很快就会超过十行，而且读起来像在描述一张状态表。</p>
+    <p>这就是红旗<span data-flag="hard-describe"></span>：不是你注释写得不好，而是这个接口把几件互不相干的事塞在了一起。方法个数少了，但接口反而更复杂（回忆第 4 章：深度看的是接口有多复杂，而不是方法有几个）。好消息是，你只写了一行声明就发现了问题，回到四个方法的方案几乎没有成本。</p>
+  </div></details>
+</div>
+
+<div class="exercise">
+  <h3><span class="step">第 4 步</span>关键成员变量</h3>
+  <p>现在才轮到实现层面。你打算用哪些成员变量记录状态？每个变量写一行注释：它表示什么、取值的含义、和别的变量之间有什么必须保持的关系。</p>
+  <textarea class="note" data-key="ch15-lab-members" placeholder="std::vector&lt;bool&gt; …;  // …"></textarea>
+  <details class="reveal"><summary>展开参考</summary><div>
+<pre><code class="lang-cpp">std::filesystem::path dir_;     // 本次上传专用的临时目录，第 i 块存为 dir_/i
+std::vector&lt;bool&gt; received_;    // received_[i] 为真表示第 i 块已完整写入磁盘
+uint32_t numReceived_ = 0;      // received_ 中为真的个数，等于块数时才能 commit
+bool committed_ = false;        // commit() 成功后为真，此后所有操作都抛 logic_error</code></pre>
+    <p>如果某个变量需要好几行注释才能说清（比如用一个 <code>int state_</code> 同时表示"收到几块""是否已提交""提交是否失败"），那是同一只金丝雀在提醒你：变量拆得不对。</p>
+  </div></details>
+</div>
+<p>最后一步是写方法体，并在需要的地方加实现注释。写的过程中如果发现还需要新的方法或变量，照样先写注释、再写代码。这样走一遍，代码写完的那一刻，注释也已经写完，没有欠账。</p>
+
+<h2>一个原创例子：事后补的注释 vs 先写的注释</h2>
+<p>同一个方法，两份注释。第一份是功能上线后补文档时加的，第二份是设计时、方法体还空着的时候写的。</p>
+<div class="ba">
+  <div data-label="改之前：事后补的">
+<pre><code class="lang-cpp">// 检查 activeSegment_ 的大小是否大于 maxSegmentBytes_，
+// 如果是就调用 sealSegment()，然后新建一个 segment。
+void LogStore::rollIfNeeded();</code></pre>
+    <p>看着代码写，于是注释在复述代码（第 13 章的红旗 <span data-flag="comment-repeats"></span>）。设计时考虑过的事情一件都没留下：为什么在这里切段？切段后旧段会怎样？调用者什么时候必须调用它？</p>
+  </div>
+  <div data-label="改之后：先写的">
+<pre><code class="lang-cpp">// 当前段写满时把它封存（之后只读、可以被压缩和删除），并开启新段。
+// 每次追加写之后调用；未写满时什么也不做。
+// 封存不会等待落盘：需要持久化保证的调用者应在之后调用 sync()。
+void LogStore::rollIfNeeded();</code></pre>
+    <p>方法体还不存在，作者只能写<strong>抽象</strong>：封存意味着什么、什么时候调用、有什么不提供的保证。最后一句尤其重要：它是设计时做出的一个取舍，事后补注释时最容易漏掉。</p>
+  </div>
+</div>
+<p>两份注释差不多长，写第二份也不比第一份多花时间。代价在别处：写第二份时你必须<strong>已经想清楚</strong>这些问题。这正是作者想要的效果。如果你发现自己想不清楚，那恰好说明还不该动手写实现。</p>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="短注释不代表接口简单">
+  <p>"注释长 = 接口复杂"只在注释<strong>完整、清楚</strong>时成立，这是作者自己在 15.3 节加的限制。一行 <code>// 处理订单</code> 很短，但只能说明注释不合格。实际使用时的顺序应该是：先努力把注释写完整，再看它有多长。反过来也要小心：有些注释长是因为领域本身复杂（比如一个严格遵循 RFC 的解析器），这时更合适的做法是引用外部文档（第 16 章会讲），而不是硬塞进接口注释里。</p>
+</div>
+<div class="counter" data-title="&quot;我还不知道抽象是什么&quot;">
+  <p>本站补充：探索新领域时（试一个陌生的库、做技术验证），你可能确实写不出接口注释，因为你还不知道该有什么接口。这时写一段用完即弃的试验代码是合理的。但要分清两件事：试验代码是为了<strong>学习</strong>，学完应该回到"先写注释"的流程重新设计正式代码，而不是把试验代码直接补上注释交差。写不出注释本身就是一条信息：说明设计还没想好。</p>
+</div>
+<div class="counter" data-title="和测试驱动开发（TDD）像吗？">
+  <p>本站补充：两者都把"写实现"往后推，表面上很像。但作者在第 19.4 节明确表示不赞成 TDD，理由是它让注意力集中在一个个具体功能能不能跑通，而不是寻找最好的设计，是典型的战术式编程。先写注释则是一次把<strong>整个抽象</strong>想清楚。两者关注的东西不同：测试描述"这些输入下应该得到什么"，接口注释描述"这个东西是什么、对调用者承诺什么"。作者同时也是单元测试的坚定支持者，所以这不是二选一。</p>
+</div>
+<div class="counter" data-title="作者的经验，不是实验结论">
+  <p>15.4、15.5 两节的论据都来自作者个人经验和一个粗略估算，作者在结尾也只是邀请读者自己试一段时间，再反馈体验是否一致。读的时候不妨保持这种态度：先按 15.2 节的顺序认真做两三个类，再判断它是否适合你。</p>
+</div>
+
+<h2>练一练</h2>
+<p>下面三道题来自训练场。先自己判断再看解析，答题记录会进入间隔复习。</p>
+<div class="drill-embed" data-ids="ch15-flag-01 ch15-ab-01 ch15-judge-02"></div>
+
+<h2>动手：项目任务</h2>
+<p>任务 m07 覆盖第 12～15 章。和本章相关的部分是它的最后一步：给 <a href="../project/index.html">minikv</a> 新增 <code>RENAME src dst</code> 命令。严格按"先写注释"的顺序来：在写任何实现之前，先写出 <code>Store::rename</code> 的接口注释。写的时候你会被迫回答几个设计问题：<code>src</code> 不存在怎么办？<code>dst</code> 已经存在呢？<code>src</code> 和 <code>dst</code> 相同呢？如果进程恰好在写完两条日志记录之间崩溃，重启后会看到什么？把答案写进注释，再动手实现。</p>
+<div class="lab"><p>任务 m07：给 <code>store.h</code> / <code>store.cpp</code> / <code>index.h</code> 里含糊的名字改名、重写复述代码和写满实现步骤的注释，再先写接口注释、后实现新命令 <code>RENAME src dst</code>。详见 <a href="../project/m07.html">任务页</a>。</p>
+<pre><code>cd project/minikv &amp;&amp; make test</code></pre></div>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="0"><div class="q">按照作者的顺序，为一个新类写注释时，下列哪一项应该<strong>最后</strong>做？</div>
+  <div class="opts"><button>A. 写方法体里的实现注释</button><button>B. 写关键成员变量的声明和注释</button><button>C. 写类的接口注释</button><button>D. 写关键公开方法的签名和接口注释</button></div>
+  <div class="explain">顺序是：类注释 → 关键方法的签名和接口注释（反复修改） → 关键成员变量 → 方法体和实现注释。实现注释是在写方法体时顺手加的，所以在最后。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">作者认为先写注释的三个好处中，<strong>最重要</strong>的是哪一个？</div>
+  <div class="opts"><button>A. 写注释更有乐趣</button><button>B. 改进系统设计</button><button>C. 节省开发时间</button><button>D. 注释质量更好</button></div>
+  <div class="explain">15.3 节开头明确说改进设计是第二个、也是最重要的好处。"节省时间"不在三个好处之列，15.5 节只是论证先写注释<strong>不会</strong>多花多少时间，甚至可能更快。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">你给一个方法写接口注释，发现必须依次描述它内部的五个处理步骤，调用者才能正确使用它。这最可能说明什么？</div>
+  <div class="opts"><button>A. 这个方法很浅：接口注释必须描述实现的主要机制，说明接口没有隐藏什么</button><button>B. 注释写得太啰嗦，应该删减到一行</button><button>C. 应该把注释挪到实现里去</button><button>D. 这个方法很深，功能强大</button></div>
+  <div class="explain">作者给出的量尺：拿接口注释和实现比较，如果接口注释必须描述实现的所有主要特性，方法就是浅的。删减注释不能解决问题，因为调用者确实需要这些信息；要改的是设计。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">关于"事后补注释"，下列哪一项<strong>不是</strong>书中 15.1 节指出的问题？</div>
+  <div class="opts"><button>A. 往往一拖再拖，最终根本没写</button><button>B. 看着代码写，注释容易复述代码</button><button>C. 事后的注释一定和代码不一致</button><button>D. 设计时的考虑已经记不清，最重要的信息反而没写进去</button></div>
+  <div class="explain">A、B、D 都是书中列出的后果。"一定不一致"并不是作者的论点：事后补的注释恰恰是对照着当前代码写的，它的问题是<strong>没用</strong>（复述、缺信息），而不是过时。注释过时是第 16 章讨论的问题。</div></div>
+
+<div class="mcq" data-answer="3"><div class="q">关于"注释越长，说明设计越有问题"，下列哪种理解是对的？</div>
+  <div class="opts"><button>A. 所以长注释都应该删掉</button><button>B. 只适用于方法，不适用于变量</button><button>C. 所以注释应该尽量短</button><button>D. 前提是注释完整清楚；一条完整的注释如果写不短，才说明被描述的东西设计可能有问题</button></div>
+  <div class="explain">信号来自"完整的描述写不短"，而不是注释本身的长度。作者明确说同样的道理也适用于变量：一个变量要很长的注释才说得清，说明变量的拆分可能不对。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>推迟的注释往往没写，或者写得差：复述代码、遗漏设计信息。</li>
+  <li>先写类注释和方法接口注释，再写成员变量，最后写实现；写完代码时注释也写完了。</li>
+  <li>注释是设计工具：抽象要靠注释才能完整写下来，写下来才能在实现前审查。</li>
+  <li>完整的注释写不短，是设计有问题的信号（难以描述）；短而不完整的注释不算数。</li>
+  <li>成本很低：注释只占开发时间的一小部分，而更早稳定的抽象能减少返工。</li>
+</ul>
+<p>第 15 章讲的是写<strong>新</strong>代码。可大多数时间我们在改<strong>旧</strong>代码，第 16 章接着回答：修改代码时怎样保持战略式的心态，怎样让注释不随修改而过时。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你最近写过的某个类。</p>
+<textarea class="note" data-key="ch15-oneline" placeholder="例如：上周那个 XxxManager，如果先写类注释，我会发现……"></textarea>
+
+</main>
+</body>
+</html>

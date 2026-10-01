@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>minikv 重构项目</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.arch text { font-size: 13px; }
+.arch .sub { font-size: 11.5px; }
+.arch .tag text { font-size: 10.5px; font-weight: 700; fill: var(--accent); }
+.mission-table td:first-child { white-space: nowrap; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part1)"></span>迁移练习 · 8 个任务</div>
+  <h1>minikv 重构项目</h1>
+  <p class="en">读完一章，回到一份真实的 C++ 代码里把学到的东西用一遍</p>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#what">minikv 是什么</a></li>
+  <li><a href="#arch">结构图</a></li>
+  <li><a href="#start">获取、构建、运行、测试</a></li>
+  <li><a href="#missions">8 个任务</a></li>
+  <li><a href="#review">怎么做、怎么自查</a></li>
+</ol></nav>
+
+<h2 id="what">minikv 是什么</h2>
+<div class="crux"><p><strong>读书时每条原则都能点头，可面对一份"能跑、有测试、看着也还行"的代码，你能指出它哪里复杂、并且改得更简单吗？</strong></p></div>
+<p>minikv 是本站原创的一个小型键值存储，约 1400 行 C++17，没有第三方依赖。它的功能完整：</p>
+<ul>
+  <li>Redis 风格的文本命令：<code>SET</code> <code>GET</code> <code>DEL</code> <code>EXISTS</code> <code>INCR</code> <code>APPEND</code> <code>GETRANGE</code> <code>KEYS</code> <code>STATS</code> <code>COMPACT</code>；</li>
+  <li>所有数据在内存里，每次修改追加写到日志文件（带 CRC 校验），启动时重放；</li>
+  <li>日志里的垃圾多了以后自动压缩：把活数据写到新文件，原子地替换旧日志；</li>
+  <li>26 个测试，只通过命令接口和"关掉再重新打开日志"来检查行为。</li>
+</ul>
+<p>它是按"赶工期的战术式写法"写的：一个能干但很赶的团队会写出来的样子。没有离谱的错误，也没有故意写坏的语法；问题都藏在<strong>设计</strong>里：谁知道什么、接口要求使用者知道什么、同一件事写了几遍。这正是这本书要训练的眼光。如果你读过 OSTEP，日志、重放、崩溃一致性这些机制你会很熟悉（OSTEP 第 42、43 章），这里的重点不是机制，而是代码怎么组织。</p>
+
+<h2 id="arch">结构图</h2>
+<p>一条命令自上而下穿过这些模块。方块上的标签是处理该部分问题的任务。</p>
+<figure class="fig">
+<svg class="arch" viewBox="0 0 680 500" width="680" role="img" aria-label="minikv 基线的模块结构：main、Server、Database、Store，下面是 Index 和日志相关的五个小类，最底层是日志文件">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted)"/></marker></defs>
+
+  <rect x="250" y="12" width="180" height="40" rx="7" class="box"/>
+  <text x="340" y="30" text-anchor="middle" font-weight="700">main.cpp</text>
+  <text x="340" y="45" text-anchor="middle" class="sub t-muted">读 stdin，一行一条命令</text>
+
+  <rect x="120" y="82" width="440" height="52" rx="7" class="box"/>
+  <text x="138" y="104" font-weight="700">Server</text><text x="196" y="104" class="sub t-muted mono">server.cpp</text>
+  <text x="138" y="123" class="sub t-muted">tokenize · 10 个 handleXxx · bulk 格式化回复</text>
+  <g class="tag"><rect x="420" y="92" width="38" height="18" rx="9" class="accent-soft"/><text x="439" y="105" text-anchor="middle">m05</text>
+  <rect x="463" y="92" width="38" height="18" rx="9" class="accent-soft"/><text x="482" y="105" text-anchor="middle">m06</text>
+  <rect x="506" y="92" width="38" height="18" rx="9" class="accent-soft"/><text x="525" y="105" text-anchor="middle">m08</text></g>
+
+  <rect x="120" y="164" width="440" height="52" rx="7" class="box"/>
+  <text x="138" y="186" font-weight="700">Database</text><text x="214" y="186" class="sub t-muted mono">database.cpp</text>
+  <text x="138" y="205" class="sub t-muted">大多数方法转发给 Store · maybeCompact 决定何时压缩</text>
+  <g class="tag"><rect x="463" y="174" width="38" height="18" rx="9" class="accent-soft"/><text x="482" y="187" text-anchor="middle">m03</text>
+  <rect x="506" y="174" width="38" height="18" rx="9" class="accent-soft"/><text x="525" y="187" text-anchor="middle">m04</text></g>
+
+  <rect x="578" y="164" width="96" height="52" rx="7" class="box"/>
+  <text x="626" y="184" text-anchor="middle" class="sub">Options</text>
+  <text x="626" y="200" text-anchor="middle" class="sub">WriteOptions</text>
+  <line x1="578" y1="190" x2="562" y2="190" class="arrow" stroke-dasharray="3 3"/>
+
+  <rect x="120" y="246" width="440" height="52" rx="7" class="box"/>
+  <text x="138" y="268" font-weight="700">Store</text><text x="186" y="268" class="sub t-muted mono">store.cpp</text>
+  <text x="138" y="287" class="sub t-muted">set · del · incr · append · getRange · 重放 · 压缩</text>
+  <g class="tag"><rect x="463" y="256" width="38" height="18" rx="9" class="accent-soft"/><text x="482" y="269" text-anchor="middle">m02</text>
+  <rect x="506" y="256" width="38" height="18" rx="9" class="accent-soft"/><text x="525" y="269" text-anchor="middle">m07</text></g>
+
+  <rect x="10" y="336" width="130" height="46" rx="7" class="box"/>
+  <text x="75" y="356" text-anchor="middle" font-weight="700">Index</text>
+  <text x="75" y="373" text-anchor="middle" class="sub t-muted">unordered_map 包装</text>
+
+  <rect x="168" y="326" width="506" height="160" rx="10" fill="none" style="stroke: var(--border)" stroke-dasharray="5 4"/>
+  <text x="182" y="344" class="sub t-muted">日志相关的 6 个类</text>
+  <g class="tag"><rect x="626" y="332" width="38" height="18" rx="9" class="accent-soft"/><text x="645" y="345" text-anchor="middle">m01</text></g>
+
+  <rect x="182" y="354" width="150" height="40" rx="7" class="box"/>
+  <text x="257" y="379" text-anchor="middle" font-weight="700">LogWriter</text>
+  <rect x="346" y="354" width="150" height="40" rx="7" class="box"/>
+  <text x="421" y="379" text-anchor="middle" font-weight="700">LogReader</text>
+  <rect x="510" y="354" width="150" height="40" rx="7" class="box"/>
+  <text x="585" y="379" text-anchor="middle" font-weight="700">RecordParser</text>
+
+  <rect x="182" y="420" width="150" height="34" rx="7" class="box"/>
+  <text x="257" y="442" text-anchor="middle">FileHandle</text>
+  <rect x="346" y="420" width="190" height="34" rx="7" class="box"/>
+  <text x="441" y="442" text-anchor="middle">ByteWriter / ByteReader</text>
+  <rect x="550" y="420" width="110" height="34" rx="7" class="box"/>
+  <text x="605" y="442" text-anchor="middle">crc32()</text>
+
+  <rect x="10" y="420" width="130" height="34" rx="7" class="warn-soft"/>
+  <text x="75" y="442" text-anchor="middle" class="mono">data.log</text>
+
+  <line x1="340" y1="52" x2="340" y2="80" class="arrow" marker-end="url(#ah)"/>
+  <line x1="340" y1="134" x2="340" y2="162" class="arrow" marker-end="url(#ah)"/>
+  <line x1="340" y1="216" x2="340" y2="244" class="arrow" marker-end="url(#ah)"/>
+  <line x1="160" y1="298" x2="90" y2="334" class="arrow" marker-end="url(#ah)"/>
+  <line x1="257" y1="298" x2="257" y2="352" class="arrow" marker-end="url(#ah)"/>
+  <line x1="400" y1="298" x2="421" y2="352" class="arrow" marker-end="url(#ah)"/>
+  <line x1="520" y1="298" x2="575" y2="352" class="arrow" marker-end="url(#ah)"/>
+  <line x1="257" y1="394" x2="257" y2="418" class="arrow" marker-end="url(#ah)"/>
+  <line x1="410" y1="394" x2="290" y2="418" class="arrow" marker-end="url(#ah)"/>
+  <line x1="182" y1="437" x2="142" y2="437" class="arrow" marker-end="url(#ah)"/>
+</svg>
+<figcaption>基线 minikv 的模块与调用关系（本站自绘）。读完任务后回来看：哪些方块该合并，哪些边该消失？</figcaption>
+</figure>
+
+<h2 id="start">获取、构建、运行、测试</h2>
+<p>需要 Linux 或 WSL、支持 C++17 的 g++（本站用 g++ 14 测过，<code>-Wall -Wextra</code> 零警告）、make。</p>
+<div class="lab"><p>编译、跑测试、交互试几条命令：</p>
+<pre><code>cd project/minikv
+make test                 # 编译并运行全部测试，最后一行应是 26/26 tests passed
+./minikv data.log         # 交互模式，QUIT 或 Ctrl-D 退出
+printf 'SET a 1\nINCR a 41\nGET a\nSTATS\n' | ./minikv data.log
+make bench                # 微基准，任务 m08 会用到</code></pre></div>
+<p>目录里还有 <code>README.md</code>（命令列表、文件结构、日志格式），建议先读一遍，就像你刚加入这个团队。</p>
+<p><code>project/</code> 下面的结构：</p>
+<pre><code>project/
+  minikv/            基线：你要改的代码
+  solutions/m01/ … m08/   参考答案：每个都是"基线 + 只做这一个任务"，附 DISCUSSION.md
+  solutions/MAP.md   全部埋下的问题与章节的对照表（做完再看）</code></pre>
+
+<h2 id="missions">8 个任务</h2>
+<p>任务和章节一一对应，建议按顺序做：<strong>读完一章（或几章）→ 做对应任务 → 对照参考答案</strong>。每个任务都从<strong>干净的基线</strong>出发，彼此独立，所以也可以跳着做。</p>
+<div class="table-wrap"><table class="mission-table">
+  <tr><th>任务</th><th>对应章节</th><th>你要做的事</th><th>测试</th></tr>
+  <tr><td><a href="m01.html">m01</a></td><td><a href="../chapters/04-deep-modules.html">第 4 章</a>、<a href="../chapters/05-information-hiding.html">第 5 章</a></td><td>日志格式散在三个类里，外加一圈浅类和一个暴露过多的 <code>open</code>：把日志做成一个深模块</td><td>不变</td></tr>
+  <tr><td><a href="m02.html">m02</a></td><td><a href="../chapters/06-general-purpose.html">第 6 章</a>（+ <a href="../chapters/11-design-twice.html">第 11 章</a>）</td><td>每个命令一个专用的存储方法、各自重复写日志和索引：先设计两套接口，再收敛成一个通用的核心</td><td>不变</td></tr>
+  <tr><td><a href="m03.html">m03</a></td><td><a href="../chapters/07-layers.html">第 7 章</a></td><td>一层层原样转发的方法，和一个穿过四层只为到达一处的变量：让每一层提供不同的抽象</td><td>不变</td></tr>
+  <tr><td><a href="m04.html">m04</a></td><td><a href="../chapters/08-pull-down.html">第 8 章</a></td><td>压缩阈值等参数全推给使用者去调：自己算，只留下使用者真正更懂的那一个</td><td>不变</td></tr>
+  <tr><td><a href="m05.html">m05</a></td><td><a href="../chapters/09-together-apart.html">第 9 章</a></td><td>复制粘贴的参数检查、靠成员变量暗中通信的两个方法、知道具体命令的通用切词器：决定什么该合、什么该分</td><td>不变</td></tr>
+  <tr><td><a href="m06.html">m06</a></td><td><a href="../chapters/10-define-errors-out.html">第 10 章</a></td><td>把能定义掉的错误定义掉，散落的 catch 聚合起来，末尾半条记录在底层屏蔽，真损坏就带着清楚的信息崩溃</td><td><strong>行为有变</strong>，附新测试</td></tr>
+  <tr><td><a href="m07.html">m07</a></td><td><a href="../chapters/12-why-comments.html">第 12</a>～<a href="../chapters/15-comments-first.html">15 章</a></td><td>含糊的名字、重复代码的注释、被实现污染的接口注释；再先写注释、后实现一个新命令 RENAME</td><td>新增 RENAME 测试</td></tr>
+  <tr><td><a href="m08.html">m08</a></td><td><a href="../chapters/18-obvious.html">第 18 章</a>、<a href="../chapters/20-performance.html">第 20 章</a></td><td>pair 返回值、bool 参数、出人意料的副作用；然后<strong>先测量</strong>，再围绕 GET 的关键路径重新设计</td><td>不变</td></tr>
+</table></div>
+
+<h2 id="review">怎么做、怎么自查</h2>
+<h3>每个任务的节奏</h3>
+<ol>
+  <li><strong>只读不改</strong>：按任务页"你要找的问题"读指定的文件，把发现写下来。能说清楚"问题在哪、为什么是问题"，比改代码更重要。</li>
+  <li><strong>从干净的基线开始</strong>：复制一份基线再动手，例如 <code>cp -r minikv work-m03</code>，或在 git 里每个任务开一个分支。</li>
+  <li><strong>保持测试全绿</strong>：除了 m06、m07 这两个明确要求改变或增加行为的任务，<code>tests/</code> 一行都不许改。测试是黑盒的，只要外部行为不变，内部随你重组。</li>
+  <li><strong>只做这一个任务</strong>：基线里同时有很多问题，忍住别顺手改别的，否则没法和参考答案对照，也说不清每个改动是为了什么。</li>
+  <li><strong>对照参考答案</strong>：先自己做完，再展开任务页底部的参考答案，读 <code>solutions/mNN/DISCUSSION.md</code>。</li>
+</ol>
+
+<h3>自查的三个问题</h3>
+<div class="key">
+  <ol>
+    <li><strong>使用者要知道的东西变少了吗？</strong>列出改动前后调用方必须知道的条目（包括只能写在注释里的规则），数一数。</li>
+    <li><strong>同一个知识现在在几个地方？</strong>如果某个决定（格式、阈值、规则）要改，你需要碰几个文件？</li>
+    <li><strong>你付出了什么代价？</strong>每个参考答案都写了取舍。说不出代价的改动，往往是还没想清楚。</li>
+  </ol>
+</div>
+
+<h3>和参考答案对照</h3>
+<pre><code>cd project            # minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m03 clean
+diff -ru minikv solutions/m03        # 或者 diff -ru work-m03 solutions/m03
+make -C solutions/m03 test</code></pre>
+<div class="tip"><p>参考答案只是一种合理的设计。你的方案和它不同，不代表错；能用上面三个问题讲清楚它为什么更简单、代价是什么，就是好的方案。最好找一位同事互相审代码：书的作者也说，问题在别人的代码里更容易看出来。</p></div>
+<div class="aside" data-title="做完以后">
+  <p><code>solutions/MAP.md</code> 列出了基线里埋下的全部 27 个问题，以及几处"看起来像问题但其实没问题"的代码。全部任务做完后，拿它检查一下：有没有你自己发现了、但任务没要求的问题？有没有 MAP 里没列、你却认为是问题的地方？后者很可能是你判断力在长进的信号。</p>
+</div>
+
+<nav class="chapter-nav">
+  <a class="next" href="m01.html"><small>第一个任务 →</small>m01：把日志做成深模块</a>
+</nav>
+
+</main>
+</body>
+</html>

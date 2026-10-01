@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务 m03 · 拆掉透传层</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.mission-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.checklist li { list-style: none; margin-left: -1.2em; }
+.checklist li::before { content: "☐ "; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part1)"></span>minikv 重构项目 · 任务 3 / 8</div>
+  <h1>m03：拆掉透传层</h1>
+  <p class="en">对应第 7 章（不同的层，不同的抽象）</p>
+  <div class="mission-meta"><span data-flag="passthrough"></span><span data-flag="shallow"></span><span data-principle="9"></span></div>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#bg">背景与对应章节</a></li>
+  <li><a href="#find">你要找的问题</a></li>
+  <li><a href="#task">任务与约束</a></li>
+  <li><a href="#check">自查清单</a></li>
+  <li><a href="#hints">提示</a></li>
+  <li><a href="#answer">参考答案与讨论</a></li>
+</ol></nav>
+
+<h2 id="bg">背景与对应章节</h2>
+<div class="crux"><p><strong>一条 GET 命令要穿过几个类才碰到哈希表？每一层各自提供了什么别的层没有的抽象？</strong></p></div>
+<p>minikv 的分层看上去很"规范"：<code>Server</code> 处理文本协议，<code>Database</code> 是库的入口，<code>Store</code> 管存储，<code>Index</code> 管内存索引。写的人大概觉得层越多越清楚。可顺着一条命令往下跟，你会发现好几层几乎什么都没做，只是把参数原样交给下一层；还有一个参数被一路带下去，只为在最底下读一次。</p>
+<p>这个任务练的是第 7 章的判断：<strong>每一层都应该提供和上下层不同的抽象，否则这一层就是负担</strong>。做之前请读完 <a href="../chapters/07-layers.html">第 7 章 · 不同的层，不同的抽象</a>，尤其是 7.1（透传方法和三种处理方式）、7.4（接口与实现）、7.5（透传变量与上下文对象）。</p>
+
+<h2 id="find">你要找的问题</h2>
+<p>先别改，拿一条命令顺着调用链读下去：</p>
+<div class="table-wrap"><table>
+  <tr><th>从哪里开始</th><th>读的时候问自己</th></tr>
+  <tr><td><code>Server::handleGet</code> → <code>src/database.cpp</code> → <code>src/store.cpp</code> → <code>src/index.cpp</code></td><td>画出 GET 的调用链。每一层的方法签名长什么样？哪一层真正做了事？</td></tr>
+  <tr><td><code>src/database.h</code></td><td>逐个方法标出：纯转发、转发加一点点、真正干活。它真正干的那几件事，用到的信息在谁手里？它是怎么拿到的？</td></tr>
+  <tr><td><code>src/index.h</code></td><td>把它的公有方法和 <code>std::unordered_map</code> 的成员函数对照一下，多出来的有几个？</td></tr>
+  <tr><td><code>WriteOptions</code></td><td>在 <code>src/</code> 里搜它：从哪里构造、穿过哪些方法、最后在哪里被读？它的值在一次运行中会变吗？</td></tr>
+  <tr><td><code>Store::compact()</code></td><td>这里也用到了 <code>WriteOptions</code>，而且传的值和别处不一样。这说明了什么？</td></tr>
+</table></div>
+<textarea class="note" data-key="m03-findings" placeholder="例如：GET 的调用链是 ……；Database 的 10 个方法里纯转发的有 ……；WriteOptions 穿过了 …… 个方法，只在 …… 被读"></textarea>
+
+<div class="lab"><p>确认基线全绿，然后看看 <code>WriteOptions</code> 走了多远：</p>
+<pre><code>cd project/minikv
+make test
+grep -n "WriteOptions\|writeOptions_\|, wo)" src/*.h src/*.cpp</code></pre></div>
+
+<h2 id="task">任务与约束</h2>
+<ol>
+  <li><strong>去掉透传层</strong>：让 GET 从协议层到哈希表之间，只经过真正提供不同抽象的层。</li>
+  <li><code>Database</code> 里真正有内容的工作（压缩时机、STATS、Options 校验）要找到合适的新家，不能丢，也不能变成上层要记着调用的步骤。</li>
+  <li><strong>去掉透传变量</strong>：<code>WriteOptions</code> 只在真正需要它的地方出现。</li>
+</ol>
+<p>约束：</p>
+<ul>
+  <li><code>make test</code> 全绿，<strong>不许修改 <code>tests/</code></strong>；外部行为完全不变。</li>
+  <li>只做本任务的事。<code>Store</code> 里重复的写方法（m02）、分散的日志格式（m01）、调参（m04）、含糊的名字（m07）都先别碰。</li>
+  <li>更新 <code>README.md</code> 里的文件结构。</li>
+</ul>
+
+<h2 id="check">自查清单</h2>
+<ul class="checklist">
+  <li>GET 的调用链上，不再有两个相邻的类提供签名相同、意思也相同的方法。</li>
+  <li>没有哪个类只是为了把信息"要过来"再算一下而存在；用到某个信息的计算，在拥有这个信息的类里。</li>
+  <li>写完一个值以后"检查要不要压缩"不需要调用者记着做。</li>
+  <li><code>WriteOptions</code> 不再出现在命令层和存储层的写方法签名里。</li>
+  <li>你能说清楚：在剩下还用 <code>WriteOptions</code> 的那一层，它为什么是合理的参数。</li>
+  <li><code>make test</code> 全绿，编译零警告。</li>
+</ul>
+
+<h2 id="hints">提示</h2>
+<details class="reveal"><summary>提示 1：三种处理方式各试一下</summary><div>
+  <p>书中 7.1 节给了三条路：让调用者直接用下层、在两层之间重新分配功能、把两层合并。对 <code>Database</code> 分别想一想：如果只是让 <code>Server</code> 直接用 <code>Store</code>，"写完检查压缩"这件事谁来做？如果把它挪进 <code>Store</code>，<code>Database</code> 还剩什么？</p>
+</div></details>
+<details class="reveal"><summary>提示 2：Index 值不值得单独存在</summary><div>
+  <p>一个类的接口和它内部的数据结构一一对应时（7.4 节），它替使用者藏住的东西很少。<code>Store</code> 直接持有一个 <code>std::unordered_map</code>，再加一个私有的查找辅助函数，会不会更简单？</p>
+</div></details>
+<details class="reveal"><summary>提示 3：变量该在哪一层固定下来</summary><div>
+  <p>问一句：这个值由谁决定、什么时候决定、会不会变？如果它在启动时决定、一次运行里不变，它就是某个对象的属性，可以在构造时交给真正用它的那一层。但留意 <code>compact()</code>：在最底下那一层，不同调用确实传了不同的值。</p>
+</div></details>
+
+<h2 id="answer">参考答案与讨论</h2>
+<div class="aside" data-title="先自己做"><p>先自己做完、测试全绿，再打开下面的内容。透传问题往往有不止一种合理解法；关键是能说清楚每一层现在提供的抽象是什么。</p></div>
+
+<details class="reveal"><summary>打开参考答案</summary><div>
+
+<p>参考解法删掉了 <code>Database</code> 和 <code>Index</code>，调用链变成 <code>Server</code>（文本协议）→ <code>Store</code>（持久化的内存键值表）→ <code>LogWriter</code>（记录编码与写文件）。</p>
+<div class="ba">
+  <div data-label="改之前：四层，三层签名相同">
+<pre><code class="lang-cpp">// server.cpp
+if (!db_.exists(key)) return "(nil)";
+auto r = db_.get(key);
+
+// database.cpp
+std::pair&lt;bool, std::string&gt; Database::get(const std::string&amp; key) const {
+    return store_.get(key);
+}
+void Database::set(const std::string&amp; key, const std::string&amp; value, const WriteOptions&amp; wo) {
+    store_.set(key, value, wo);
+    maybeCompact();   // asks store_ for dead() and total()
+}
+
+// store.cpp
+std::optional&lt;std::string&gt; v = index_.get(key);
+
+// index.cpp
+auto it = map_.find(key);</code></pre>
+  </div>
+  <div data-label="改之后：每层一种抽象">
+<pre><code class="lang-cpp">// server.cpp
+if (!store_.exists(key)) return "(nil)";
+auto r = store_.get(key);
+
+// store.h
+class Store {
+public:
+    // `options` are fixed for the lifetime of the Store; throws
+    // std::invalid_argument if they are invalid.
+    Store(const std::string&amp; path, const Options&amp; options);
+    void set(const std::string&amp; key, const std::string&amp; value);
+    ...
+    std::string stats() const;   // the STATS line
+private:
+    const Entry* lookup(const std::string&amp; key) const;
+    void maybeCompact();         // called at the end of every write
+    WriteOptions writeOptions_;  // derived from options_.sync_writes
+    std::unordered_map&lt;std::string, Entry&gt; index_;
+    ...
+};</code></pre>
+  </div>
+</div>
+
+<h3>三种处理方式，各用在哪里</h3>
+<ul>
+  <li><strong>让调用者直接用下层</strong>：对 <code>Database</code> 不合适。只删 <code>Database</code>、让 <code>Server</code> 直接用 <code>Store</code>，"写完检查压缩"就得由 <code>Server</code> 记着做，等于把一条调用顺序约束推给上层。</li>
+  <li><strong>重新分配功能</strong>：<code>Database</code> 真正做的三件事（压缩时机、STATS 那一行、Options 校验）用到的信息全在 <code>Store</code> 手里，挪进 <code>Store</code> 后，<code>count()/total()/dead()</code> 这几个只为 <code>Database</code> 存在的 getter 也一起消失。</li>
+  <li><strong>合并</strong>：挪完以后 <code>Database</code> 只剩转发，删除。<code>Index</code> 的接口照搬 <code>unordered_map</code>，并入 <code>Store</code>，前缀查找写进 <code>Store::keys()</code>。</li>
+</ul>
+
+<h3>WriteOptions：同一个参数，两种身份</h3>
+<div class="ba">
+  <div data-label="改之前：穿过 8 个方法">
+<pre><code class="lang-cpp">// Server: built once, passed on every write
+db_.set(key, rawValue_, writeOptions_);
+// Database::set / del / incr / append (..., const WriteOptions&amp; wo)
+store_.set(key, value, wo);
+// Store::set / del / incr / append (..., const WriteOptions&amp; wo)
+writer_.append(rec, wo);
+// LogWriter::append: the only reader
+if (options.sync &amp;&amp; !file_.sync()) ...</code></pre>
+  </div>
+  <div data-label="改之后：构造时固定">
+<pre><code class="lang-cpp">Store::Store(const std::string&amp; path, const Options&amp; options)
+    : options_(checked(options)), path_(path) {
+    writeOptions_.sync = options_.sync_writes;
+    ...
+}
+// normal writes
+writer_.append(rec, writeOptions_);
+// compaction: many records unsynced, one fsync at the end
+WriteOptions noSync;
+out.append(rec, noSync);</code></pre>
+  </div>
+</div>
+<p>相关的出现次数从 31 次降到 7 次，全在 <code>Store</code> 和 <code>LogWriter</code> 之间。<code>WriteOptions</code> 留在了 <code>LogWriter::append</code> 上，因为在那一层它<strong>确实会变</strong>：普通写按配置决定，压缩写一律不 fsync、最后统一 fsync。判断透传变量的标准不是"它传了几层"，而是"中间这几层用不用它、它的值在调用之间变不变"。</p>
+<p>数字：<code>Database</code>+<code>Index</code>+<code>Store</code>+<code>Server</code> 共 770 行，合并后 <code>Store</code>+<code>Server</code> 600 行；<code>src/</code> 总计 1418 → 1248 行。</p>
+
+<h3>边界与取舍</h3>
+<div class="counter" data-title="如果调用者真的要逐次选择">
+  <p>LevelDB、RocksDB 的写接口也带一个 <code>WriteOptions</code>，在那里它不是透传变量：调用者确实会给不同的写做不同的选择（账务记录要落盘，缓存数据不必），它是接口的一部分，每一层都必须如实传下去。minikv 的 sync 由启动参数决定、一次运行里不变，所以它是 Store 的属性。如果哪天要支持 <code>SET key value SYNC</code> 这样的逐条选择，就该把它重新做成写方法的参数，而且从命令层到 <code>LogWriter</code> 每一层都有意义。</p>
+</div>
+<div class="counter" data-title="上下文对象：为什么这里没用">
+  <p>书中 7.5 节对透传变量的常用解法是上下文对象：把配置和共享状态放进一个对象，主要对象在构造时拿到它的引用。用在 minikv 上大概是这样（草图，参考答案没有采用）：</p>
+<pre><code class="lang-cpp">// All process-wide settings and shared counters of one minikv instance.
+struct Context {
+    const Options options;  // fixed at startup
+    Stats stats;            // counters that several layers update
+};
+class LogWriter {
+public:
+    explicit LogWriter(Context&amp; ctx) : ctx_(ctx) {}
+    uint64_t append(const Record&amp; rec);  // reads ctx_.options.sync_writes
+private:
+    Context&amp; ctx_;
+};</code></pre>
+  <p>它比全局变量好：一个进程里能开多个实例（我们的测试同时开很多个 <code>Server</code>），测试也能通过它改配置。但作者自己也承认它的毛病：和全局变量一样看不出某个字段为什么存在、谁在用；容易变成杂物袋，制造不明显的依赖；多线程时字段最好不可变。minikv 现在只有一个变量、一个使用者，构造参数就够了。当配置、统计、时钟、日志器都要到达好几个类时，再考虑它。</p>
+</div>
+<div class="counter" data-title="层少了，GET 并没有变快多少">
+  <p>用 <code>make bench</code> 量一下：基线和 m03 的 GET 耗时差别在两次运行的波动范围内。<code>-O2</code> 下这些转发大多被内联了。透传层是<strong>设计</strong>问题，不一定是性能问题；GET 的时间花在哪里，是 <a href="m08.html">m08</a> 要先测量再回答的。</p>
+</div>
+<div class="counter" data-title="Store 变大了">
+  <p><code>store.cpp</code> 205 → 247 行。它现在负责内存表、日志和压缩时机，这些都围绕同一份信息（键、记录大小、垃圾量），放在一起是合理的。如果将来压缩策略变复杂（分段日志、后台压缩），可以把<strong>策略</strong>拆成一个有实际深度的类，前提是它的接口比原来 <code>Database</code> 那堆转发窄得多。</p>
+</div>
+
+<h3>审稿人仍会指出的问题</h3>
+<ul>
+  <li><code>Store</code> 的 <code>set/incr/append/del</code> 仍各自重复写日志和簿记，命令语义仍在存储层：<a href="m02.html">m02</a>。</li>
+  <li>日志格式仍然分散在三个类里：<a href="m01.html">m01</a>。</li>
+  <li>压缩阈值、检查间隔、索引预留仍然推给用户去调：<a href="m04.html">m04</a>。</li>
+</ul>
+
+<p>完整讨论在 <code>solutions/m03/DISCUSSION.md</code>。对照自己的改动：</p>
+<pre><code>cd project            # 仓库里 minikv/ 和 solutions/ 所在的目录
+make -C minikv clean &amp;&amp; make -C solutions/m03 clean
+diff -ru minikv solutions/m03
+make -C solutions/m03 test</code></pre>
+
+</div></details>
+
+<nav class="chapter-nav">
+  <a class="prev" href="m02.html"><small>← 上一个任务</small>m02：专用方法换成通用核心</a>
+  <a class="next" href="m04.html"><small>下一个任务 →</small>m04：别把配置推给用户</a>
+</nav>
+
+</main>
+</body>
+</html>

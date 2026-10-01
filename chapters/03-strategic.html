@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 3 章 · 能跑的代码还不够</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<script src="../train/data/ch03.js"></script>
+<script src="../assets/drill.js"></script>
+<style>
+.inv-ctrl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 18px; width: 100%; }
+@media (min-width: 640px) { .inv-ctrl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.inv-ctrl label { display: flex; gap: 8px; align-items: center; }
+.inv-ctrl label input { flex: 1; min-width: 0; }
+.inv-ctrl label b { color: var(--fg); min-width: 4.2em; font-variant-numeric: tabular-nums; }
+.inv-views { display: flex; flex-wrap: wrap; gap: 6px; }
+.inv-views button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+#inv-stage svg { display: block; margin: 0 auto; touch-action: pan-y; }
+.inv-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.inv-legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+</style>
+</head>
+<body data-chapter="3">
+<main>
+
+<h2>读前：这一章要回答什么</h2>
+<div class="crux">
+  <p><strong>"先让它跑起来"错在哪里？每天写代码时，值得为设计多花多少时间？</strong></p>
+</div>
+<p>第 2 章的结论是：复杂性由成百上千个小依赖、小模糊累积而成，单看每一个都无伤大雅。这一章顺着这个结论追问：既然没有哪一个小妥协是致命的，那么决定系统走向的，就是开发者面对每个任务时的<strong>心态</strong>。</p>
+<p>作者把两种心态叫作战术式编程（tactical programming）和战略式编程（strategic programming），并给出了一个具体到百分比的建议。这一章没有技术细节，但它是全书的"动机篇"：后面每一章都在教你怎么投资，而这一章说明为什么要投资、投多少。</p>
+
+<div class="reading">
+  <ol>
+    <li><strong>3.1～3.2 节</strong>：作者描述战术式编程时，用的是"每一步都合理"的口吻。读的时候留意这个滑坡是怎么发生的；再把 3.2 节列举的几种投资分成"主动"和"被动"两类。</li>
+    <li><strong>3.3 节</strong>：作者给了好几个数字（投资比例、回本时间、慢了多少）。逐个留意作者对每个数字的<strong>可信度</strong>是怎么说的，哪些是建议，哪些明说是个人观点。</li>
+    <li><strong>3.4 节</strong>讲 Facebook 的那几段：注意作者在批评之后紧跟着替它说了一句公道话，并承认两种路线的公司都能成功。作者最后落在了什么理由上？</li>
+  </ol>
+</div>
+
+<h2>核心观点</h2>
+<div class="cards">
+  <div class="card"><h4>战术式编程</h4><p>首要目标是尽快让功能或修复跑起来。为了快一点，接受一点复杂性、一两个小补丁。每一步都显得合理，系统就是这样变复杂的。</p></div>
+  <div class="card"><h4>战术龙卷风</h4><p>产出极快、完全战术式的开发者。管理层有时把这种人当英雄；收拾残局的同事才是真英雄，却因此显得更慢。</p></div>
+  <div class="card"><h4>能跑的代码还不够</h4><p>首要目标是做出好的设计，而它恰好也能跑。系统里的大部分代码都是在已有代码上扩展出来的，所以你最重要的工作是让将来的扩展更容易。<span data-principle="2"></span></p></div>
+  <div class="card"><h4>投资心态</h4><p>短期慢一点，长期快很多。投资有主动的（试几种设计、设想未来变化、写文档），也有被动的（发现设计问题就修，不绕过）。<span data-principle="3"></span></p></div>
+  <div class="card"><h4>10%～20%，小额持续</h4><p>作者建议拿出约 10%～20% 的开发时间投资，以大量小额投资的方式持续进行。前期一次性大设计（瀑布）行不通。</p></div>
+  <div class="card"><h4>技术债很少被还清</h4><p>战术式编程是向未来借时间，还的比借的多；而且和金融债务不同，大多数技术债永远不会被完全还清。</p></div>
+  <div class="card"><h4>投资是今天的事</h4><p>"忙完这阵再清理"是一个滑坡：忙完这阵还有下一阵。拖得越久，问题越大、越吓人，越容易继续拖。</p></div>
+</div>
+
+<blockquote class="quote">Your primary goal must be to produce a great design, which also happens to work.<cite>— 第 3.2 节</cite></blockquote>
+
+<h2>心智模型：两个方向相反的循环</h2>
+<p>两种心态的差别不在某一次决定，而在它们各自形成的<strong>循环</strong>。战术式的循环越转越紧，战略式的循环越转越松：</p>
+<figure class="fig">
+<svg viewBox="0 0 660 300" width="660" role="img" aria-label="战术式恶性循环与战略式良性循环">
+  <defs>
+    <marker id="ar3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--bad)"/></marker>
+    <marker id="ar3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ok)"/></marker>
+  </defs>
+  <text x="160" y="22" text-anchor="middle" font-weight="700">战术式：越转越紧</text>
+  <rect x="85" y="38" width="150" height="40" rx="8" class="bad-soft" stroke-width="1.2"/><text x="160" y="63" text-anchor="middle" font-size="13">进度压力</text>
+  <rect x="175" y="122" width="140" height="40" rx="8" class="bad-soft" stroke-width="1.2"/><text x="245" y="147" text-anchor="middle" font-size="13">走捷径、打补丁</text>
+  <rect x="85" y="206" width="150" height="40" rx="8" class="bad-soft" stroke-width="1.2"/><text x="160" y="231" text-anchor="middle" font-size="13">复杂性累积</text>
+  <rect x="5" y="122" width="140" height="40" rx="8" class="bad-soft" stroke-width="1.2"/><text x="75" y="147" text-anchor="middle" font-size="13">变慢、bug 变多</text>
+  <path d="M220 80 Q245 95 245 118" fill="none" style="stroke:var(--bad)" stroke-width="1.5" marker-end="url(#ar3b)"/>
+  <path d="M245 164 Q245 190 222 204" fill="none" style="stroke:var(--bad)" stroke-width="1.5" marker-end="url(#ar3b)"/>
+  <path d="M98 204 Q75 190 75 166" fill="none" style="stroke:var(--bad)" stroke-width="1.5" marker-end="url(#ar3b)"/>
+  <path d="M75 120 Q75 95 98 82" fill="none" style="stroke:var(--bad)" stroke-width="1.5" marker-end="url(#ar3b)"/>
+  <text x="160" y="276" text-anchor="middle" font-size="12" class="t-muted">每一步都"合理"，合起来是一团乱麻</text>
+
+  <text x="500" y="22" text-anchor="middle" font-weight="700">战略式：越转越松</text>
+  <rect x="425" y="38" width="150" height="40" rx="8" class="ok-soft" stroke-width="1.2"/><text x="500" y="63" text-anchor="middle" font-size="13">每次多花一点时间</text>
+  <rect x="515" y="122" width="140" height="40" rx="8" class="ok-soft" stroke-width="1.2"/><text x="585" y="147" text-anchor="middle" font-size="13">设计更干净</text>
+  <rect x="425" y="206" width="150" height="40" rx="8" class="ok-soft" stroke-width="1.2"/><text x="500" y="231" text-anchor="middle" font-size="13">后续开发更快</text>
+  <rect x="345" y="122" width="140" height="40" rx="8" class="ok-soft" stroke-width="1.2"/><text x="415" y="147" text-anchor="middle" font-size="13">省下的时间够付</text>
+  <path d="M560 80 Q585 95 585 118" fill="none" style="stroke:var(--ok)" stroke-width="1.5" marker-end="url(#ar3g)"/>
+  <path d="M585 164 Q585 190 562 204" fill="none" style="stroke:var(--ok)" stroke-width="1.5" marker-end="url(#ar3g)"/>
+  <path d="M438 204 Q415 190 415 166" fill="none" style="stroke:var(--ok)" stroke-width="1.5" marker-end="url(#ar3g)"/>
+  <path d="M415 120 Q415 95 438 82" fill="none" style="stroke:var(--ok)" stroke-width="1.5" marker-end="url(#ar3g)"/>
+  <text x="500" y="276" text-anchor="middle" font-size="12" class="t-muted">过去的投资为新的投资买单</text>
+</svg>
+<figcaption>左边的循环里，"重构会拖慢眼前的任务"总是成立，于是每一轮都选择打补丁。右边的循环里，投资在某个时刻变成"免费"的（3.3 节）。本站自绘。</figcaption>
+</figure>
+<p>战术式循环最可怕的地方，是它<strong>很难跳出来</strong>：乱到一定程度时，清理要花好几个月，进度不允许；只修一两处又看不出效果（第 2 章说过，复杂性没有单个罪魁祸首）。于是最理性的选择似乎还是继续打补丁。作者说，一旦走上战术式的路，就很难再改。</p>
+
+<h2>投资多少、多久回本：一个玩具模型</h2>
+<p>作者在 3.3 节建议把大约 10%～20% 的总开发时间用于投资：一开始项目会慢 10%～20%，几个月内开始受益，不久之后就会比纯战术式至少快 10%～20%，此后投资就变成"免费"的了。作者估计回本期大约 6～18 个月，同时明确说：<strong>这只是个人观点，没有数据</strong>。</p>
+<p>下面这个模型可以帮你体会这个论证的<strong>结构</strong>，但请记住它只是本站编的玩具，参数是随手定的，<strong>不是书里的数据，也不是任何测量结果</strong>。</p>
+
+<section class="sim" id="sim-inv">
+  <div class="sim-head"><span class="tag">交互</span><h3>战术 vs 战略：累计进度玩具模型</h3>
+    <div class="desc">两支一样的团队做同一个产品，为期两年。战术队不做任何设计投资；战略队每周拿出一定比例的时间投资。拖动滑杆，把鼠标或手指移到图上看每周的数值。</div></div>
+  <div class="sim-body">
+    <div class="controls">
+      <div class="inv-ctrl">
+        <label>投资比例 <input type="range" id="inv-i" min="0" max="60" step="5" value="15"> <b id="inv-i-v">15%</b></label>
+        <label>推迟到第几周才开始投资 <input type="range" id="inv-w" min="0" max="52" step="1" value="0"> <b id="inv-w-v">第 0 周</b></label>
+      </div>
+      <div class="inv-views" id="inv-views"></div>
+    </div>
+    <div class="stage" id="inv-stage"></div>
+    <div class="inv-legend"><span><i style="background:var(--c1)"></i>战略队</span><span><i style="background:var(--c2)"></i>战术队</span></div>
+    <div class="narrate" id="inv-narrate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="inv-cross">—</div><div class="l" id="inv-cross-l">累计进度反超的时间</div></div>
+      <div class="stat"><div class="v" id="inv-ratio">—</div><div class="l">两年累计进度：战略 / 战术</div></div>
+      <div class="stat"><div class="v" id="inv-vs">—</div><div class="l">第 2 年末每周速度（战略）</div></div>
+      <div class="stat"><div class="v" id="inv-vt">—</div><div class="l">第 2 年末每周速度（战术）</div></div>
+    </div>
+  </div>
+</section>
+<details class="small muted"><summary>模型是怎么算的</summary>
+<p>每周：交付的功能 = (1 − 投资比例) ÷ (1 + 复杂度)。复杂度从 0 开始，每周增加"交付量 × 0.015 × (1 − 设计质量)"，再减去投资带来的清理"0.15 × 投资比例 × 复杂度 ÷ (1 + 复杂度 / 0.6)"。设计质量 = 投资比例 ÷ (投资比例 + 0.04)。最后那个分母让清理在复杂度很高时变得吃力，用来模拟"乱到一定程度就很难清理"。所有常数都是为了画出合理的形状而随手选的。</p>
+</details>
+
+<p>玩一玩之后，你应该能看到作者论证的几个要点：战略队一开始一定落后；交叉点出现在"复杂度开始明显拖慢战术队"之后；推迟投资不只是晚几周受益，而是要先还清已经积累的复杂性。也请注意模型<strong>证明不了</strong>什么：交叉点在哪里完全取决于那几个随手定的常数。现实中它取决于代码会被改多少次、团队换人多快、开发者多久会忘掉代码细节。作者给的理由正是最后这一条：代码过几个月，写的人就忘了当时的想法，复杂的代码会让后续开发明显变慢。</p>
+
+<h2>一个原创例子：上线前一天的评审</h2>
+<p>明天上线，需求是"连接时开启 TCP keepalive"。<code>connect()</code> 已经有 6 个参数，项目里有 23 个调用点。两种改法：</p>
+<div class="ba">
+  <div data-label="战术式：再加一个参数">
+<pre><code class="lang-cpp">Conn connect(const std::string&amp; host, int port, int timeoutMs,
+             bool useTls, bool verifyCert, int retries,
+             bool keepAlive = false);             // 新增，默认值保证 23 个调用点不用改
+
+// 需要的地方
+auto c = connect(host, 443, 3000, true, true, 2, true);</code></pre>
+    <p>五分钟搞定，零风险，评审一眼就能过。但调用处那串 <code>true, true, 2, true</code> 谁也读不懂；下一个选项只能做第 8 个参数，而且要放在 <code>keepAlive</code> 后面，于是想设置它的人必须把前面所有默认值都抄一遍。</p>
+  </div>
+  <div data-label="战略式：把选项收成一个结构">
+<pre><code class="lang-cpp">struct ConnectOptions {
+    std::chrono::milliseconds timeout{3000};
+    bool useTls = false;
+    bool verifyCert = true;
+    int retries = 0;
+    bool keepAlive = false;                         // 新增
+};
+Conn connect(const std::string&amp; host, int port, const ConnectOptions&amp; opts = {});
+
+// 需要的地方（C++20 指定初始化）
+auto c = connect(host, 443, {.useTls = true, .retries = 2, .keepAlive = true});</code></pre>
+    <p>调用处自己说明了意思，以后加选项只加一个字段，没有调用点需要改。代价：要把 23 个调用点迁移过来，大约一两个小时，主要是机械替换，编译器会指出每一个漏改的地方。</p>
+  </div>
+</div>
+<p>这就是作者说的"小额投资"：一两个小时，不会耽误上线，却让这一类改动从此变便宜。反过来，如果每次都选左边，这个函数的参数表会一年比一年长，直到没人敢动它。训练场里还有几道上线压力下的决策题。</p>
+
+<h2>创业公司、Facebook 与 Google</h2>
+<p>3.4 节讨论了战略式编程最常见的反对理由：<strong>我们现在等不起</strong>。作者的回应可以整理成下表（右列是本站的评注）：</p>
+<div class="table-wrap"><table>
+  <tr><th>作者的论点</th><th>本站评注</th></tr>
+  <tr><td>代码库一旦变成意大利面，几乎无法修好，你会在产品的整个生命周期里付出高昂的开发成本。</td><td>"成功后招人重构"的设想忽略了一点：新来的人面对的正是第 2 章说的未知的未知。</td></tr>
+  <tr><td>设计好坏的回报来得很快，战术式未必能让第一个版本更早发布。</td><td>这和上面的模型一致：如果交叉点比首发日期还早，战术式连眼前的好处都拿不到。</td></tr>
+  <tr><td>最好的工程师很在乎设计；代码库烂的名声会传出去，让招聘更难，进而让结构更差。</td><td>这是一个很少被提到的成本：代码质量影响的不只是开发速度，还有团队构成。</td></tr>
+</table></div>
+<p>作者用 Facebook 作为鼓励战术式编程的例子（早年的口号 "Move fast and break things"，新人入职第一周就往生产环境提交代码），说它作为公司极为成功，但代码库因此吃了苦头，后来口号也改成了强调稳固基础设施的版本。作者随即补充：Facebook 的代码大概并不比一般创业公司差，只是特别显眼。与之对照的是同时期成长起来、更重视代码质量和设计的 Google 和 VMware，它们的技术文化在招聘上几乎无人能敌。</p>
+<p>作者的结论很克制：<strong>两种路线的公司都能成功</strong>；只不过在一个重视设计、代码干净的公司里工作，要有意思得多。</p>
+
+<div class="aside" data-title="本站的项目就是一个战术式代码库">
+  <p>本站的<a href="../project/index.html">项目 minikv</a> 是一个故意按"先跑起来再说"的风格写成的 C++ 迷你键值存储。从第 4 章开始，你会在它身上一次次做被动投资：发现红旗、想几种替代设计、修在根上。做的时候可以留意一下：每个捷径在当时看起来有多合理。</p>
+</div>
+
+<h2>边界与反方</h2>
+<div class="counter" data-title="这些数字都不是数据">
+  <p>10%～20% 是作者的建议，6～18 个月的回本期作者明说是个人观点、没有数据支撑；"代码质量差会让开发至少慢 20%"，作者给的依据是"去问问在烂代码库里工作过的人"。图 3.1 也被标注为定性示意。这些数字可以作为讨论的起点，但不要拿它们当研究结论去说服别人。</p>
+</div>
+<div class="counter" data-title="投资过度也是错">
+  <p>作者反对前期一次性的巨大投资（试图把整个系统设计好），因为理想的设计是在积累经验的过程中一点点浮现的。本站补充：另一种常见的过度投资是为想象中的未来需求提前建好一切。作者说的"设想几种未来可能的改动"，是为了检查设计能否轻松应对，而不是现在就把它们实现出来。第 6 章"有点通用"的说法会进一步界定这个尺度。</p>
+</div>
+<div class="counter" data-title="作者的前提：代码会被扩展">
+  <p>作者的论证建立在一个前提上：系统里的大部分代码是在已有代码上扩展出来的，所以最重要的是让将来的扩展更容易。本站补充：真正一次性的代码（只跑一次的数据修复脚本、确定会扔掉的原型）不满足这个前提，投资的回报也会小得多。但要小心，"确定会扔掉"的原型最终上了生产，是很常见的事。</p>
+</div>
+<div class="counter" data-title="与敏捷、与考核的冲突">
+  <p>这一章挑战的是"快速交付"文化，以及以产出量衡量人的考核方式：在这种考核下，战术龙卷风永远是最佳员工。作者在第 19.2 节还会指出，敏捷开发让人专注于功能，容易滑向战术式编程。本站补充：AI 编码工具让每个人都能以龙卷风的速度产出代码，投资心态因此变得更重要，而不是更不重要，见专题<a href="../topics/ai-era.html">AI 时代读这本书</a>。</p>
+</div>
+
+<h2>练一练</h2>
+<p>本章的题目大多是"上线压力下怎么选"。没有标准答案的地方，解析会说明另一种选择在什么条件下合理。</p>
+<div class="drill-embed" data-ids="ch03-judge-03 ch03-ab-01 ch03-write-01"></div>
+<p class="small muted">本章共 12 道题，全部在<a href="../train/index.html#ch=3">训练场</a>。</p>
+
+<h2>自测题</h2>
+<p class="quiz-score"></p>
+
+<div class="mcq" data-answer="3"><div class="q">作者认为战术式编程的根本问题是什么？</div>
+  <div class="opts"><button>A. 写出来的代码通常不能正常工作</button><button>B. 它不写测试</button><button>C. 它只出现在缺乏经验的程序员身上</button><button>D. 它是短视的：为了尽快完成当前任务，不断引入一点点复杂性，而复杂性是累积的</button></div>
+  <div class="explain">战术式代码通常是能跑的，这正是它的迷惑性。问题在于每一个小妥协都在累积复杂性，而且大家都这样做时，累积得非常快。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">下列哪一项<strong>不</strong>是作者在 3.2 节提到的投资方式？</div>
+  <div class="opts"><button>A. 每个季度安排一次大规模重写</button><button>B. 发现设计问题时花一点额外时间修好，而不是绕过去</button><button>C. 不直接实现第一个想到的设计，先试几种再选最干净的</button><button>D. 设想几种未来可能的改动，确认设计能轻松应对</button></div>
+  <div class="explain">C、D 是主动投资（写文档也是），B 是被动投资。大规模重写不在其中：作者主张的是持续的小额投资，并且在 3.5 节警告推迟清理的危险。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">"技术债"这个比喻，作者认为它和金融债务最大的不同是什么？</div>
+  <div class="opts"><button>A. 技术债可以随时一次性还清</button><button>B. 大多数技术债永远不会被完全还清，你会一直付下去</button><button>C. 技术债只影响新功能，不影响维护</button><button>D. 技术债没有利息</button></div>
+  <div class="explain">相同之处是还的比借的多；不同之处是，大多数技术债永远不会被完全偿还。</div></div>
+
+<div class="mcq" data-answer="1"><div class="q">关于图 3.1 和 6～18 个月的回本期，下列哪种说法准确？</div>
+  <div class="opts"><button>A. 作者认为战略式编程从第一周起就更快</button><button>B. 图只是定性示意；回本期是作者的个人观点，作者明说没有数据支持</button><button>C. 它们来自作者在斯坦福课堂上做的对照实验</button><button>D. 图 3.1 是多家公司的实测数据</button></div>
+  <div class="explain">作者在 3.3 节两次强调这些没有数据支撑，并说这类实验很难做得令人信服。回本期的理由和开发者的记忆有关：代码过了几个月，写的人就记不清当时的想法了。</div></div>
+
+<div class="mcq" data-answer="0"><div class="q">关于 Facebook 与 Google、VMware 的对比，作者的结论是什么？</div>
+  <div class="opts"><button>A. 两种路线的公司都能成功，但在重视设计、代码干净的公司工作要有意思得多</button><button>B. Facebook 因为战术式编程而失败了</button><button>C. 只有战略式的公司才能成功</button><button>D. Facebook 的代码比一般创业公司差得多</button></div>
+  <div class="explain">作者说 Facebook 作为公司极为成功，其代码大概也不比一般创业公司差，只是更显眼；Google 和 VMware 证明了战略式路线同样能成功，而且在招聘上很有优势。</div></div>
+
+<div class="mcq" data-answer="2"><div class="q">赶工期时，作者为什么反对"等忙完这一阵再清理"？</div>
+  <div class="opts"><button>A. 因为忙的时候写的代码质量更高</button><button>B. 因为清理工作只能由原作者完成</button><button>C. 因为忙完这一阵几乎肯定还有下一阵；推迟很容易变成永久，问题拖得越久越大、越吓人，也越容易继续拖</button><button>D. 因为管理层不允许重构</button></div>
+  <div class="explain">这是 3.5 节的滑坡论证。作者的结论是：投资要当成今天的事，而不是明天的事；最有效的方式是每个工程师都持续地做小额投资。</div></div>
+
+<h2>小结与读后一句话</h2>
+<ul>
+  <li>战术式编程追求尽快能跑，每次引入一点复杂性；战术龙卷风是它的极端形态。</li>
+  <li>能跑的代码还不够：首要目标是好的设计，它恰好也能跑。</li>
+  <li>投资分主动（试几种设计、设想变化、写文档）和被动（发现问题就修在根上）。</li>
+  <li>作者建议拿出约 10%～20% 的时间，以小额、持续的方式投资；回本期 6～18 个月是作者的个人估计。</li>
+  <li>技术债大多永远还不清；"忙完再清理"是滑坡。两种公司都能成功，但战略式更省钱，也更有意思。</li>
+</ul>
+<p>知道了<strong>要投资</strong>，下一个问题是<strong>投在哪里</strong>。第 4 章给出全书最核心的答案：把模块做深。</p>
+<p><strong>读后一句话</strong>：用你自己的话写下这一章最重要的一个观点，最好结合你最近的一次取舍。</p>
+<textarea class="note" data-key="ch03-oneline" placeholder="例如：上周为了赶上线复制了一份重试逻辑，按本章的说法，我应该……"></textarea>
+
+</main>
+
+<script>
+(function () {
+  const { h, s } = APOSD;
+  // 玩具模型（不是书中数据）：每周交付 f = (1 - i) / (1 + K)；
+  // K += f * B * (1 - q) - G * i * K / (1 + K / KC)，q = i / (i + H) 为设计质量。
+  const N = 104, B = 0.015, G = 0.15, KC = 0.6, H = 0.04;
+  function run(i, start) {
+    let K = 0, cum = 0;
+    const out = [];
+    for (let t = 0; t < N; t++) {
+      const ii = t >= start ? i : 0;
+      const f = (1 - ii) / (1 + K);
+      const q = ii > 0 ? ii / (ii + H) : 0;
+      K = Math.max(0, K + B * f * (1 - q) - G * ii * K / (1 + K / KC));
+      cum += f;
+      out.push({ f, cum });
+    }
+    return out;
+  }
+  const tac = run(0, 0);
+  // 战略队累计进度最后一次超过战术队的那一周（之后一直领先）
+  function crossOf(st) {
+    let c = null;
+    for (let t = 1; t < N; t++) if (st[t].cum > tac[t].cum && st[t - 1].cum <= tac[t - 1].cum) c = t + 1;  // 返回周数（1 基）
+    return st[N - 1].cum > tac[N - 1].cum ? c : null;
+  }
+  const iIn = document.getElementById("inv-i"), wIn = document.getElementById("inv-w");
+  const stage = document.getElementById("inv-stage"), narr = document.getElementById("inv-narrate");
+  let view = "cum";
+  const VIEWS = [["cum", "看累计进度"], ["f", "看每周速度"]];
+  const vbtns = VIEWS.map(([k, label]) => h("button", { onclick: () => { view = k; draw(); } }, label));
+  document.getElementById("inv-views").append(...vbtns);
+  iIn.oninput = wIn.oninput = draw;
+
+  const Hh = 300, L = 40, T = 16, Bm = 40;
+  let W = 640, R = 60;
+  const months = (w) => (w / 4.33).toFixed(0);
+
+  function draw() {
+    // 图宽跟随容器，窄屏上文字不会被缩得太小
+    const cs = getComputedStyle(stage);
+    const inner = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    W = Math.max(280, Math.min(640, Math.floor(inner) || 640));
+    R = W < 480 ? 44 : 60;
+    const i = +iIn.value / 100, start = +wIn.value;
+    document.getElementById("inv-i-v").textContent = iIn.value + "%";
+    document.getElementById("inv-w-v").textContent = "第 " + start + " 周";
+    vbtns.forEach((b, k) => b.classList.toggle("on", VIEWS[k][0] === view));
+    const st = run(i, start);
+    const key = view;
+    const yMax = key === "cum" ? Math.ceil(Math.max(st[N - 1].cum, tac[N - 1].cum) / 20) * 20 : 1;
+    const x = (t) => L + (t / (N - 1)) * (W - L - R);
+    const y = (v) => T + (1 - v / yMax) * (Hh - T - Bm);
+    const svg = s("svg", { viewBox: `0 0 ${W} ${Hh}`, width: W, role: "img", "aria-label": key === "cum" ? "两支团队的累计进度曲线" : "两支团队的每周速度曲线" });
+    // 网格与坐标轴
+    const yTicks = key === "cum" ? [0, yMax / 2, yMax] : [0, 0.5, 1];
+    for (const v of yTicks) {
+      svg.append(s("line", { x1: L, y1: y(v), x2: W - R, y2: y(v), style: "stroke:var(--border)", "stroke-width": 1 }),
+        s("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end", "font-size": 11, class: "t-muted", text: key === "cum" ? String(v) : (v * 100) + "%" }));
+    }
+    for (const [w, label] of [[0, "0"], [26, "6 个月"], [52, "1 年"], [78, "18 个月"], [103, "2 年"]]) {
+      svg.append(s("text", { x: x(w), y: Hh - Bm + 18, "text-anchor": "middle", "font-size": 11, class: "t-muted", text: label }));
+    }
+    svg.append(s("text", { x: L, y: Hh - 4, "font-size": 11, class: "t-muted", text: key === "cum" ? "纵轴：累计交付量（第 1 周战术队 = 1）" : "纵轴：每周速度（第 1 周战术队 = 100%）" }));
+    // 曲线
+    const path = (arr) => arr.map((p, t) => (t ? "L" : "M") + x(t).toFixed(1) + " " + y(p[key]).toFixed(1)).join(" ");
+    svg.append(s("path", { d: path(tac), fill: "none", style: "stroke:var(--c2)", "stroke-width": 2 }),
+      s("path", { d: path(st), fill: "none", style: "stroke:var(--c1)", "stroke-width": 2 }));
+    // 交叉点（看累计进度）
+    const cross = i === 0 ? null : crossOf(st);
+    if (cross !== null && key === "cum") {
+      svg.append(s("line", { x1: x(cross - 1), y1: T, x2: x(cross - 1), y2: Hh - Bm, style: "stroke:var(--muted)", "stroke-width": 1, "stroke-dasharray": "4 4" }),
+        s("text", { x: x(cross - 1) + 4, y: T + 12, "font-size": 11.5, class: "t-muted", text: `第 ${cross} 周反超` }));
+    }
+    // 直接标注
+    const yS = y(st[N - 1][key]), yT = y(tac[N - 1][key]);
+    const gap = Math.abs(yS - yT) < 14 ? (yS < yT ? -7 : 7) : 0;
+    svg.append(s("text", { x: W - R + 6, y: yS + 4 + gap, "font-size": 12, text: "战略" }),
+      s("text", { x: W - R + 6, y: yT + 4 - gap, "font-size": 12, text: "战术" }));
+    // 悬停读数：只更新这一层，不重画整张图
+    const layer = s("g", {});
+    const fmt = (p) => key === "cum" ? p.cum.toFixed(1) : (p.f * 100).toFixed(0) + "%";
+    const showHover = (t) => {
+      if (t === null) { layer.replaceChildren(); return; }
+      const tx = x(t) > W / 2 ? x(t) - 8 : x(t) + 8;
+      layer.replaceChildren(
+        s("line", { x1: x(t), y1: T, x2: x(t), y2: Hh - Bm, style: "stroke:var(--fg)", "stroke-width": 1, opacity: 0.4 }),
+        s("circle", { cx: x(t), cy: y(st[t][key]), r: 4, style: "fill:var(--c1);stroke:var(--surface)", "stroke-width": 2 }),
+        s("circle", { cx: x(t), cy: y(tac[t][key]), r: 4, style: "fill:var(--c2);stroke:var(--surface)", "stroke-width": 2 }),
+        s("text", { x: tx, y: T + 30, "text-anchor": x(t) > W / 2 ? "end" : "start", "font-size": 12, text: `第 ${t + 1} 周  战略 ${fmt(st[t])} · 战术 ${fmt(tac[t])}` }));
+    };
+    // 透明命中层
+    const hit = s("rect", { x: L, y: T, width: W - L - R, height: Hh - T - Bm, fill: "transparent" });
+    const onMove = (ev) => {
+      const r = svg.getBoundingClientRect();
+      const px = (ev.clientX - r.left) / r.width * W;
+      const t = Math.round((px - L) / (W - L - R) * (N - 1));
+      showHover(t >= 0 && t < N ? t : null);
+    };
+    hit.addEventListener("pointermove", onMove);
+    hit.addEventListener("pointerdown", onMove);
+    hit.addEventListener("pointerleave", () => showHover(null));
+    svg.append(layer, hit);
+    stage.replaceChildren(svg);
+
+    // 统计与解说
+    document.getElementById("inv-cross").textContent = i === 0 ? "—" : cross === null ? "未反超" : `第 ${cross} 周`;
+    document.getElementById("inv-cross-l").textContent = cross === null ? "两年内累计进度未反超" : `累计进度反超的时间（约 ${months(cross)} 个月）`;
+    document.getElementById("inv-ratio").textContent = (st[N - 1].cum / tac[N - 1].cum).toFixed(2);
+    document.getElementById("inv-vs").textContent = (st[N - 1].f * 100).toFixed(0) + "%";
+    document.getElementById("inv-vt").textContent = (tac[N - 1].f * 100).toFixed(0) + "%";
+    let msg;
+    if (i === 0) msg = "投资比例为 0：两支队伍完全一样，曲线重合。战术队的速度一路下滑，因为每周的工作都在给系统添一点复杂性。";
+    else if (i >= 0.4) msg = `投资 ${iIn.value}%：在这个模型里，投入太多时间会让功能时间不够，迟迟追不上。注意书中反对的"过度投资"是另一回事：作者反对的是前期一次性设计整个系统（瀑布），理由是理想的设计只能在积累经验的过程中浮现。`;
+    else msg = (start > 0 ? `投资 ${iIn.value}%（从第 ${start} 周开始）：开始投资后战略队的速度先降 ${iIn.value}%，之后复杂性累积得慢得多。` : `投资 ${iIn.value}%：战略队起步慢了 ${iIn.value}%，但复杂性累积得慢得多。`) + (cross !== null ? `第 ${cross} 周前后累计进度反超。` : "两年内还没反超。");
+    if (i > 0 && start > 0) {
+      const c0 = crossOf(run(i, 0));
+      msg += ` 你把投资推迟到了第 ${start} 周：那之前积累的复杂性要先还掉。` + (c0 !== null ? `不推迟时第 ${c0} 周反超，现在` + (cross !== null ? `是第 ${cross} 周。推迟得越久，要先还的越多，这就是 3.5 节说的"拖得越久，问题越大"。` : "两年内都追不上了。") : "");
+    }
+    narr.textContent = msg + " 再说一遍：这是玩具模型，数字只用来展示论证的结构。";
+  }
+  draw();
+  let rw = 0;
+  window.addEventListener("resize", () => { const w = stage.clientWidth; if (w !== rw) { rw = w; draw(); } });
+})();
+</script>
+</body>
+</html>

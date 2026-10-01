@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>专题 · 与 OSTEP 对照阅读 · APOSD 精读</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/chapters.js"></script>
+<script src="../assets/aposd.js"></script>
+<style>
+.bridge { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 13.5px; margin: -4px 0 12px; }
+.bridge a { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); text-decoration: none; }
+.bridge a.o { border-color: var(--c2); color: var(--c2); }
+.bridge a.a { border-color: var(--c1); color: var(--c1); }
+.view { border: 1px dashed var(--accent); border-radius: var(--radius); padding: 12px 16px; margin: 18px 0; background: var(--accent-soft); }
+.view::before { content: "本站看法"; display: block; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.view > :last-child { margin-bottom: 0; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="chapter-head">
+  <div class="kicker"><span class="dot" style="background: var(--part5)"></span>专题 · 争议与对照<span>Topic</span></div>
+  <h1>与 OSTEP 对照阅读</h1>
+  <p class="en">Reading APOSD alongside Operating Systems: Three Easy Pieces</p>
+</div>
+
+<nav class="toc"><b>本页目录</b><ol>
+  <li><a href="#why">为什么要对照着读</a></li>
+  <li><a href="#unixio">Unix 文件 I/O：教科书级的深接口</a></li>
+  <li><a href="#layers">文件系统分层：每层换一种抽象</a></li>
+  <li><a href="#drivers">设备驱动：把特化往下推</a></li>
+  <li><a href="#masking">屏蔽异常：可靠传输与 NFS 重试</a></li>
+  <li><a href="#define">把错误定义掉：删除与无状态</a></li>
+  <li><a href="#voodoo">巫毒常数与配置参数</a></li>
+  <li><a href="#crash">崩溃一致性与"直接崩溃"</a></li>
+  <li><a href="#lfs">日志结构设计与本站的 minikv</a></li>
+  <li><a href="#memory">内存 API 与深模块</a></li>
+  <li><a href="#summary">小结：从机制读出设计</a></li>
+  <li><a href="#practice">练习</a></li>
+</ol></nav>
+
+<h2 id="why">为什么要对照着读</h2>
+<p>你读 OSTEP 时学的是<strong>机制</strong>：inode 怎么组织、日志怎么保证一致、重传怎么做。APOSD 讲的是<strong>接口与取舍</strong>：哪些东西该让使用者知道、哪些该藏起来、错误该在哪一层处理。两本书讨论的常常是同一批系统，只是站在不同的高度。Ousterhout 本人也是操作系统和文件系统研究出身（LFS 论文的作者之一，OSTEP 第 43 章的参考文献里就有这篇论文），APOSD 里不少例子直接取自这些系统。</p>
+<p>本页把两本书里讲同一件事的地方逐一配对。每一节开头有两个链接：<span style="color: var(--c2)">橙色</span>是 OSTEP 精读站的章节，<span style="color: var(--c1)">蓝色</span>是本站的 APOSD 章节页。OSTEP 的内容都对照过 OSTEP 原文（1.10 版）核对；APOSD 的小节号对应第 2 版。</p>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>主题</th><th>OSTEP</th><th>APOSD</th><th>一句话的联系</th></tr></thead>
+  <tbody>
+    <tr><td>文件 I/O 接口</td><td>39、40</td><td>4.3、4.4</td><td>五个调用背后是整个文件系统；<code>fsync</code> 是不能省的"重要细节"</td></tr>
+    <tr><td>分层</td><td>36.7、40</td><td>7 章引言</td><td>文件 → 块 → 设备命令，每层抽象都不同</td></tr>
+    <tr><td>设备驱动</td><td>36.7</td><td>6.6、7.2、21.3</td><td>特化被推到最底层；通用接口也有代价</td></tr>
+    <tr><td>异常屏蔽</td><td>48.3、49.7</td><td>10.6、10.9</td><td>重传和重试把错误挡在低层；端到端论证是它的边界</td></tr>
+    <tr><td>定义掉错误</td><td>39.14、49.4</td><td>10.3、10.4</td><td>删除打开的文件、无状态协议：换个定义，错误就不存在</td></tr>
+    <tr><td>配置参数</td><td>8.3、8.5、48.3</td><td>8.2</td><td>Ousterhout 定律 ↔ 把复杂性往下拉</td></tr>
+    <tr><td>崩溃恢复</td><td>42、43.12</td><td>10.7、10.8</td><td>让"恢复"成为一条常走的路径</td></tr>
+    <tr><td>日志结构</td><td>43</td><td>（本站项目）</td><td>追加写 + 间接索引 + 清理，minikv 的原型</td></tr>
+    <tr><td>内存 API</td><td>14</td><td>2.2、4.4、10.8</td><td>谁负责释放，就是接口的一部分</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="unixio">Unix 文件 I/O：教科书级的深接口</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/39-files-dirs.html">OSTEP 39 文件和目录</a><a class="o" href="https://t.miaowuao.cn/ostep/chapters/40-fs-impl.html">OSTEP 40 文件系统实现</a><a class="a" href="../chapters/04-deep-modules.html">APOSD 第 4 章</a></div>
+<p>APOSD 4.4 节把 <code>open/read/write/lseek/close</code> 当作深模块的标准例子：五个签名简单的调用，背后是几十万行实现，而且实现几十年来大幅演进，这五个调用本身却没变。OSTEP 第 40 章用一个极简文件系统（vsfs）把"背后"摊开给你看：inode、位图、目录项、多级索引、路径解析时要读多少次磁盘。两章对着读，你会对"接口有多窄、实现有多深"有体感。</p>
+<p>更有意思的是<strong>接口里没能藏住的部分</strong>。APOSD 4.3 节说，对数据库这类使用者来说，"数据什么时候真正落盘"是重要细节，必须出现在接口里，否则就是虚假的抽象。OSTEP 39.7 节讲的正是这个出口：<code>fsync()</code>。39.8 节进一步给出了"写临时文件 → <code>fsync</code> → <code>rename</code>"来原子地替换文件的套路，依赖的是 <code>rename</code> 在崩溃面前（通常）是原子的这一保证。</p>
+<p>这个套路本身就是一个很好的"往下拉复杂性"的练习对象：每个需要原子更新文件的调用方都手写一遍，还是封装成一个深函数？</p>
+<pre><code class="lang-cpp">// 用 data 原子地替换 path 的内容：崩溃后，path 要么是旧内容，要么是完整的新内容，
+// 不会出现半截文件。成功返回时新内容（包括目录项）已经落盘。
+// 失败时抛 std::system_error，path 保持原样，临时文件会被删除。
+// 要求：path 所在目录可写；同一 path 不能被多个进程并发替换。
+void replaceFileAtomically(const std::filesystem::path&amp; path, std::string_view data);</code></pre>
+<p>注释里的每一条都是调用者必须知道、签名却表达不了的：保证了什么（原子性、持久性）、失败时的状态、并发约束。实现里要处理的事：临时文件命名、写满所有字节（<code>write</code> 可能只写一部分）、<code>fsync</code> 文件、<code>rename</code>、再 <code>fsync</code> 所在目录让目录项也持久化、出错时清理。这些都被藏了起来。这就是第 4 章说的"复杂性在模块内部只需理解一次"。</p>
+
+<h2 id="layers">文件系统分层：每层换一种抽象</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/36-io-devices.html">OSTEP 36 I/O 设备（36.7）</a><a class="a" href="../chapters/07-layers.html">APOSD 第 7 章</a></div>
+<p>APOSD 第 7 章开篇用文件系统作为"好的分层"的例子：最上层把文件呈现为可变长的字节数组；下面一层是内存中定长磁盘块的缓存；最底层是设备驱动，在存储设备和内存之间搬运块。作者的判断标准是：沿着一次调用往下走，<strong>每跨一层，抽象都应该变一次</strong>；相邻两层抽象差不多，就是红旗（透传方法 <span data-flag="passthrough"></span> 往往由此而来）。</p>
+<p>OSTEP 36.7 节的图 36.4 画的是 Linux 的同一条栈（POSIX API → 文件系统 → 通用块层 → 设备驱动），出发点是另一个问题：怎样让操作系统的大部分代码对设备一无所知。下面这张图把两本书的视角合在一起：左边是层，右边是每层向上提供的抽象。</p>
+
+<figure class="fig">
+<svg viewBox="0 0 640 330" width="640" role="img" aria-label="文件系统分层示意：应用、文件系统、通用块层、多个设备驱动、设备，右侧标注每层向上提供的抽象">
+  <defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted)"/></marker></defs>
+  <text x="20" y="22" font-weight="700" font-size="13">层</text>
+  <text x="330" y="22" font-weight="700" font-size="13">向上提供的抽象</text>
+  <rect x="20" y="34" width="270" height="44" rx="6" class="box"/>
+  <text x="155" y="61" text-anchor="middle" font-size="13">应用程序</text>
+  <rect x="20" y="92" width="270" height="44" rx="6" class="accent-soft"/>
+  <text x="155" y="112" text-anchor="middle" font-size="13">文件系统</text>
+  <text x="155" y="128" text-anchor="middle" font-size="11.5" class="t-muted">inode、目录、块分配、日志</text>
+  <text x="330" y="112" font-size="12.5">有名字、可变长的字节数组</text>
+  <text x="330" y="128" font-size="11.5" class="t-muted mono">open / read / write / fsync</text>
+  <rect x="20" y="150" width="270" height="44" rx="6" class="accent-soft"/>
+  <text x="155" y="170" text-anchor="middle" font-size="13">通用块层 + 块缓存</text>
+  <text x="155" y="186" text-anchor="middle" font-size="11.5" class="t-muted">调度、合并请求、缓存</text>
+  <text x="330" y="170" font-size="12.5">编号的定长块，常用块留在内存</text>
+  <text x="330" y="186" font-size="11.5" class="t-muted mono">read_block(n) / write_block(n)</text>
+  <rect x="20" y="208" width="84" height="44" rx="6" class="ok-soft"/>
+  <text x="62" y="235" text-anchor="middle" font-size="12">SATA 驱动</text>
+  <rect x="113" y="208" width="84" height="44" rx="6" class="ok-soft"/>
+  <text x="155" y="235" text-anchor="middle" font-size="12">NVMe 驱动</text>
+  <rect x="206" y="208" width="84" height="44" rx="6" class="ok-soft"/>
+  <text x="248" y="235" text-anchor="middle" font-size="12">USB 驱动</text>
+  <text x="330" y="228" font-size="12.5">同一个块接口的多个实现</text>
+  <text x="330" y="244" font-size="11.5" class="t-muted">特化全部收在这一层（APOSD 6.6、7.2）</text>
+  <rect x="20" y="266" width="270" height="44" rx="6" class="box"/>
+  <text x="155" y="286" text-anchor="middle" font-size="13">设备</text>
+  <text x="155" y="302" text-anchor="middle" font-size="11.5" class="t-muted">各自的命令集、寄存器、DMA</text>
+  <text x="330" y="286" font-size="12.5">厂商协议：命令、扇区、错误码</text>
+  <line x1="306" y1="70" x2="306" y2="292" class="arrow" marker-end="url(#ah1)"/>
+  <text x="600" y="150" font-size="11.5" class="t-muted" text-anchor="middle">每</text>
+  <text x="600" y="166" font-size="11.5" class="t-muted" text-anchor="middle">层</text>
+  <text x="600" y="182" font-size="11.5" class="t-muted" text-anchor="middle">都</text>
+  <text x="600" y="198" font-size="11.5" class="t-muted" text-anchor="middle">变</text>
+</svg>
+<figcaption>沿一次 read 往下走，抽象从"字节范围"变成"块号"再变成"设备命令"。本站自绘示意，层次划分做了简化。</figcaption>
+</figure>
+
+<p>反过来想：如果某个项目里出现了一层 <code>FileManager</code>，它的方法和下面 <code>FileStore</code> 的方法一一对应、参数也一样，只是转手调用，那它就违反了这张图背后的原则：它没有提供新的抽象，只增加了一层要学的接口。</p>
+
+<h2 id="drivers">设备驱动：把特化往下推</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/36-io-devices.html">OSTEP 36.7</a><a class="a" href="../chapters/06-general-purpose.html">APOSD 6.6</a><a class="a" href="../chapters/07-layers.html">APOSD 7.2</a><a class="a" href="../chapters/21-decide-what-matters.html">APOSD 21.3</a></div>
+<p>设备驱动在 APOSD 里出现了三次，每次说明不同的东西：</p>
+<ul>
+  <li><strong>6.6 节</strong>：通常我们把特化代码往<em>上</em>推（让底层保持通用），但驱动是把特化往<em>下</em>推的例子：内核定义一个只有"读块""写块"这类通用操作的接口，每种设备的怪癖都关在各自的驱动里，内核核心不需要知道任何设备细节，新设备只要能实现这个接口就能接入。</li>
+  <li><strong>7.2 节</strong>：多个驱动签名完全相同，但这不是透传方法，因为它们是同一接口的不同实现，各自提供实质性的功能。</li>
+  <li><strong>21.3 节</strong>：驱动接口是一个"中心性"的设计决定，成百上千个驱动依赖它，所以它是需要被强调、被认真设计的东西。</li>
+</ul>
+<p>OSTEP 36.7 节从内核实现者的角度讲了同一件事（"怎样构建与设备无关的操作系统"），还给出一个让人印象深刻的数字：对 Linux 内核的研究发现，超过 70% 的代码在设备驱动里。换句话说，"把特化往下推"的结果是，绝大部分代码都在最底层，而上面的核心保持小而通用。用 C 写的话，这种接口通常长这样（本站简化示例）：</p>
+<pre><code class="lang-c">/* 块设备驱动必须提供的操作。内核其余部分只通过这张表访问设备。
+ * 所有操作以 512 字节扇区为单位；成功返回 0，失败返回负的 errno。 */
+struct blockdev_ops {
+    int (*read)(void *dev, uint64_t sector, void *buf, uint32_t nsect);
+    int (*write)(void *dev, uint64_t sector, const void *buf, uint32_t nsect);
+    int (*flush)(void *dev);          /* 把设备自身的写缓存刷到持久介质 */
+    uint64_t (*capacity)(void *dev);  /* 以扇区计 */
+};</code></pre>
+
+<div class="counter" data-title="通用接口的代价：OSTEP 自己举的反例">
+  <p>OSTEP 36.7 节同时指出了封装的代价：SCSI 设备能报告非常丰富的错误信息，但因为通用块接口要照顾错误处理简单得多的 ATA/IDE 设备，上层最终只能收到一个笼统的 <code>EIO</code>，SCSI 提供的细节全丢了。</p>
+  <p>这正好对应 APOSD 的两处提醒：4.3 节说抽象只能省略<strong>不重要</strong>的细节；10.9 节说，如果模块外部确实需要某个异常信息，就不能把它屏蔽掉。对普通应用，"读失败了"就够了；对文件系统检查工具或存储运维来说，"是介质错误还是链路超时"决定了下一步怎么做。好的通用接口通常会为少数需要细节的调用者留一条旁路（OSTEP 同一节也提到了绕过文件抽象的"原始接口"），而不是让所有人都背上细节。</p>
+</div>
+
+<h2 id="masking">屏蔽异常：可靠传输与 NFS 重试</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/48-distributed.html">OSTEP 48 分布式系统</a><a class="o" href="https://t.miaowuao.cn/ostep/chapters/49-nfs.html">OSTEP 49 NFS</a><a class="a" href="../chapters/10-define-errors-out.html">APOSD 10.6、10.9</a></div>
+<p>APOSD 10.6 节讲"屏蔽异常"（exception masking）：在系统的低层检测并处理异常，上层根本感觉不到。两个例子都是你在 OSTEP 里学过机制的：</p>
+<ul>
+  <li><strong>TCP 重传</strong>：包可能因为损坏或拥塞被丢掉，TCP 在内部重发，调用者看到的是可靠的字节流。OSTEP 48.3 节从零搭了一个可靠通信层（确认、超时重试、序号去重），并指出最常用的可靠层就是 TCP。</li>
+  <li><strong>NFS 客户端重试</strong>：服务器崩溃或没有响应时，客户端反复重发请求，直到服务器恢复；应用程序不会收到错误，只会挂起。OSTEP 49.7 节解释了这为什么<em>可行</em>：大多数 NFS 请求是幂等的（WRITE 也带着确切的偏移量），所以"请求丢了""服务器宕了""回复丢了"三种情况都可以用同一个动作（重发）处理。</li>
+</ul>
+<p>两本书在这里正好互补：OSTEP 讲机制（幂等让重试安全），APOSD 为它的<strong>用户可见后果</strong>辩护。NFS 用户经常抱怨应用"卡死"，很多人主张应该返回错误；作者认为那样更糟：应用对"文件服务器没了"几乎无能为力，只能层层放弃，最后整个工作环境崩掉，而在 NFS 层统一重试，应用不需要任何处理代码，服务器回来后就能无缝继续，用户等不及还可以手动终止程序。</p>
+
+<figure class="fig">
+<svg viewBox="0 0 640 300" width="640" role="img" aria-label="异常屏蔽示意：丢包在可靠传输层被吸收，服务器宕机在 NFS 客户端被吸收，数据损坏只能在应用层用端到端校验发现">
+  <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted)"/></marker></defs>
+  <rect x="20" y="20" width="250" height="40" rx="6" class="box"/>
+  <text x="145" y="45" text-anchor="middle" font-size="13">应用（编辑器、编译器……）</text>
+  <rect x="20" y="72" width="250" height="40" rx="6" class="box"/>
+  <text x="145" y="97" text-anchor="middle" font-size="13">NFS 客户端文件系统</text>
+  <rect x="20" y="124" width="250" height="40" rx="6" class="box"/>
+  <text x="145" y="149" text-anchor="middle" font-size="13">RPC</text>
+  <rect x="20" y="176" width="250" height="40" rx="6" class="box"/>
+  <text x="145" y="201" text-anchor="middle" font-size="13">可靠传输（确认 + 超时重试 + 序号）</text>
+  <rect x="20" y="228" width="250" height="40" rx="6" class="box"/>
+  <text x="145" y="253" text-anchor="middle" font-size="13">不可靠网络</text>
+
+  <rect x="350" y="228" width="270" height="40" rx="6" class="ok-soft"/>
+  <text x="485" y="253" text-anchor="middle" font-size="12.5">丢包、乱序</text>
+  <path d="M350,248 C320,248 300,206 274,198" class="arrow" marker-end="url(#ah2)"/>
+  <text x="485" y="214" text-anchor="middle" font-size="11.5" class="t-muted">在传输层被吸收，上层看不见</text>
+
+  <rect x="350" y="124" width="270" height="40" rx="6" class="warn-soft"/>
+  <text x="485" y="149" text-anchor="middle" font-size="12.5">服务器崩溃、重启、无响应</text>
+  <path d="M350,144 C320,144 300,100 274,94" class="arrow" marker-end="url(#ah2)"/>
+  <text x="485" y="112" text-anchor="middle" font-size="11.5" class="t-muted">NFS 客户端重试吸收；应用表现为挂起</text>
+
+  <rect x="350" y="20" width="270" height="40" rx="6" class="bad-soft"/>
+  <text x="485" y="38" text-anchor="middle" font-size="12.5">数据在内存或磁盘里被写坏</text>
+  <text x="485" y="53" text-anchor="middle" font-size="11.5" class="t-muted">低层都"成功"了，只有两端能发现</text>
+  <path d="M350,40 L274,40" class="arrow" marker-end="url(#ah2)"/>
+</svg>
+<figcaption>一个错误应该被哪一层吸收，取决于哪一层既能发现它、又能处理它。本站自绘示意。</figcaption>
+</figure>
+
+<div class="counter" data-title="屏蔽的边界：端到端论证">
+  <p>OSTEP 48.5 节里的旁注介绍了端到端论证（end-to-end argument）：要确认文件从 A 机器完整传到 B 机器，只能在两端做校验；可靠传输保证的只是"网络上没丢"，挡不住数据在发送方内存里或接收方写盘时被损坏。这就是上图最上面那一格。</p>
+  <p>APOSD 10.9 节从另一个方向画了同一条线：屏蔽只适用于模块外部<strong>不需要</strong>这个异常信息的情况。作者举的反例是一个学生团队写的网络模块，把所有网络异常都吞掉了，结果上层应用根本无法知道消息丢了或对端挂了。OSTEP 48.5 节还给出了另一种"在错误的层屏蔽"的代价：RPC 如果建在可靠传输之上，会多出两条确认消息，所以很多 RPC 系统选择建在 UDP 上、自己做超时重试。屏蔽不是越低越好，而是要放在"既能发现又能正确处理"的那一层。</p>
+</div>
+
+<h2 id="define">把错误定义掉：删除打开的文件与无状态协议</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/39-files-dirs.html">OSTEP 39.14</a><a class="o" href="https://t.miaowuao.cn/ostep/chapters/49-nfs.html">OSTEP 49.4</a><a class="a" href="../chapters/10-define-errors-out.html">APOSD 10.3、10.4</a></div>
+<p>屏蔽是"错误发生了，但在低层处理掉"；APOSD 10.3 节更推崇的是另一招：<strong>重新定义语义，让错误根本不存在</strong>。OSTEP 里至少有两处现成的例子：</p>
+<ul>
+  <li><strong>删除一个还打开着的文件</strong>。APOSD 10.4 节对比了两种系统：Windows 拒绝删除被打开的文件，用户只好去找、去杀占用它的进程，甚至重启；Unix 则让删除立即成功，只是把名字从目录里拿掉，已经打开它的进程照常读写，等所有人都关闭后数据才真正释放。作者指出这一个定义同时消灭了两类错误：删除方不会失败，使用方也不会突然读写出错。OSTEP 39.14 节讲 <code>unlink</code> 为什么叫 unlink 时给出了机制的一半：删除只是去掉"名字 → inode"的链接并递减链接计数，计数归零才回收；另一半（打开的文件描述符也会让 inode 活着）就是 APOSD 描述的行为。</li>
+  <li><strong>NFSv2 的无状态协议</strong>。OSTEP 49.4 节解释：如果服务器记住"哪个客户端打开了哪个文件、读到哪里"，那么服务器崩溃要恢复这些状态，客户端崩溃了服务器还得发现并清理。NFS 的设计者干脆让每个请求都自带完成它所需的全部信息，服务器不保存客户端状态，于是"服务器重启后状态丢失"这一类错误不复存在，崩溃恢复退化成"客户端重试一下"。OSTEP 在这里还引用了 Ousterhout 1991 年关于"分布式状态"（distributed state）的文章。</li>
+</ul>
+<p>两个例子的共同点是：设计者没有在"怎么处理这个错误"上花力气，而是问"能不能换个定义，让这个错误不会发生"。代价也都很明确：Unix 允许进程继续写一个已经"被删除"的文件（Ousterhout 说从没见过这造成严重问题）；无状态意味着服务器不知道哪些客户端缓存了哪些块（OSTEP 49.4 节明确这样说），也就没法主动通知它们缓存失效，读 49.9～49.10 节的缓存一致性问题时可以带着这一点去看。</p>
+
+<h2 id="voodoo">巫毒常数与配置参数</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/08-mlfq.html">OSTEP 8 MLFQ</a><a class="o" href="https://t.miaowuao.cn/ostep/chapters/48-distributed.html">OSTEP 48.3</a><a class="a" href="../chapters/08-pull-down.html">APOSD 第 8 章</a></div>
+<p>你可能还记得 OSTEP 第 8 章 8.3 节的一段讨论（及随后的提示框）：MLFQ 的优先级提升周期 S 该设成多少？设大了长任务会饿死，设小了交互任务分不到足够的 CPU。OSTEP 说 Ousterhout 把这类需要"黑魔法"才能调对的值叫作<strong>巫毒常数</strong>（voo-doo constants），并把"尽量避免巫毒常数"命名为 <strong>Ousterhout 定律</strong>。它也坦白了常见的结局：一个塞满默认值的配置文件，偶尔由经验丰富的管理员调一调，多数时候没人动，只能祈祷默认值够用。8.5 节还列了更多同类问题：队列数、每个队列的时间片多长、提升多频繁，都没有简单答案。</p>
+<p>APOSD 8.2 节是这条定律在接口设计上的展开：配置参数是把复杂性<strong>往上推</strong>给使用者，很多时候用户也定不出正确的值，而模块自己多做一点工作就能算出来。作者的例子恰好又是网络：重传间隔与其做成参数，不如测量成功请求的响应时间、取它的倍数，这样还能随运行条件自动调整。OSTEP 48.3 节的提示框讲的是同一个旋钮：超时设小了白白重发，设大了反应迟钝；多客户端时可以用指数退避（exponential back-off）。</p>
+<p>作者给出的检验问题值得背下来：<strong>导出一个参数之前，问自己"用户（或更高层的模块）能比我们在这里算得更好吗？"</strong>如果能（比如只有用户知道哪些请求更紧急），就导出，并给一个合理的默认值；如果不能，就自己算。</p>
+<div class="aside" data-title="对照本站项目">
+  <p>本站的 <a href="../project/index.html">minikv 项目</a>里有一个专门对应第 8 章的任务：找出被往上推给调用者的配置参数，判断哪些应该由模块自己决定。做那个任务时，可以把 OSTEP 里 MLFQ 那几个旋钮当作参照：哪些是真正需要用户知识的，哪些只是设计者没想清楚？</p>
+</div>
+
+<h2 id="crash">崩溃一致性与"直接崩溃"</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/42-crash-consistency.html">OSTEP 42 崩溃一致性</a><a class="o" href="https://t.miaowuao.cn/ostep/chapters/43-lfs.html">OSTEP 43.12</a><a class="a" href="../chapters/10-define-errors-out.html">APOSD 10.7、10.8</a></div>
+<p>OSTEP 第 42 章的核心问题是：更新磁盘上几个相关结构的过程中断电了，怎么办？早期答案是 fsck（事后扫描全盘修复），OSTEP 吐槽它像在卧室掉了钥匙却从地下室开始搜整栋房子；后来的答案是日志（journaling，即预写日志）：先把要做的修改写进日志，再写到原位置，崩溃后只需重放日志。LFS 的恢复（43.12 节）用的是检查点加前滚（roll forward）。</p>
+<p>APOSD 第 10 章站在应用设计者的位置，提出了两个和"崩溃"有关的手法：</p>
+<ul>
+  <li><strong>错误升级</strong>（error promotion，10.7 节）：作者的 RAMCloud 存储系统发现单个对象损坏时，不单独修这个对象，而是直接让整台服务器崩溃，复用已有的服务器崩溃恢复机制。好处是恢复机制只有一套，而且它被调用得更频繁，bug 更容易被发现；作者也说明了限制：只适用于罕见的错误，不能每丢一个包就崩一次。</li>
+  <li><strong>直接崩溃</strong>（just crash，10.8 节）：对多数程序来说，内存耗尽、打开的文件读写时出现硬件错误、内部数据结构不一致，最简单的处理就是打印诊断信息然后退出。但作者特意指出：对复制存储系统，遇到 I/O 错误就退出是不可接受的，用副本恢复数据正是它提供给用户的价值。</li>
+</ul>
+<div class="view">
+  <p>两本书连起来看，会得到一个很实用的推论：<strong>"直接崩溃"之所以可以接受，前提是重启之后能回到一致状态</strong>，而这恰恰是 OSTEP 第 42、43 章所讲机制的价值。日志、原子 <code>rename</code>、检查点让"进程随时可能死掉"变成一条被设计过、被经常执行的正常路径，于是上层代码才敢对罕见错误一律"崩溃了事"，而不是在每个调用点写一段大概率没被测过的恢复代码。反过来，如果你的存储格式没有崩溃一致性保证，"直接崩溃"就会把一个小错误变成数据损坏。</p>
+</div>
+
+<h2 id="lfs">日志结构设计与本站的 minikv</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/43-lfs.html">OSTEP 43 LFS</a><a class="a" href="../project/index.html">本站项目：minikv</a></div>
+<p>本站的渐进重构项目 <a href="../project/index.html">minikv</a> 是一个追加写日志加内存索引的小型键值存储，本质上就是 OSTEP 第 43 章 LFS 思想的缩小版。LFS 的几个关键设计在 minikv 里都有对应：</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>LFS（OSTEP 43）</th><th>追加写 KV 里的对应物</th><th>接口设计上该问的问题（APOSD）</th></tr></thead>
+  <tbody>
+    <tr><td>所有写入都追加到日志，从不原地覆盖（43.1）</td><td><code>put</code> / <code>del</code> 都追加一条记录</td><td>调用者需要知道"删除其实是追加一条墓碑"吗？（第 5 章：信息隐藏）</td></tr>
+    <tr><td>inode map 记录每个 inode 的最新位置（43.5）</td><td>内存索引：键 → 最新记录的偏移</td><td>索引的格式有没有泄漏到其他模块？（信息泄漏 <span data-flag="leakage"></span>）</td></tr>
+    <tr><td>检查点区域 + 前滚恢复（43.6、43.12）</td><td>启动时重放日志、跳过撕裂的尾部</td><td>恢复逻辑是藏在 <code>open</code> 里，还是要调用者按顺序调用几个函数？（按时间顺序分解 <span data-flag="temporal"></span>）</td></tr>
+    <tr><td>清理器回收旧段；何时清、清哪些是策略问题（43.9～43.11）</td><td>压缩（compaction）</td><td>该暴露 <code>compact()</code> 和阈值参数，还是让模块自己决定？（第 8 章 + 上面的巫毒常数）</td></tr>
+  </tbody>
+</table></div>
+<p>OSTEP 43.13 节的小结还有一句和 APOSD 精神相通的话（"把缺陷变成特性"的提示框）：NetApp WAFL 把旧版本数据变成快照功能，同时缓解了清理压力。这和 APOSD 第 10 章"把错误定义为不存在"是同一种思路：不在原问题上硬磕，而是重新定义问题，让它消失或变成别的东西。</p>
+
+<h2 id="memory">内存 API 与深模块</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/14-memory-api.html">OSTEP 14 内存 API</a><a class="a" href="../chapters/04-deep-modules.html">APOSD 4.4</a><a class="a" href="../chapters/10-define-errors-out.html">APOSD 10.8</a></div>
+<p>OSTEP 14.4 节列了一串常见的内存错误：忘了分配、分配不够、忘了初始化、忘了释放、用完之前就释放、重复释放、<code>free</code> 了不该 <code>free</code> 的指针。每一条，从 APOSD 的角度看，都是<strong>接口的非正式部分</strong>没被遵守：谁分配、谁释放、什么时候释放，这些约束不在签名里，却是每个调用者必须知道的。</p>
+<ul>
+  <li>APOSD 2.2 节用的正是这个例子说明<strong>认知负担</strong>：函数分配内存、返回指针、要求调用者释放，每个调用者都多了一件要记住的事；如果分配和释放由同一个模块负责，负担就消失了。</li>
+  <li>APOSD 4.4 节说垃圾回收器是"根本没有接口"（no interface at all）的深模块：引入它反而让系统的总接口<strong>变小</strong>，因为"释放对象"这项接口不存在了。OSTEP 14.4 节开头也提到，正因为内存管理太容易出错，很多新语言用垃圾回收免去了调用 <code>free</code>。</li>
+  <li>APOSD 10.8 节的 <code>ckalloc</code>：<code>malloc</code> 返回 <code>NULL</code> 要求每个调用点都检查；包一层"失败就打印信息并退出"，就把这个错误从所有调用点定义掉了。</li>
+</ul>
+<div class="ba">
+  <div data-label="调用者负责释放">
+<pre><code class="lang-c">/* 返回 path 的全部内容，以 '\0' 结尾，长度写入 *len。
+ * 调用者必须用 free() 释放返回值。失败返回 NULL 并设置 errno。 */
+char *read_whole_file(const char *path, size_t *len);
+
+size_t n; char *cfg = read_whole_file("app.conf", &amp;n);
+if (!cfg) { perror("app.conf"); return -1; }
+if (parse(cfg, n) &lt; 0) return -1;      /* 这里漏了 free(cfg) */
+free(cfg);</code></pre>
+    <p>接口注释写得很尽责，但"必须 free"这条约束要靠每个调用者在每条退出路径上记住。第 7 行就是 OSTEP 14.4 节"忘记释放"的典型现场：错误路径提前返回，内存泄漏了。</p>
+  </div>
+  <div data-label="所有权在类型里">
+<pre><code class="lang-cpp">// 返回 path 的全部内容。失败抛 std::system_error（带路径和 errno）。
+std::string readWholeFile(const std::filesystem::path&amp; path);
+
+std::string cfg = readWholeFile("app.conf");
+parse(cfg);   // 任何路径退出，cfg 都会被析构释放</code></pre>
+    <p>C++ 的 RAII 让"谁释放"从注释里的约定变成了类型系统的一部分，调用者不再需要知道。这和 APOSD 对垃圾回收的评价是同一个方向：<strong>一项接口消失了</strong>。错误也从"返回 NULL + errno"变成了异常，调用者不想处理时可以让它向上传播（第 10 章的异常聚合）。</p>
+  </div>
+</div>
+<div class="counter" data-title="深模块也有漏不住的地方">
+  <p>OSTEP 14.4 节特意提醒：垃圾回收并不能消灭内存泄漏。只要你还持有某块内存的引用，回收器就永远不会释放它。所以"不再需要的对象要及时放掉引用"仍然是使用者要知道的事，只是比"手动 <code>free</code>"轻得多。所以 APOSD 说垃圾回收器"根本没有接口"，本站认为要打个折扣：它仍有一条使用者必须知道的非正式约束；C++ 里对应的问题是 <code>shared_ptr</code> 的循环引用。</p>
+</div>
+
+<h2 id="summary">小结：从机制读出设计</h2>
+<ul>
+  <li>OSTEP 里每一个"让上层不用操心"的机制（文件抽象、块层、驱动、重传、日志），都可以用 APOSD 的问题重新审视一遍：它向上提供了什么新抽象？省略了哪些细节？省略得对不对？</li>
+  <li>接口没能藏住的东西（<code>fsync</code>、<code>EIO</code>、"至少一次"语义），往往就是 APOSD 所说的"重要细节"，必须出现在接口里。</li>
+  <li>处理错误有四种层次：定义掉（Unix 删除、无状态协议）、屏蔽（重传、NFS 重试）、聚合与升级（崩溃恢复复用）、直接崩溃。选哪一种，取决于哪一层既能发现它又能处理它，以及外部是否需要知道。</li>
+  <li>巫毒常数是"把复杂性往上推"的症状；能测量就自己算，确实需要用户知识才导出参数。</li>
+  <li>"直接崩溃"的底气来自崩溃一致性：先让重启后的恢复成为一条可靠、常走的路径。</li>
+</ul>
+
+<h2 id="practice">练习</h2>
+<div class="exercise">
+  <p class="q">你在写一个分布式日志收集客户端，把本地日志通过网络发到收集服务器。服务器暂时不可达时，客户端 API <code>append(record)</code> 应该怎么做：像 NFS 一样阻塞重试，立刻返回错误，还是先写本地缓冲、后台重试？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>先问 APOSD 10.9 节的问题：<strong>调用者需不需要知道这个异常</strong>？业务代码打一条日志，几乎从不关心服务器是否暂时不可达，更不应该因为日志服务挂了而卡住请求处理。所以 NFS 式的"挂起"在这里不合适（NFS 挂起是因为应用没有文件就什么也做不了，而业务没有日志服务照样能工作）。合理的设计通常是：在模块内部缓冲并后台重试（屏蔽），缓冲满了按明确的策略丢弃或降级，并通过一个单独的统计接口暴露"丢了多少"，给少数关心的运维代码用。</p>
+    <p>再问 OSTEP 49.7 节的问题：重试安全吗？如果服务器可能已收到但回复丢了，重发会产生重复日志，所以要么让记录带唯一 ID 使写入幂等，要么在接口注释里写明"至少一次"语义。这条信息是重要的，必须出现在接口里。</p>
+  </div></details>
+</div>
+<div class="exercise">
+  <p class="q">下面哪些值应该做成配置参数？(1) 数据库连接池大小；(2) 本地缓存的 LRU 容量；(3) TCP 风格的重传超时；(4) 某类请求是否为"高优先级"。</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>(4) 是 APOSD 8.2 节自己承认的正当用例：只有用户知道哪些请求更紧急。(3) 是作者举的反例，应该测量往返时间自动计算。(1) 和 (2) 介于两者之间：模块可以给出合理默认值（例如按 CPU 核数、可用内存推算），并允许在少见情况下覆盖。关键是默认值要好到大多数人永远不需要碰它，否则就成了 OSTEP 说的那种"塞满默认值、没人敢动"的配置文件。</p>
+  </div></details>
+</div>
+
+<p class="quiz-score"></p>
+<div class="mcq" data-answer="1"><div class="q">OSTEP 第 49 章和 APOSD 10.6 节都讨论了 NFS 客户端的重试。两者的侧重点分别是？</div>
+  <div class="opts"><button>A. 两者都在论证 NFS 应该向应用返回错误</button><button>B. OSTEP 讲幂等性为什么让重试安全；APOSD 为"应用因此挂起"这一用户可见后果辩护</button><button>C. OSTEP 批评重试导致应用挂起；APOSD 认为应该改用异常</button><button>D. 两者都认为重试应该交给应用程序做</button></div>
+  <div class="explain">OSTEP 49.7 节的重点是：多数 NFS 请求幂等，所以三种故障可以用同一个"重发"统一处理。APOSD 10.6 节承认用户常抱怨挂起，但认为在 NFS 层屏蔽比让每个应用自己处理更好。</div></div>
+<div class="mcq" data-answer="2"><div class="q">OSTEP 36.7 节提到 SCSI 的丰富错误信息到了上层只剩一个 <code>EIO</code>。用 APOSD 的语言，这说明了什么？</div>
+  <div class="opts"><button>A. 通用接口一定比专用接口差</button><button>B. 设备驱动是浅模块</button><button>C. 通用接口省略的细节，对某些使用者可能是重要的；需要时应提供旁路，而不是让所有人背负细节</button><button>D. 应该为每种设备设计不同的文件系统</button></div>
+  <div class="explain">这是抽象"省略细节"的代价：对大多数调用者，"读失败"就够了；对诊断工具，细节很重要。APOSD 4.3 节（只省略不重要的细节）和 10.9 节（外部需要的异常信息不能被屏蔽）给出了判断方向。</div></div>
+<div class="mcq" data-answer="0"><div class="q">"Ousterhout 定律"这个名字出自哪里，说的是什么？</div>
+  <div class="opts"><button>A. 出自 OSTEP 第 8 章的提示框：尽量避免需要"黑魔法"才能调对的巫毒常数</button><button>B. 出自 APOSD 第 8 章：配置参数越多越好</button><button>C. 出自 OSTEP 第 43 章：日志结构文件系统总是更快</button><button>D. 出自 APOSD 第 4 章：模块应该深</button></div>
+  <div class="explain">这个名字是 OSTEP 作者起的（他们说 Ousterhout 是他们当年的操作系统老师）。APOSD 书中没有用这个名字，但 8.2 节对配置参数的批评是同一个思想。</div></div>
+
+</main>
+</body>
+</html>
