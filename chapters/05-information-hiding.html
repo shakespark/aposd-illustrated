@@ -259,8 +259,10 @@ private:
 </div>
 
 <h2>练一练</h2>
-<p>下面三道题来自训练场：一道按时间顺序分解，一道"看起来像但其实没问题"，一道默认值设计。本章题库共 20 题，<a href="../train/index.html#ch=5">去训练场做完整一组</a>。</p>
+<p>下面三道题来自训练场：一道按时间顺序分解，一道"看起来像但其实没问题"，一道默认值设计。本章题库共 22 题，<a href="../train/index.html#ch=5">去训练场做完整一组</a>。</p>
 <div class="drill-embed" data-ids="ch05-flag-01 ch05-flag-05 ch05-ab-01"></div>
+<p>再加一道，取材于读者讨论组（对应上面"边界与反方"里的"讨论组"一栏）：</p>
+<div class="drill-embed" data-ids="ch05-flag-09"></div>
 
 <h2>动手：项目任务</h2>
 <p>本站的 <a href="../project/index.html">minikv</a> 是一个能跑、有测试、但按"战术式"风格写成的 C++ 键值存储。它的日志代码恰好按"写、读、解析"的时间顺序切成了 <code>LogWriter</code>、<code>LogReader</code>、<code>RecordParser</code> 三个类，记录格式这一个设计决定三个类各知道一份，还漏进了 <code>store.cpp</code>。去找这些痕迹：<code>LogReader::next</code> 里那个没有解释的 <code>skip</code>，<code>store.cpp</code> 里反复出现的"记录头大小 + 键长 + 值长"，以及 <code>Store::load()</code> 里把几个类串起来的胶水代码。然后把格式收进一个深模块，测试保持全绿。这个任务和第 4 章共用（第 4 章那一半是浅类和参数过多的 <code>open</code>）。</p>
