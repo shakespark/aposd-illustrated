@@ -40,6 +40,7 @@
   <li><a href="#rewrite">插曲：两次重写与一次性能回退</a></li>
   <li><a href="#tdd">分歧三：TDD</a></li>
   <li><a href="#verdict">两人各自的总结与本站看法</a></li>
+  <li><a href="#group">讨论组里的补充：辩论之外，Ousterhout 还说过什么</a></li>
   <li><a href="#practice">判断练习</a></li>
 </ol></nav>
 
@@ -51,6 +52,7 @@
   <li>后续：两人一起上了 Book Overflow 播客，聊这次讨论的过程（<a href="https://www.youtube.com/watch?v=3Vlk6hCWBw0">YouTube，2025-03-30</a>）。本页不引用播客内容，只列出供你自己去听。</li>
   <li>Ousterhout 在 <a href="https://newsletter.pragmaticengineer.com/p/the-philosophy-of-software-design">The Pragmatic Engineer 访谈</a>（2025-04）里也简短回顾过这次讨论。</li>
 </ul>
+<p>书里给的读者讨论组（<a href="https://groups.google.com/g/software-design-book">software-design-book</a>）里，同样的话题从 2019 年起就反复出现，Ousterhout 在那里说过一些书和对话里都没有的话，整理在本页<a href="#group">靠后的一节</a>。</p>
 <p>本页按对话的结构梳理三处分歧：每一处先摆出<strong>双方各自的论证</strong>（尽量用他们自己的理由，而不是对方转述的版本），再用一组原创 C++ 代码把两种风格放在一起，最后单独给出<strong>本站看法</strong>。对话里的代码（<code>PrimeGenerator</code> 等）是两位作者的，这里只点名，不搬运；建议你直接去读原文，它本身就是很好的设计评审示范。</p>
 <div class="tip"><p>读这页之前，最好已经读过原书第 4、9、12、13、19 章。下面凡是"书中"指 APOSD 第 2 版；凡是"对话中"指上面那份 GitHub 文档。</p></div>
 
@@ -332,6 +334,63 @@ std::chrono::seconds parseDuration(std::string_view s) {
   <p>对本站的读者（C/C++、系统方向）：接口契约复杂、性能常常就是需求本身、代码寿命很长，这三点都让 Ousterhout 那一边的论证更贴近日常。但别把这页当成"站队"材料。对话里最该学的，是两个人如何<strong>拿具体代码说话、承认自己的错误、把分歧精确地写下来</strong>。这本身就是一次示范性的设计评审。</p>
 </div>
 
+<h2 id="group">讨论组里的补充：辩论之外，Ousterhout 还说过什么</h2>
+<p>这一节的材料来自书中给出的读者讨论组，时间从 2019 年到 2026 年。帖子是公开的，每条都附了原帖链接；下面全部是转述。请注意两点：讨论组里的话是<strong>即兴的回帖</strong>，不如书和那份对话文档斟酌；读者一方的说法只代表发帖人自己。</p>
+
+<h3>关于方法长度：比书里说得更直白的几句</h3>
+<ul>
+  <li><strong>"我并不偏爱长方法"。</strong>有读者以为书主张"长方法比短方法好"。Ousterhout 的回答是：其他条件相同时，短的通常更好；问题是把方法变短时，其他条件往往并不相同。每多一个方法就多一个接口；拆得太多，一是接口加起来的复杂性超过了省下的，二是会得到必须连着读才懂的方法。还顺带指出：方法越短，调用栈往往越深。（<a href="https://groups.google.com/g/software-design-book/c/NibdflTQTy8">2023-01</a>；2019 年和 2024 年也各说过一次：<a href="https://groups.google.com/g/software-design-book/c/OlYvD18QtnI">一</a>、<a href="https://groups.google.com/g/software-design-book/c/LdDRVpwLL-Y">二</a>）</li>
+  <li><strong>"拆小是局部优化"。</strong>把一个方法变短，多半确实让<em>那一个</em>方法更好懂；而设计要优化的是整个系统好不好懂。所以先做出深的接口，实现太长时再找拆法，并且拆出来的东西也要深、彼此独立。（<a href="https://groups.google.com/g/software-design-book/c/OlYvD18QtnI">2019-01</a>）</li>
+  <li><strong>对外不可见的拆分不算成本。</strong>Ousterhout 举了自己的做法：把中断处理函数的主体抽成一个独立方法，顶层只留进出中断的管道代码，这样测试时不必真的触发中断。这种拆分在模块外面看不见，不给系统其余部分增加复杂性。（<a href="https://groups.google.com/g/software-design-book/c/OlYvD18QtnI">2019-01</a>）这和上面<a href="#length">分歧一</a>里 <code>crc32</code> 的例子是同一类：好的抽取存在，判据不是行数。</li>
+  <li><strong>"只做一件事"该怎么读。</strong>在 Ousterhout 看来，这句话说的是<strong>调用者看到的抽象</strong>单一而紧凑，能用很简单的话描述；而不是方法体里只有一个操作。按前一种读法，一个二十多行、对外只有一个清楚功能的方法就已经"只做一件事"了。（<a href="https://groups.google.com/g/software-design-book/c/Kb5K3YcjIXw">2019-04</a>，针对 Martin 的一篇示范文章，Ousterhout 称其把 25 行代码拆成了 9 个方法）同一串里 Ousterhout 也承认，"深"推到极端同样荒谬：把整个程序塞进一个类。任何有点道理的想法推到极端几乎都是坏主意。</li>
+  <li><strong>课堂上的用法。</strong>早在 2019 年初 Ousterhout 就点名过《Clean Code》的 Listing 10-8（从描述看，应当就是后来对话里的 <code>PrimeGenerator</code>）：Martin 把它当作"重构之后"的范例，Ousterhout 的课上把它当作"重构之前"，让学生先批评再重写。（<a href="https://groups.google.com/g/software-design-book/c/OlYvD18QtnI">2019-01</a>）</li>
+</ul>
+
+<h3>关于单一职责原则（SRP）：书里一个字没提</h3>
+<p>APOSD 全书没有出现 SRP 或 SOLID。讨论组里 Ousterhout 被问过三次，立场有变化，值得按时间看：</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>时间</th><th>Ousterhout 的说法（转述）</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://groups.google.com/g/software-design-book/c/qD9WOq0ceOg">2020-07</a></td><td>如果 Java 的"类过多症"确实来自对 SRP 的过度执行，那就说明 SRP 大概不是一条好的设计原则。所有强调"把单个东西做小"的方法都会产出大量带接口的东西；要在系统层面看复杂性。小方法更好测，但要测的方法也更多，未必净赚。</td></tr>
+    <tr><td><a href="https://groups.google.com/g/software-design-book/c/qD9WOq0ceOg">2022-02</a></td><td>口气缓和了：合理使用没有问题，一个类的方法和功能之间有内聚是好事，这和"单一职责"相近。但它经不起过度或过细的执行（"一个类只加一个特性""一个方法只做一个决定"都是误读）。Ousterhout 不会把它排在设计原则的前列，因为它没有说清<em>为什么</em>照做了系统就更简单，而且容易被误用。</td></tr>
+    <tr><td><a href="https://groups.google.com/g/software-design-book/c/NibdflTQTy8">2023-03</a></td><td>把问题归结为<strong>单向</strong>：SRP 只往一个方向推，没有说什么叫"太过"。"深"则把取舍写在了定义里：接口要尽量简单，但若因此剩不下多少功能，就该回头；功能要尽量多，但若接口因此变大变复杂，也该回头。Ousterhout 同时承认"深"本身也模糊、要靠判断。按 Ousterhout 的说法，还没听谁为 SRP 讲清楚过那个"但是"。</td></tr>
+  </tbody>
+</table></div>
+<p>这和对话结尾 Ousterhout 对《Clean Code》的总评（没有平衡取舍）是同一个意思，只是早说了两年。也有读者当场反驳："深"同样可以被推过头，正需要 SRP 这样的原则来平衡；这一条 Ousterhout 没有再回。</p>
+
+<h3>关于 TDD：一个更具体的推演</h3>
+<p>2025 年 5 月，有读者为 TDD 辩护说：先写实现再补测试，写完实现时人会觉得"已经做完了"，补测试成了一件扫兴的事；TDD 没有这个问题。Ousterhout 承认这个论点有道理，然后说同样的论点对 TDD 更致命（<a href="https://groups.google.com/g/software-design-book/c/vE2aqVXi8nw">原帖</a>）：</p>
+<ul>
+  <li>让第一个测试通过后，你同样觉得那段代码做完了；写第二个测试时发现它碍事，只好重写；第三、第四个测试又把它打破。自觉的人会一遍遍重写，最后也能到达好的设计。</li>
+  <li>但很多人会在某一轮想："在这儿打个小补丁，就不用大改了。"每来一个新测试都这么想一次，最后得到一团乱麻。</li>
+  <li>两种担心并不对称：测试不够，随时可以回头补；设计没做好，几乎补不回来。</li>
+</ul>
+<p>这比<a href="#tdd">分歧三</a>里"压制设计"的说法多了一步机制，也正是上面 <code>parseDuration</code> 左侧面板演示的那种中间状态。它仍然是推演而不是数据；Ousterhout 没有实践过 TDD 这一点，对话里已经承认。另外，在那份对话的评论帖里有读者提醒：要批评 TDD，应当对照 Kent Beck 自己写的 <a href="https://tidyfirst.substack.com/p/canon-tdd">Canon TDD</a>，其中第一步是先列出要测的场景清单，这一步在两人的对话里没被提到。</p>
+
+<h3>关于注释：一句容易被忽略的让步</h3>
+<p>2020 年回应一篇书评时，Ousterhout 的表述是两段式的：如果能通过重构让代码不再需要注释，完全赞成；需要海量注释的代码多半是坏代码。但总有一些东西无论怎么重构都无法用代码表达，注释就是为它们准备的。（<a href="https://groups.google.com/g/software-design-book/c/nV1YJ6d9wRo">原帖</a>）读这页前半部分时，别把 Ousterhout 读成"注释越多越好"。</p>
+
+<h3>读者一方：三条值得带走的意见</h3>
+<p>下面来自 Ousterhout 2025 年 2 月为那份对话开的<a href="https://groups.google.com/g/software-design-book/c/yHsxTAAqP9g">评论帖</a>。Ousterhout 本人在帖里没有展开，这些都是读者的看法。</p>
+<ol>
+  <li><strong>替 Martin 补上的最好论据。</strong>一位读者指出，对话选了素数生成器这样的数值算法当样本，对 Martin 不利：这类代码需求不会变。换成"歌曲库"这种业务代码，上线后很快会长出"图书库""菜谱库"，细粒度的小类小方法更容易顺着开闭原则和依赖倒置去扩展。这位读者说明自己没读过 APOSD，但这个论据本身成立：<strong>样本的选择会影响结论</strong>。</li>
+  <li><strong>两边都只谈"注释"，更准确的对象是"文档"。</strong>另一位读者指出，文档注释可以被工具抽成手册，有的语言还能把注释里的示例当测试来跑，所以"注释不受编译器检查"并不总是成立。</li>
+  <li><strong>有些注释其实是类型的缺席。</strong>同一位读者拿对话里的 <code>addSongToLibrary(String title, String[] authors, int durationInSeconds)</code> 举例：Ousterhout 追问"作者字符串有没有格式要求"，要求用注释回答；而如果参数是 <code>Author</code> 和 <code>Duration</code> 这样的类型，这个问题根本不必问。</li>
+</ol>
+
+<div class="view">
+  <p>把讨论组和对话放在一起读，Ousterhout 的立场比"长方法、多注释、反 TDD"这种流行的概括要温和得多：短方法在其他条件相同时更好，能重构掉的注释就该重构掉，SRP 合理使用没有问题。真正一以贯之的只有一条：<strong>单向的规则需要一个"但是"</strong>。这也是读《Clean Code》时最实用的一个提问：这条建议做到什么程度算过头？书里说了吗？</p>
+  <p>读者的第三条意见对 C++ 尤其有用。上面<a href="#comments">令牌桶</a>的例子里，"<code>now</code> 必须来自 <code>steady_clock</code>"这条注释，可以直接换成参数类型 <code>std::chrono::steady_clock::time_point</code>，让编译器来保证；剩下"失败时不扣令牌""非线程安全"这两条，类型表达不了，仍然要写。先用类型消掉能消掉的，再用注释写剩下的，两位作者的主张在这里并不冲突。</p>
+  <p>第一条意见本站认为只对了一半。业务代码确实变得快，但"先拆细以备将来扩展"正是书中 <a href="../chapters/06-general-purpose.html">第 6 章</a>反对的那种预判：通用的应该是接口，不是预先切好的碎片。等第二个"库"真的出现时再抽取，通常切得更准。</p>
+</div>
+
+<div class="exercise">
+  <p class="q">同事在评审里说："这个类违反了单一职责原则，应该拆成三个。"按 Ousterhout 在讨论组里的思路，你应该反问什么？</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>不是反驳 SRP 本身（Ousterhout 说合理使用没有问题），而是补上它缺的那个"但是"。可以问三件事：拆开后一共多出几个接口，使用者要多知道什么？三个新类能各自独立读懂吗，还是必须连着读（连体）？拆开之后，原来藏在一个类里的信息会不会变成三个类共享的知识（信息泄漏）？如果三个答案都好看，就拆；否则"职责"的边界多半划错了。换成"深"的说法：每个新类是否仍然用简单的接口提供了足够多的功能。</p>
+  </div></details>
+</div>
+
 <h2 id="practice">判断练习</h2>
 <p>下面每题都没有"按规则套"的标准答案，先写下你的判断和理由，再展开对照。</p>
 
@@ -379,7 +438,7 @@ std::chrono::seconds parseDuration(std::string_view s) {
   <div class="opts"><button>A. Martin 承认 TDD 会压制设计，但认为可以靠纪律弥补</button><button>B. Ousterhout 坦承自己没有亲身实践过 TDD</button><button>C. Ousterhout 承认书中对 TDD 的描述不准确，并表示会在后续版本修正</button><button>D. 双方都认为单元测试必不可少</button></div>
   <div class="explain">Martin 从未承认 TDD 压制设计，并明确表示不同意这一判断，认为不重视设计的人用什么方法都不会设计。Martin 同意的是 Ousterhout 给 TDD 使用者的那些建议（持续重构、提前规划），但不同意"TDD 可能导致坏代码"的归因。</div></div>
 
-<p class="src">本页对两位作者观点的转述全部基于 <a href="https://github.com/johnousterhout/aposd-vs-clean-code">aposd-vs-clean-code</a> 原文（2025 年版本）与 APOSD 第 2 版；两处直接引用均来自该 GitHub 文档。所有代码为本站原创。</p>
+<p class="src">本页前七节对两位作者观点的转述基于 <a href="https://github.com/johnousterhout/aposd-vs-clean-code">aposd-vs-clean-code</a> 原文（2025 年版本）与 APOSD 第 2 版；两处直接引用均来自该 GitHub 文档。"讨论组里的补充"一节转述自 <a href="https://groups.google.com/g/software-design-book">software-design-book 讨论组</a>的公开帖子（本站查阅于 2026-10-03），帖子内容归各发帖人所有，该节全部为转述。所有代码为本站原创。</p>
 
 </main>
 </body>

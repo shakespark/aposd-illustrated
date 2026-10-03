@@ -27,6 +27,22 @@
 - `python3 tools/shuffle_mcq.py 页面…`：打乱自测题选项并同步解析里的字母。
 - 题库校验：见 AUTHORING.md"自检"一节。
 
+## 讨论组素材（进行中）
+书里给的讨论组 groups.google.com/g/software-design-book 可以补充"读者质疑 + 作者回应"。
+- 2026-10-03：首次扫描 238 串，只按标题、回复数、作者是否参与做了初筛（A 29 / B 83 / C 67 / 跳过 59），**正文一串都还没读**。
+- 清单：`tools/group/TRIAGE.md`（生成的）；结论和"读到第几条"记在 `tools/group/triage.json`；扫描历史在 `tools/group/scans.log`。
+- 2026-10-03：精读了 38 串（原 A 档 29 串 + 待定 + 两串授权相关），读后为 A 18 / B 14 / C 4 / 跳过 2。
+  每串一份转述笔记在 `tools/group/notes/<id>.md`（含"挂到站点哪里"和"待核实"）；**还没有任何内容写进站点页面**。
+  B 档其余约 75 串、C 档都还没读。
+- 2026-10-03：两个专题页已补上讨论组材料（`topics/clean-code.html#group`；`topics/ai-era.html` 的 `#said` 第二处和 `#readers`），
+  用到的 10 串在清单里标为"已采用"（部分采用也算；Kb5K、yHsx 等串里还有训练题素材没用）。章节页和训练场还没动。
+- 取正文到本机：`python3 tools/groups_fetch.py A`（或给串 id），落在不入库的 `source/group/`。
+- 写完笔记后回填：`python3 tools/groups_scan.py --notes`（按笔记头部的"精读 / 对应 / 优先级"更新 `triage.json`）。
+- 再次扫描：`python3 tools/groups_scan.py`，会列出新增的串和有新回复的串，不动 `triage.json` 里已有的结论。
+- 精读一串后，在 `triage.json` 里把 `status` 改成"已精读"、`read_messages` 填当时的消息数、`read_at` 填日期，
+  再跑 `python3 tools/groups_scan.py --render`。以后这一串有新回复，清单里会标 🔄。
+- 帖子正文版权属于各发帖人：只转述观点 + 附原帖链接 + 短引用；正文不入库。
+
 ## 以后想改进时
 - 新增或重写章节：按 `AUTHORING.md`；改完跑上面四个工具。
 - 新增题目后不需要改 `train/data/index.js`（22 章都已注册）。

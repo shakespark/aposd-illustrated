@@ -28,6 +28,7 @@ table.check td:first-child { white-space: nowrap; }
 
 <nav class="toc"><b>本页目录</b><ol>
   <li><a href="#said">Ousterhout 本人说过什么</a></li>
+  <li><a href="#readers">讨论组里读者的一手经验</a></li>
   <li><a href="#scarce">代码变便宜之后，什么变稀缺</a></li>
   <li><a href="#tornado">机器速度的战术龙卷风</a></li>
   <li><a href="#checklist">用红旗审 AI 生成的代码：清单</a></li>
@@ -41,9 +42,10 @@ table.check td:first-child { white-space: nowrap; }
   <li>蓝色左边框的<strong>"有出处的事实"</strong>：Ousterhout 公开说过的话，附链接和时间点，只转述能核实的部分。</li>
   <li>虚线框的<strong>"本站看法"</strong>：本站用书中框架做的推演，不代表作者观点。</li>
 </ul>
+<p>此外还有第三种：书的读者讨论组里<strong>读者自己的经历</strong>，单独放在<a href="#readers">一节</a>里，既不是作者观点，也不是本站看法。</p>
 
 <h2 id="said">Ousterhout 本人说过什么</h2>
-<p>截至本页写作时（2026 年 10 月），本站能找到并核实的、Ousterhout 关于 AI 编程工具的公开表态，主要来自一次访谈：Gergely Orosz 主持的播客 <a href="https://newsletter.pragmaticengineer.com/p/the-philosophy-of-software-design">The Pragmatic Engineer：The Philosophy of Software Design – with John Ousterhout</a>（2025-04-09，<a href="https://www.youtube.com/watch?v=lz451zUlF-k">YouTube 视频</a>）。下面的转述依据节目页面提供的自动转写稿，时间点取自转写稿（与节目页面的章节标注基本对齐）。</p>
+<p>截至本页写作时（2026 年 10 月），本站能找到并核实的、Ousterhout 关于 AI 编程工具的公开表态，有两处：2025 年的一次访谈，和 2026 年在读者讨论组里的一条回帖。先说访谈：Gergely Orosz 主持的播客 <a href="https://newsletter.pragmaticengineer.com/p/the-philosophy-of-software-design">The Pragmatic Engineer：The Philosophy of Software Design – with John Ousterhout</a>（2025-04-09，<a href="https://www.youtube.com/watch?v=lz451zUlF-k">YouTube 视频</a>）。下面的转述依据节目页面提供的自动转写稿，时间点取自转写稿（与节目页面的章节标注基本对齐）。</p>
 
 <div class="said">
   <p><span class="ts">约 11:51 起</span>　主持人问：AI 工具生成代码又快又多，有点像书里的"战术龙卷风"，长期看会怎样改变软件工程？Ousterhout 的回答要点：</p>
@@ -71,12 +73,37 @@ table.check td:first-child { white-space: nowrap; }
   <p>该节目页面自己的文字总结把"AI 编程工具像战术龙卷风"列为要点之一，却没有标明是谁的说法，很容易被读成"Ousterhout 认为 AI 编程工具就像战术龙卷风"。根据转写稿，这个类比是<strong>主持人</strong>提出的；Ousterhout 的回应恰恰是"不一定是战术龙卷风式的东西"。引用时请别把这句话安到 Ousterhout 头上。</p>
 </div>
 
+<p>第二处是书中给出的读者讨论组。2026 年 7 月，一位每天使用 AI 编程工具的读者问：书里说战略式投资划算，是因为以后有人要承受后果；如果以后和代码长期相处的是 AI，这个论证还成立吗？（<a href="https://groups.google.com/g/software-design-book/c/eh_JUu9H-30">原帖</a>）</p>
+<div class="said">
+  <p><span class="ts">2026-07-13</span>　Ousterhout 的回帖要点：</p>
+  <ol>
+    <li>先声明自己还没有足够的经验和数据来有把握地谈这个问题，而且局面还在变。</li>
+    <li>转述了听来的两类说法：不少人反映 AI 工具会产出<strong>浅而复杂</strong>的代码；也有人称 AI 工具处理结构良好的代码比处理结构差的代码更有效。Ousterhout 自己把这些称为轶事，不是确证。</li>
+    <li>推荐了 Matt Pocock 的一个<a href="https://www.youtube.com/watch?v=v4F1gFy-hqg">演讲</a>，说其中主张用 AI 工具时软件设计比以往更重要，并且引用了 APOSD。（本站没有核对演讲内容，这里只转述 Ousterhout 的概括。）</li>
+    <li>不把现状当定论：即使今天的工具写得草率，半年一年后会怎样没人知道。</li>
+    <li>给了一个预测：设计很可能是编码工作里 AI 最难取代的部分；就算这些工具最终在编码的每个方面都做得很好，设计大概也是它们最后接手的那一项。</li>
+  </ol>
+</div>
+<p>和 2025 年的访谈相比，有一处变化值得注意：访谈里 Ousterhout 说 AI 的产出"不一定是战术龙卷风式的东西"；一年多以后，转述的是"浅而复杂"的反馈。但两次的结论没有变：自己不知道答案，设计会变得更重要。提问的读者列了三种可能（设计更重要、不那么重要、只是换了受众），Ousterhout 没有明确选其中一个。</p>
+
 <p>另外几条"没有"的事实，同样有用：</p>
 <ul>
   <li>Ousterhout 和 Robert Martin 2024–2025 年的长篇讨论（<a href="https://github.com/johnousterhout/aposd-vs-clean-code">aposd-vs-clean-code</a>，见本站<a href="clean-code.html">专题</a>）全文没有涉及 AI。</li>
   <li>Ousterhout 在 Stanford 的<a href="https://web.stanford.edu/~ouster/cgi-bin/aposd.php">本书主页</a>（本站查阅时最后更新于 2025-02）也没有相关内容。</li>
-  <li>除上述访谈外，本站没有找到其他可核实的、Ousterhout 关于 LLM 编程的公开发言。如果你找到了，以原始来源为准。</li>
+  <li>讨论组里 2026 年另有一串很长的讨论，题目是 AI 是否提升了生产系统的软件质量（<a href="https://groups.google.com/g/software-design-book/c/EUy3koBr1ow">原帖</a>）。Ousterhout 在其中只发了一条，内容是质疑别人贴出的一份没有署名的报告是否本身就是 AI 生成的，没有谈设计。所以那一串里的各种统计数字，本站一概不引用。</li>
+  <li>本站只精读了讨论组里的一部分讨论串（截至 2026-10-03），也没有查阅 Ousterhout 的社交媒体。除上述两处外，如果你找到了其他发言，以原始来源为准。</li>
 </ul>
+
+<h2 id="readers">讨论组里读者的一手经验</h2>
+<p>下面两条来自讨论组里的读者，是个人经历，不是数据，也不是作者的观点。之所以收进来，是因为它们恰好用书里的词描述了自己看到的现象。</p>
+<ul>
+  <li><strong>"放手不管，它就成了战术龙卷风。"</strong>一位读者（<a href="https://groups.google.com/g/software-design-book/c/EUy3koBr1ow">2026-05</a>）让 AI 助手修同一个模块里的两个 bug。第一个修得又简单又对，读者还顺便学到了框架的一个细节。第二个则跑偏了：原代码错误地使用了框架，助手没有改正用法，而是把本属于框架的一部分职责接过来自己实现，修好了原 bug，又引入至少两个新的；指出之后，它继续加代码去修新 bug，再引入更多。读者故意让它迭代了五轮，得到一大堆本不该写的代码。结论是：结果必须检查，否则只是做得更快，不是做得更好。</li>
+  <li><strong>"我不再读自己的代码了。"</strong>提出前面那个问题的读者（<a href="https://groups.google.com/g/software-design-book/c/eh_JUu9H-30">2026-07</a>）说，自己对代码库的了解从"逐行都熟"变成了"大片没读过"，并且看到别的开发者也这样却没有察觉；工具默认的风格是"现在能跑"，而不是"以后好相处"。</li>
+</ul>
+<div class="view">
+  <p>第一条经历里，同一个工具、同一个模块、同一次对话，一个 bug 修得很好，另一个越修越乱。这和下一节的判断一致：问题不在单次产出的质量，而在<strong>没有人踩刹车时复杂性累积的速度</strong>。第二个 bug 的走向正是书中 <a href="../chapters/03-strategic.html">第 3 章</a>描述的战术式编程：每一步都在让眼前的问题消失，没有哪一步回头问"这段代码该不该存在"。</p>
+  <p>第二条经历提出了一个书里没有的问题：如果连作者都不读代码，"为读者而设计"是为谁？本站的回答见下文"读者永远是人"一条，但要承认这是押注，不是定论；Ousterhout 本人的说法也只是"不知道"。</p>
+</div>
 
 <h2 id="scarce">代码变便宜之后，什么变稀缺</h2>
 <p>以下全部是本站看法。出发点很简单：书里几乎所有原则针对的都不是"打字"，而是<strong>决定</strong>。当打字的成本趋近于零，决定的分量就相对变重了，这也和 Ousterhout 在访谈里"设计比例会变大"的判断一致。</p>
@@ -90,7 +117,7 @@ table.check td:first-child { white-space: nowrap; }
 </div>
 
 <h2 id="tornado">机器速度的战术龙卷风</h2>
-<p>书中第 3 章把"战术龙卷风"（tactical tornado）描述为写代码极快、但完全战术式工作的程序员，留下的烂摊子要别人收拾。前面说过，把 AI 比作战术龙卷风的是访谈主持人，Ousterhout 本人并不同意代码一定差。</p>
+<p>书中第 3 章把"战术龙卷风"（tactical tornado）描述为写代码极快、但完全战术式工作的程序员，留下的烂摊子要别人收拾。前面说过，把 AI 比作战术龙卷风的是访谈主持人，Ousterhout 在访谈里并不同意代码一定差；讨论组里则有读者用这个词描述自己的亲身经历。</p>
 <div class="view">
   <p>本站认为两种说法可以同时成立，因为它们说的是不同层面：<strong>单个函数</strong>的质量可以很好，而<strong>系统层面</strong>的复杂性照样会累积。书中 2.4 节说复杂性是一点点累积起来的，每一处小妥协单看都无伤大雅。AI 辅助开发恰好放大了这种累积的速度：</p>
   <ul>
@@ -278,6 +305,16 @@ public:
   <details class="reveal"><summary>展开对照</summary><div>
     <p>有出处的部分：Ousterhout 承认 AI 在一定程度上能弥补注释缺失（自己读 Linux 内核时就这么用），但认为花一点时间写注释比事后让 ChatGPT 去猜容易得多，AI 不应成为不写注释的理由，"至少现在还不行"。</p>
     <p>本站补充：接口注释记录的是<strong>契约</strong>（哪些行为是承诺、哪些只是当前实现碰巧如此），这一点从代码里推不出来，无论读者是人还是模型。模型能解释代码<em>在做什么</em>，但无法告诉你作者<em>承诺了什么</em>。</p>
+  </div></details>
+</div>
+
+<div class="exercise">
+  <p class="q">讨论组里那位读者问：如果以后和代码长期相处的是 AI 而不是人，战略式编程还值得吗？并列了三种可能：(1) 更重要，因为 AI 没有"当初为什么这样做"的记忆，隐藏的复杂性对它代价更高；(2) 不那么重要，因为 AI 能低成本消化混乱的结构；(3) 取舍没有消失，只是设计要服务的对象换成了干活的 AI 和负责审查的人。你押哪一个？用书里的概念说出理由，再说出什么证据会让你改主意。</p>
+  <details class="reveal"><summary>展开对照</summary><div>
+    <p>这题没有标准答案，Ousterhout 自己也说证据不足。可以用来检验自己推理的几个角度：</p>
+    <p>书里把复杂性的成因归为依赖和模糊性（2.3 节），症状之一是"不知道自己不知道什么"。这些都是关于<strong>信息在哪里、要不要去找</strong>的，与读者是人还是模型无关：一个约定散落在五个文件里，模型同样要么全部读到、要么漏掉。这支持 (1) 或 (3)。</p>
+    <p>支持 (2) 的理由是：模型读代码的速度和耐心远超人，"认知负担"这一项对它轻得多。但它的上下文同样有限，而且改动越分散，漏掉一处的概率越高（变更放大）。</p>
+    <p>会让人改主意的证据应该是可观察的：比如在同一个任务上，对比模型在结构好和结构差的代码库里的成功率；或者一个长期只由模型维护的代码库，缺陷率和改动成本随时间怎么变。目前流传的多是轶事，Ousterhout 转述时也特意这么标注。</p>
   </div></details>
 </div>
 
