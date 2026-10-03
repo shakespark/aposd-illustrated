@@ -82,12 +82,12 @@
  },
  "RROhiBErr-8": {
   "title": "AI is good at helping you \"Design It Twice\"",
-  "status": "已列出",
-  "priority": "B",
-  "target": "专题:ai-era",
-  "note": "AI 与\"设计两次\"；也可挂第11章",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "专题 ai-era；次要：第 11 章（设计两次）",
+  "note": "一位读者的经验——\"设计两次\"的真正成本在于要把方案做到一定细节才看得出哪里别扭，而 LLM 工具让快速做原型变便宜了，所以适合用来探索多个设计，而不是替人做设计。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "50lEgky-jqw": {
   "title": "the ideal world",
@@ -163,12 +163,12 @@
  },
  "OG9xef7i118": {
   "title": "Has Anyone Tried Using APOSD Red Flags with LLMs?",
-  "status": "已列出",
-  "priority": "B",
-  "target": "专题:ai-era",
-  "note": "把红旗用于 LLM 的实践",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "专题 ai-era（\"用红旗审 AI 生成的代码\"一节）；速查页（红旗清单）",
+  "note": "一位读者问有没有人把书末的红旗清单写成 AI 编程工具的规则，用来约束生成的代码，并贴了自己写的一份只含四条红旗的规则；另一位读者说试过类似做法，模型记不住。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "TVHbMP5ENXo": {
   "title": "a small worked example",
@@ -226,12 +226,12 @@
  },
  "EFFt6f_92E8": {
   "title": "The UNIX file interface example",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "UNIX 文件接口例子的追问，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章 4.4（深模块的例子：Unix I/O）；次要：第 9 章 9.7 一带（方法长度）、专题 clean-code",
+  "note": "4.4 节说 Unix 文件 I/O 的五个调用背后藏着数十万行代码——这是不是在说 Unix 的开发者不遵守\"函数要短\"的准则？",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "yHsxTAAqP9g": {
   "title": "APOSD vs. Clean Code",
@@ -262,48 +262,48 @@
  },
  "jDZlJRhWloY": {
   "title": "Few thoughts on (de)composition",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第9章",
-  "note": "拆分与合并",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 2 章 2.1（复杂性能不能量化）；次要：第 4 章（深度不该量化）、第 5 章 / 第 19 章 19.6（getter 暴露数据 vs 暴露行为）；训练场",
+  "note": "一位读者想用一条数学公式给代码的设计质量打分（按\"变量被多少个模块共享\"计算，形式仿照熵），请作者评论；作者只表示怀疑，并反问怎么验证公式有效。标题说的\"(de)composition\"是那篇没贴进来的博客草稿的题目，串里没有展开。",
+  "read_messages": 6,
+  "read_at": "2026-10-03"
  },
  "dubcmvgew0I": {
   "title": "Section 9.7/9.8",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第9章",
-  "note": "9.7/9.8 小节的疑问，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 9 章 9.7、9.8；专题 clean-code；次要：第 12 章 12.1（\"好代码自文档化\"）",
+  "note": "读者主张\"公开方法要深，内部实现方法则应拆细，把本来要加注释的小段代码抽成名字自解释的函数\"；作者两句话否定了这两点。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "iNUoSa7t4xw": {
   "title": "Terminological ambiguity in Chapter 2 of A Philosophy of Software Design",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第2章",
-  "note": "第 2 章术语歧义，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 2 章 2.1、2.3",
+  "note": "第 2 章为什么不区分\"本质的复杂\"（问题本身带来的）和\"偶然的复杂\"（设计不好造成的）；作者回答说没想过要这样分，也看不出分了之后设计工作会有什么不同。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "fGi1O_QBJDA": {
   "title": "Section 7.5",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第7章",
-  "note": "7.5 透传变量",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "X",
+  "target": "第 7 章 7.5（透传变量、context 对象）",
+  "note": "两位读者各用一句话对 7.5 节的 context 对象提替代方向：依赖注入；DCI 式的 context。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "ZMZGwjoxqg4": {
   "title": "Chapter 6 / undo and redo",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第6章",
-  "note": "撤销/重做例子",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 6 章 6.7（撤销机制例子）；次要：第 11 章（两种差别很大的设计）",
+  "note": "一位读者说第 6 章讲撤销/重做时应当提到不可变（持久化）数据结构；另一位读者回应\"对，也不全对\"——好用，但前提是整个应用模型一开始就围绕不可变结构来设计。作者没有参与。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "yyNzkIsmv5s": {
   "title": "On error handling and exceptions",
@@ -406,21 +406,21 @@
  },
  "F-u7U4lbg8s": {
   "title": "APOSD - Practical Application Exercises",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "项目",
-  "note": "书中课程项目的说明，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "项目；第 1 章 / 前言（课程与书的关系）；次要：第 6 章、第 9 章（文本编辑器例子的出处）、第 5 章（HTTP 服务器例子的出处）",
+  "note": "两位读者想自己从零做一个项目来练书里的原则，问作者有没有项目大纲可以分享；作者指向 CS 190 历年的课程网站，说明书里两个项目各出自哪一年，并提到近年的课换了一个书里没写的新项目。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "J2crXSe2lvQ": {
   "title": "Thrown exception handling vs error result handling",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第10章",
-  "note": "异常与错误返回值",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 10 章（10.1 异常为什么增加复杂性、10.2 异常太多、10.7 异常聚合）",
+  "note": "第 10 章几乎只谈\"抛出的异常\"；一位读者认为\"作为返回值的错误\"在结构上很不一样，值得单独讨论，并给出自己区分两者的办法。",
+  "read_messages": 1,
+  "read_at": "2026-10-03"
  },
  "vE2aqVXi8nw": {
   "title": "TDD in A Philosophy of Software Design",
@@ -433,12 +433,12 @@
  },
  "ZHelY68bC-E": {
   "title": "Chapter 4 Section 4.2 What is an Interface?",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第4章",
-  "note": "4.2 接口定义的疑问，无回复",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "X",
+  "target": "第 4 章 4.2",
+  "note": "一位读者说，4.2 节把接口信息分成\"形式的 / 非形式的\"，自己习惯叫\"结构耦合 / 语义耦合\"，意思一样、叫法不同。",
+  "read_messages": 1,
+  "read_at": "2026-10-03"
  },
  "lHpaTkQMXNE": {
   "title": "Loving the book - one little issue",
@@ -460,39 +460,39 @@
  },
  "Z0QKfMb2U10": {
   "title": "Interesting example of \"Design errors out of existence\" from a recent talk by Leslie Lamport",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第10章",
-  "note": "\"把错误定义掉\"的新例子，可做训练题素材",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 10 章 10.3（把错误定义掉）；训练场",
+  "note": "一位读者转述 Leslie Lamport 某次演讲里的小例子——把\"求多重集里的最大元素\"换一种说法来定义，代码会简单很多——并把它当作\"把错误定义掉\"的例子。",
+  "read_messages": 1,
+  "read_at": "2026-10-03"
  },
  "HeCQ4bwlX5Q": {
   "title": "Is \"obscurity\" mostly \"indirect dependency\"?",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第2章",
-  "note": "模糊性是否就是间接依赖，无回复",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 2 章 2.3（复杂性的两个成因）；次要：第 4 章（深/浅模块）、第 7 章（不同层不同抽象；ORM 的例子）、第 5 章（信息泄漏）",
+  "note": "一位读者提出一个重读全书的角度：2.3 节说复杂性来自依赖和隐晦，而大项目里隐晦的一大来源是传递依赖，所以书里许多建议都可以读成\"别让依赖不受控制地传递\"。只有这一条，无人回复。",
+  "read_messages": 1,
+  "read_at": "2026-10-03"
  },
  "07rvfWgQkGs": {
   "title": "The Agile approach to software design",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第19章",
-  "note": "敏捷与设计，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "专题 clean-code；第 19 章 19.2（敏捷开发）；次要：第 3 章（复杂性的累积）、第 1 章（增量式设计，**目前没有讨论组材料**）",
+  "note": "一位正在写软件设计书的读者补充历史背景——敏捷社区是怎么从\"用隐喻做轻量设计\"变成\"不谈设计、把代码收拾干净设计就会浮现\"的；作者表态：靠局部整洁出不来好设计。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "SJxs5KCxJNE": {
   "title": "Seeking advice for teaching",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "训练场",
-  "note": "作者谈怎么教这本书",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 1 章（1.1 怎样用这本书）与前言（课程来历）；项目；训练场；次要：第 22 章",
+  "note": "一位大学教师用这本书上课，学生没时间做大项目，只能做类图、伪代码式的小练习，效果不理想，问怎么教；作者回答说不真正写系统、不经过代码评审和重写，很难学会，自己也没找到替代办法。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "M1Wz8ad-YE8": {
   "title": "On \"A Philosophy of Software Design\"",
@@ -514,12 +514,12 @@
  },
  "u8YarQz5xrA": {
   "title": "Information Leakage and Dependencies",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第5章",
-  "note": "信息泄漏与依赖",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 5 章（5.9 做过头）；第 2 章 2.3（依赖；读者写成\"第 3 章\"）；第 6 章 6.3～6.6；第 7 章（装饰器）；第 8 章 8.3；第 9 章 9.7；第 10 章；第 12 章 12.1；第 21 章",
+  "note": "一位读者的逐章读后意见。第一条说第 5 章等处把原则讲得太绝对、到章末才提\"别做过头\"，建议改用\"让将来对模块划分和依赖图的改动最少\"来表述；第二条读完全书后对第 6～12、21 章各提一两句意见。两条都是同一个人发的，没有任何人回复。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "GDglsxrKIgo": {
   "title": "Review of APoSD and comments on prior discussions",
@@ -541,12 +541,12 @@
  },
  "r4cbN7jxFts": {
   "title": "Learnings from the \"A Philosophy of Software Design\" applied to testing",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第19章",
-  "note": "把书中原则用于测试，含与作者的对谈",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "X",
+  "target": "无（勉强沾边：第 19 章 19.3 单元测试；第 1 章提到的课程教法）",
+  "note": "一位读者介绍自己仿照 CS 190 的教学方式办的\"测试设计\"辅导班，并邀请作者上自己的 YouTube 频道聊；作者客气地回了一句，后来确实去聊了一小时，但内容不在串里。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "k4wDZYOkt5c": {
   "title": "A Philosophy of Software Design by John Ousterhout",
@@ -613,12 +613,12 @@
  },
  "edN-bAAHGN0": {
   "title": "Pass-through Variables",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第7章",
-  "note": "透传变量，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 7 章 7.5（透传变量）；次要：第 19 章 19.5（设计模式）、19.3（单元测试）",
+  "note": "7.5 节讲透传变量的解法时为什么没提单例（singleton）。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "p4ywseTrZX0": {
   "title": "On the criteria to be used in decomposing systems into modules",
@@ -631,12 +631,12 @@
  },
  "CTt_XD_ZekA": {
   "title": "Inquiry on Pass-through Methods from \"A Philosophy of Software Design\"",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第7章",
-  "note": "透传方法的疑问，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 7 章 7.1（透传方法）；次要：第 2 章（依赖）",
+  "note": "A 用到 B 的一些方法，C 同时要用 A 和 B；该让 C 直接依赖 A 和 B 两个模块，还是让 A 把 B 的方法转一道、使 C 只依赖 A。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "VbZZNUlsYiM": {
   "title": "Tuple Spaces",
@@ -667,12 +667,12 @@
  },
  "_JpPAYy8h9g": {
   "title": "a philosophy of software design and tdd",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第19章",
-  "note": "TDD，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 19 章 19.3～19.4（单元测试、TDD）；次要：第 4 章（深模块）、第 9 章 9.7（方法长度）",
+  "note": "公司规定用 JUnit + Mockito 做测试，读者觉得方法一深就很难用 Mockito 测；问作者写书时有没有考虑\"代码要能用常见测试框架方便地测\"，以及深模块和 TDD 怎么并存。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "IqJXNTnF-Q4": {
   "title": "A fun typo in the 2nd edition of this book: \"noone\"",
@@ -703,12 +703,12 @@
  },
  "7uHUHoZyTmE": {
   "title": "Feedback on the book from our study group",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "读书小组的集中反馈，涉及 Java 文件 I/O",
-  "read_messages": null,
-  "read_at": null
+  "target": "专题 clean-code（SOLID / DIP / SRP、长名字代替注释）；第 5 章 5.6（HTTP 参数处理）；第 4 章 4.7（Java I/O）；第 9 章 9.7（长方法、圈复杂度、测试）；第 12 章 12.6；第 7 章 7.5（透传变量，作者未答）",
+  "note": "柏林一个读书小组读到第 16 章后汇总的六条意见（Java I/O 的\"几乎人人要缓冲\"有无依据、SOLID、透传变量、5.6 的 getIntParameter 是否太浅、对 Clean Code 的转述是否公允、圈复杂度高的长函数），作者逐条作答。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "o_95ZK4qQnU": {
   "title": "Please include",
@@ -730,12 +730,12 @@
  },
  "jngfdK-tWnk": {
   "title": "Suggestion for page 111 comment",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第13章",
-  "note": "具体一条注释的改法，作者 3 条",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 13 章 13.5（接口文档、前置条件）；次要：第 10 章（10.3 把错误定义掉、10.9 别做过头）、第 4 章（接口越复杂模块越浅）、第 5 章（不依赖实现细节）、训练场。**可补到目前没有讨论组材料的第 10 章。**",
+  "note": "13.5 节 `Buffer::copy` 的接口注释写了\"dest 必须至少能容纳 length 字节\"，却没说不满足时会怎样；接口注释要不要写明\"调用方违反前置条件时的行为\"。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "E6d4wwSlFjg": {
   "title": "Reading the book",
@@ -802,21 +802,21 @@
  },
  "Eh14W0_Bxfc": {
   "title": "Thank you and two questions about the book",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "浅函数相关提问",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 19 章 19.3（单元测试）；第 4 章（深与浅、4.6 类过多症）；专题 clean-code；领域建模一问无对应章节",
+  "note": "读者问两件事——设计是否应当同时从问题领域的建模（DDD、Grammar of Graphics）和代码两头入手；深类会不会让单元测试的准备和维护成本变高（Java 社区拆小类、靠 IoC 加 mock 的做法正是为了压低这项成本）。作者只回答了后者。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "htX4Y2CnCHY": {
   "title": "Complexity when component is a black box",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第2章",
-  "note": "黑盒组件的复杂度",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 2 章 2.1（复杂性按\"遇到的频率\"加权）；次要：第 4 章（深模块）",
+  "note": "一个内部很复杂、但从来不用碰的第三方组件，对使用它的人来说算不算复杂？",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "J3GweRh4VbM": {
   "title": "A little copying is better than a little dependency",
@@ -829,30 +829,30 @@
  },
  "80J6w37-b8s": {
   "title": "Thoughts on Section 7.5 \"Pass-through variables\"",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第7章",
-  "note": "7.5 透传变量",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 7 章 7.5（透传变量、context 对象）；次要：第 8 章（把复杂性关在关心它的子系统里）",
+  "note": "7.5 节透传变量的又一种解法——作用范围限定在\"一次请求\"（通常对应一个线程）内的 context，例如 Java 的 ThreadLocal；以及把 context 做得尽量局部。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "PUemYLM9BQk": {
   "title": "Feedback on A Philosophy of Software Design",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第12章",
-  "note": "读者综合意见，含注释",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 13 章（实现注释，13.6 一带）；次要：第 12 章、第 4 章（深模块的两条补充）、第 3 章（团队文化）、第 22 章",
+  "note": "一位读者的长篇读后感，实质问题有两个——注释会不会打断代码的可读性（该按\"读者是谁\"决定写不写），以及不重视设计的同事能不能被说服。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "lqWkasBh5jA": {
   "title": "Is interface informal information a bad thing?",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第4章",
-  "note": "接口的非形式部分",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 4 章 4.2（接口的形式与非形式部分）；次要：第 2 章 2.3（隐晦）、第 13 章 13.5（接口注释）、第 8 章（配置参数）",
+  "note": "接口里的非形式信息算不算一种\"隐晦\"；读者用 AWS SQS 接收消息接口的等待时间参数举例——一个参数既是等待秒数，又暗中决定是只查一部分服务器还是全部查。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "epXRRoUzLYY": {
   "title": "High Intent Traffic From YouTube",
@@ -883,12 +883,12 @@
  },
  "bJ6vmAIz5_0": {
   "title": "Opinion on Test-driven development",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第19章",
-  "note": "TDD，作者 2 条",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 19 章 19.4（测试驱动开发）、19.3；专题 clean-code（TDD 一节）",
+  "note": "19.4 节对 TDD 的描述（先把一个类的单元测试都写完）不准确；读者问\"先设计好接口、再用 TDD 填实现\"能不能弥补 TDD 太战术的毛病；作者顺带说了自己写代码和写测试的实际次序。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "8f9zf3mm2mg": {
   "title": "Two questions/remarks re your book \"A philosophy of software design\"",
@@ -901,30 +901,30 @@
  },
  "XuXnFQSG7Vo": {
   "title": "How to design Components in modern web apps?",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "前端组件的接口",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 18 章 18.2（事件驱动让代码不显然）；第 4 章 4.2（接口包含什么）；第 2 章（不明显的依赖）；次要：第 5 章",
+  "note": "在 Store/State 架构的前端应用（Angular，类似 Redux）里，组件既订阅全局状态又接收父组件传入的属性，\"组件的接口到底是什么\"说不清；作者把它归为发布-订阅，评价是灵活但管不住复杂性。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "3hgHk9NhZL4": {
   "title": "Comments on Chapter 5 regarding (more) explicit control flow",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第5章",
-  "note": "显式控制流，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 10 章（10.1 异常为什么增加复杂性、10.7 异常聚合——用的正是 getParameter 这个例子、10.9）；第 5 章 5.6 只是例子的出处；训练场",
+  "note": "5.6 节的 `getParameter` 在参数缺失时靠抛异常报告；读者认为只有 Java 会把异常写进签名，在 C#、C++、Python 里异常是隐式的、增加认知负担，不如返回 `std::optional` 或用 TryGet 形式。作者回答了两个问题：异常写不写进签名差别大不大；该抛异常还是返回特殊值。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "4LOLZArwQEk": {
   "title": "More example on error prone design",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第10章",
-  "note": "易错设计的例子，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 10 章（10.3 把错误定义掉——通过改定义让特殊情况消失）；第 8 章（8.2 配置参数：能自己定的默认值就别推给使用者）；次要：第 4 章 4.7（让常见用法默认做对）、第 6 章；训练场",
+  "note": "HTTP 客户端库默认不设超时（读者举 Python 的 requests）算不算容易出错的设计；库作者不知道合适的超时值、下载大文件又不能超时，这个两难怎么解。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "-3R1G0sU3zI": {
   "title": "Mountains to Molehills",
@@ -973,12 +973,12 @@
  },
  "uHWl_gbtmW8": {
   "title": "Good example of a bad interface (shaaaaallow)",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "浅接口的实例，可做训练题素材",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章（深度的定义、4.7 Java I/O 的对照）；次要：第 6 章（通用与专用）、第 8 章（配置参数）、第 9 章（合还是分）、训练场",
+  "note": "pandas 的 `read_csv` 有几十个参数，它是\"浅\"接口的典型，还是一个可选参数很多的深接口？",
+  "read_messages": 6,
+  "read_at": "2026-10-03"
  },
  "tOuUfLKXIGQ": {
   "title": "Test Subject",
@@ -1009,21 +1009,21 @@
  },
  "f5aRoGS_avg": {
   "title": "Data on the impact of Technical Debt (Chapter 3)",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第3章",
-  "note": "技术债影响的数据",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 3 章 3.3（投资多少、回本点）",
+  "note": "书里说不知道有任何关于\"战略式投资多久回本\"的数据；读者指出有一项对比研究（A. Martini 等）量过一次大规模重构的回报。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "bLAoxe7mSpU": {
   "title": "The difference between the different approaches to deal with pass-through variables",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第7章",
-  "note": "处理透传变量的几种办法之别",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 7 章 7.5（透传变量，图 7.2）；训练场",
+  "note": "7.5 节处理透传变量的三种办法（共享对象、全局变量、context 对象）到底有什么区别；读者之间用 Scala 示例互相解释。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "Qu0XOoLcnVE": {
   "title": "Ideas to add to the book",
@@ -1036,12 +1036,12 @@
  },
  "V1guAyS_Jh0": {
   "title": "Opinion on using very short and simple functions to encapsulate mathematical operations",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第4章",
-  "note": "极短函数封装数学运算",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 4 章（浅模块，4.5）；第 9 章 9.7～9.8；专题 clean-code；次要：第 2 章 2.2（行数不是复杂性的度量）；训练场",
+  "note": "图形代码里常见的一两行数学小函数（如\"两点距离的平方\"）值不值得写；几位读者各给了一个判断标准。作者没有参与。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "XXqNp8XDFeI": {
   "title": "Add to mailing list",
@@ -1054,12 +1054,12 @@
  },
  "jHqSuH3lnmA": {
   "title": "Simple vs Complex < Pure vs Impure?",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第2章",
-  "note": "简单/复杂 与 纯/不纯",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 2 章 2.1（复杂性的定义）；次要：第 1 章",
+  "note": "一位读者提议把书开头的\"简单 / 复杂\"换成\"纯 / 不纯\"来表述；纯属用词之争。",
+  "read_messages": 6,
+  "read_at": "2026-10-03"
  },
  "eYhdcKN3-2E": {
   "title": "@ouster: Have you heard of \"Confident Ruby/Code\"?",
@@ -1072,12 +1072,12 @@
  },
  "zC65L9Hq0B4": {
   "title": "Thoughts on fork()",
-  "status": "已列出",
-  "priority": "B",
-  "target": "专题:ostep",
-  "note": "fork() 的设计，系统方向",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "专题 ostep（进程 API：fork/exec）；第 8 章（把复杂性往下拉）；第 4 章（接口简单 vs 参数爆炸）；第 20 章（简单接口的性能代价，写时复制）；训练场",
+  "note": "POSIX 的 fork() 算不算一个简单的接口；作者把问题理解为\"fork/exec 两步\"对\"CreateProcess 一步到位\"，并用\"把复杂性往下拉\"为前者辩护；一位读者唱反调并指出还有第三种设计。末尾两条转到线程与进程。",
+  "read_messages": 6,
+  "read_at": "2026-10-03"
  },
  "6ZI1M0--m1o": {
   "title": "Suggestions for \"creative coding\" projects",
@@ -1090,12 +1090,12 @@
  },
  "Zd7vVeJb1PY": {
   "title": "Chapter 9 - Why no mention of coupling/cohesion?",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第9章",
-  "note": "为什么不提耦合/内聚，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 9 章（整章，尤其 9.1～9.4 的几条\"应当合在一起\"的判据）；次要：第 2 章 2.3（依赖）",
+  "note": "第 9 章讲\"合还是分\"，为什么完全没提别的文献里通用的说法——提高内聚、降低耦合；是不是有意回避。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "-ksrSEXP2qM": {
   "title": "Join",
@@ -1108,12 +1108,12 @@
  },
  "zFoDD4KtyZE": {
   "title": "Pass through variables, decorators and managed dependency injection",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第7章",
-  "note": "透传变量与依赖注入",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 7 章 7.5（透传变量）；次要：第 7 章 7.3（装饰器）",
+  "note": "读者认为依赖注入（DI）容器能代替 7.5 的 context 对象来消除透传变量，还附带生命周期通知、通用装饰器等功能，问作者怎么看。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "rin4ykU9plo": {
   "title": "4.7 Examples: Java and Unix I/O (p. 26) feedback.",
@@ -1198,12 +1198,12 @@
  },
  "bDj6Jr5N5Sg": {
   "title": "On the completeness of a philosophy of software design",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第22章",
-  "note": "这套哲学是否完备，10 回复",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 10 章（10.7 错误提升、10.8 直接崩溃）；第 19 章（书里没谈的\"趋势\"：形式化验证）；次要：第 2 章（什么叫简单）、第 1 章（本书的范围）",
+  "note": "读者问\"这本书没写的东西它会怎么看\"，先后拿两样东西来试：crash-only 软件（只靠崩溃再重启来恢复），以及形式化验证 / TLA+。",
+  "read_messages": 11,
+  "read_at": "2026-10-03"
  },
  "0Z6mqi77bf8": {
   "title": "Foreign translations of the book",
@@ -1216,12 +1216,12 @@
  },
  "WQTyymI0Zx4": {
   "title": "Enforcing properties via code instead of by convention",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第17章",
-  "note": "用代码而非约定来保证性质",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 14 章 14.1（坏名字导致 bug）；次要：第 10 章（让错误无从发生）、第 5 章 5.3（时序）、第 4 章 4.5（浅类型也是浅模块）",
+  "note": "14.1 节那个文件块号 / 磁盘块号混用的 bug，该靠起名字还是靠给两种块号各定义一个类型来防；推而广之，要不要把\"能让代码强制的性质就别靠约定\"写成一条设计原则。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "-9up43BNuKQ": {
   "title": "This book isn't short",
@@ -1243,12 +1243,12 @@
  },
  "4iaOVD8lqws": {
   "title": "Are chapters 1-3 an indictment of agile?",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第19章",
-  "note": "前三章是否在批评敏捷；也可挂第3章",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 19 章 19.2（敏捷开发）；次要：第 3 章（战术/战略、Facebook 的例子）、第 1 章（增量开发）、第 2 章",
+  "note": "第 1～3 章对战术式编程的批评，是否等于在批评敏捷；要认真做设计，是否得在排期里明确留出时间，而这与敏捷现行做法冲突。中途转为\"业界有没有讨论设计质量的理论和词汇\"，并顺带出现一段对本书的批评。",
+  "read_messages": 6,
+  "read_at": "2026-10-03"
  },
  "DXbvAMWzdnI": {
   "title": "(Hiring) Companies that follow these practices",
@@ -1279,12 +1279,12 @@
  },
  "TW3Uy0Ro8qQ": {
   "title": "Determinism and immutability as a way of reducing complexity",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第2章",
-  "note": "确定性与不可变性",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 2 章（2.2 认知负担、2.3 隐晦）；次要：第 18 章（代码应该一目了然）",
+  "note": "把代码从\"有状态、可变\"挪到\"纯函数、不可变\"为什么会显得更简单；两位读者借 Yourdon 与 Constantine《Structured Design》里\"信息的可获得性\"来解释。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "Y4M-QTU1Os0": {
   "title": "A thank you and a few suggestions for the book",
@@ -1315,12 +1315,12 @@
  },
  "q8kbWtdjqfc": {
   "title": "Local/private general purpose helpers vs a general purpose library",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第6章",
-  "note": "本地通用 helper vs 通用库",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 9 章 9.4（把通用代码与专用代码分开）；第 6 章（6.1 适度通用、6.6）；次要：第 3 章（小额持续投资）",
+  "note": "一个通用的小工具函数（如给列表去重的 `distinct`），是留作某个类的私有辅助函数，还是抽进一个通用工具库；作者说明自己的具体做法。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "qD9WOq0ceOg": {
   "title": "Single Responsibility Principal",
@@ -1360,12 +1360,12 @@
  },
  "bFpTYCL3p0U": {
   "title": "Context Objects",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第7章",
-  "note": "上下文对象，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 7 章 7.5（透传变量与 context）；次要：第 19 章（依赖注入不在书里，站点已有相关材料）；训练场",
+  "note": "一位读者分享在实际项目里大量使用 context 对象的经验——让每个类只通过一个\"收窄的接口\"看到 context 里自己需要的那几项服务，以缓解书里承认的\"context 变成大杂烩\"问题。作者只道了谢。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "H-3sC61ZN9E": {
   "title": "First Edition on Amazon",
@@ -1396,21 +1396,21 @@
  },
  "8zkWyisdVBA": {
   "title": "Defining errors of out existence - help me understand the tradeoffs with this example",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第10章",
-  "note": "\"把错误定义掉\"的取舍",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 10 章 10.3、10.9（把错误定义掉 / 别做过头）；次要：第 6 章（接口要多通用）、第 11 章（换一套概念重新设计）、训练场。**第 10 章目前没有讨论组材料，这一串可以补上。**",
+  "note": "一个\"提交会议候选时间\"的 API，把\"重复提交/时间冲突就报错\"改成\"后来的覆盖先前的\"之后，错误处理代码少了很多，但会不会变成悄悄吞掉调用方的 bug——\"把错误定义掉\"的边界在哪。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "9XGtei4gdi4": {
   "title": "1 line modules",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "一行的模块，带代码样例，可做训练题素材",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章 4.5（浅模块）；第 9 章 9.3（合并以消除重复）、9.7（拆方法）；训练场",
+  "note": "4.5 节说很短的浅方法没有好处；读者在整理一段千行的重复 PHP 代码时，发现\"每个字段一个小方法\"挺有用，问浅模块能不能因为消除重复而成立。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "O9F0WJgl6FA": {
   "title": "A philosophy of software design",
@@ -1423,12 +1423,12 @@
  },
  "SPVi2Ib3Vhg": {
   "title": "Thoughts on Chapter 13.5 Interface documentation",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第13章",
-  "note": "13.5 接口文档",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 10 章（10.3 把错误定义掉：用特殊返回值表示\"取完了\"算不算）；第 20 章（简单接口下面藏批量与并发）；第 4 章（深模块）、第 8 章（把复杂性往下拉）；第 13 章 13.5 只是例子的出处；训练场",
+  "note": "13.5 节 IndexLookup 例子里\"循环调用 getNext，返回 NULL 表示结束\"这个接口，是否不如 hasNext/getNext 配对的写法安全；后半串转到逐条取数据的接口在 RPC 下的性能，作者说明实现里可以把批量和并发全藏起来。",
+  "read_messages": 7,
+  "read_at": "2026-10-03"
  },
  "GdOE7njh1JE": {
   "title": "Comments on Chapter 1",
@@ -1441,12 +1441,12 @@
  },
  "a8FqeEpPgrM": {
   "title": "Chapter 1",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第1章",
-  "note": "",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 1 章（软件可塑、设计是持续的过程）；第 15 章（先写注释）",
+  "note": "一位读者只读了第 1 章就提出两条反对——\"可塑的设计是坏设计\"（跑车改成公交车还算好设计吗）和\"注释应当最后写\"；其他读者和作者作了简短反驳。",
+  "read_messages": 6,
+  "read_at": "2026-10-03"
  },
  "vQkvW8Zu-14": {
   "title": "Typos for \"A Philosophy of Software Design\"",
@@ -1459,12 +1459,12 @@
  },
  "TQABoaV0rQA": {
   "title": "Surface of a class",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "类的\"表面积\"",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章 4.4～4.5（深模块、浅模块）；次要：第 9 章 9.7～9.8；专题 clean-code",
+  "note": "一个类公开接口很简单、内部却有许多短小的私有方法，它算不算深；作者回答算，并说公开接口简单比内部接口简单更重要，但两样可以都要。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "0AZnC9ObRkQ": {
   "title": "",
@@ -1504,12 +1504,12 @@
  },
  "-zRoJ2cAVlI": {
   "title": "Student project ideas",
-  "status": "已列出",
-  "priority": "B",
-  "target": "项目",
-  "note": "学生项目选题",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "项目（project/）；次要：第 1 章（书的来历：CS 190 课程）",
+  "note": "一位准备开课的读者问作者斯坦福课程用过哪些学生项目；作者指向公开的 CS 190 课程材料，并请求不要把项目答案发到网上。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "cOk6Vw3iMck": {
   "title": "Dialogue with Product Developers",
@@ -1531,12 +1531,12 @@
  },
  "6IlNDHgnM4I": {
   "title": "Over abstraction and under abstraction",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "过度抽象与抽象不足",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章（什么是抽象、深度）；第 14 章（14.3 一带\"难起名\"红旗）；第 9 章（两件不相干的事装在一起）；第 6、7 章（作者点名）",
+  "note": "读者请作者评一段自己的演讲视频（主张抽象有\"过度\"和\"不足\"两种毛病），作者借此说明：名字不等于抽象；难起名是抽象有问题的信号；问题领域不该渗进各层抽象。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "dHrqt2nDVSM": {
   "title": "clarity",
@@ -1558,12 +1558,12 @@
  },
  "8wb20I9tc5U": {
   "title": "Better shallow modules example?",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "更好的浅模块例子",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章 4.5（浅模块、红旗\"浅模块\"）；次要：第 19 章 19.6（getter/setter）",
+  "note": "4.5 节拿链表类当浅模块的例子合不合适——读者认为链表是很好的抽象，书的写法会让人以为它\"不好\"。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "fBxvujJZHkE": {
   "title": "A Philosophy of Software Design | Translation of Your Book by O'Reilly Germany?",
@@ -1594,12 +1594,12 @@
  },
  "RFJ7q9wdke4": {
   "title": "An alternative implementation to the undoable delete",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第6章",
-  "note": "可撤销删除的另一种实现，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 6 章 6.7（第二版的小节号；撤销机制例子）；次要：第 9 章 9.7（读者引用的图 9.3(c)）、第 8 章（复杂性上推还是下沉）、第 2 章 2.3（依赖）；训练场",
+  "note": "编辑器撤销机制的例子里，文本类直接调用 `History`；读者提议改成让 `delete` 返回一个\"撤销函数\"，由调用者交给 `History`，这样文本类就不依赖 `History`。作者逐点说明这样既不会让 API 更简单，也不会让知道这个 API 的地方更少。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "i8I9gOcQKII": {
   "title": "Top-down vs Bottom-up",
@@ -1648,12 +1648,12 @@
  },
  "FvL6_yfol6c": {
   "title": "Feedback to \"A Philosophy of software design\"",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第7章",
-  "note": "综合反馈，涉及全局上下文",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 9 章（9.3 goto 清理、9.4 图 9.1 的包长检查、9.7 拆方法）/ 第 14 章（14.1、14.2、14.3）/ 第 2 章（2.1 复杂性的定义）/ 第 3 章 3.3 / 第 7 章 7.5 / 第 13 章 13.3 / 第 5 章 5.9 / 第 19 章 / 第 1 章与第 22 章（作者的选材原则，可补到这两章）/ 第 10 章与第 1 章各有一条读者意见但作者没回应",
+  "note": "一位写 Scala 的读者按章节给第一版提了二十多条意见（从笔误到\"应该加一章函数式编程\"），作者逐段简短作答；之后话题分成两支——\"complex 和 complicated 要不要区分\"、Scala 隐式参数能不能代替 context 对象。",
+  "read_messages": 11,
+  "read_at": "2026-10-03"
  },
  "Uxqo4A9zaPE": {
   "title": "Software Design, a learning project on Wikiversity",
@@ -1684,12 +1684,12 @@
  },
  "K7fNnxD5RSE": {
   "title": "Any thoughts on Dependency Injections?",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第7章",
-  "note": "依赖注入",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 7 章 7.5（透传变量）；次要：第 2 章（认知负荷、未知的未知）、第 18 章（显而易见）、专题 clean-code（Clean Architecture）",
+  "note": "读者想重提依赖注入（DI）框架的利弊——它逼模块事先声明依赖，但把应用怎么接线藏了起来；只有一位读者回复，作者没有参与。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "6smjcBde2pI": {
   "title": "A Philosophy of Software Design",
@@ -1729,30 +1729,30 @@
  },
  "auIx2lPEJsc": {
   "title": "Abstraction as unit of development in TDD",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第19章",
-  "note": "TDD 的开发单位",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 19 章 19.2、19.4；第 6 章 6.1（\"somewhat general-purpose\"）；次要：第 3 章（投资心态）",
+  "note": "书里谈 TDD 和敏捷时说\"开发的单位应当是抽象，不是功能\"，读者问这句话到底怎么操作；作者展开解释并举了加密模块的例子。读者随后问这和 YAGNI、\"重复三次再抽象\"怎么调和，作者没有再答。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "xisvPNmDHM4": {
   "title": "Note on Wrappers and Pass-Through Methods",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第7章",
-  "note": "包装器与透传方法，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 7 章 7.1（透传方法）、7.3（装饰器 / 包装类）；次要：第 3 章（不可能事事战略）、第 21～22 章（规则怎么用）",
+  "note": "读者指出书里批评透传方法和包装类时漏了两种合理的情况（包第三方类、把多个第三方部件粘成一个整体）；作者同意，并说这本书取的是理想化的视角。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "TTPivcnXqd4": {
   "title": "Note on Implementation Comments",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第13章",
-  "note": "实现注释，作者回应",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 13 章 13.2（不要重复代码）、13.6（实现注释）；次要：第 9 章 9.7～9.8（要不要拆方法）、专题 clean-code",
+  "note": "13.2 节把\"// Add a horizontal scroll bar\"这类注释当作重复代码的反例；读者指出实现注释还有\"导航\"的用途，短短的分段标题式注释是有用的。随后争论：与其加这种注释，要不要把那段代码抽成一个函数。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "NFlEEtiIGjQ": {
   "title": "Another books on the topic of managing complexity",
@@ -1783,12 +1783,12 @@
  },
  "fO0RtWYZ9ko": {
   "title": "Re: Questions on Software Consistency",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第17章",
-  "note": "一致性",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 17 章 17.2（\"入乡随俗\"\"不要改变已有约定\"）；第 16 章 16.1（保持战略式）",
+  "note": "第 17 章说\"别改已有约定，有更好的主意也不够\"，第 16 章说\"每次改代码都要让设计好一点\"——两条冲突时听谁的？",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "TFb4mNO0ggk": {
   "title": "Feedback",
@@ -1801,12 +1801,12 @@
  },
  "wdYR4VpnCM8": {
   "title": "Deep shallowness?",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "深度的衡量，作者 2 条",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章 4.4～4.6（深/浅模块、类过多症）；次要：第 9 章 9.7～9.8（拆分的判据）、专题 clean-code、第 19 章 19.3（可测试性）、训练场",
+  "note": "一个\"对外只有一个 Store 方法\"的 60 行 C# 类，该不该按单一职责拆成三个各自很小的类、再由调用方用构造函数一层层套起来；以及\"深度\"能不能脱离代码量来定义、怎么量。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "rlzKnFiMui0": {
   "title": "A couple suggestions",
@@ -1828,30 +1828,30 @@
  },
  "1dlMFd6928Y": {
   "title": "interface simplicity vs implementaion simplicity",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第8章",
-  "note": "接口简单 vs 实现简单",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 8 章（把复杂性往下拉；8.3 做过头）；第 4 章（4.4 Unix I/O 是深模块的典范）；次要：专题 ostep",
+  "note": "读者拿 Richard Gabriel 的《The Rise of Worse Is Better》来问——文中\"新泽西派\"认为实现简单比接口简单更重要，而且靠这一点赢了；这和本书\"接口简单优先\"怎么平衡。作者重申立场、给出例外条件，并质疑该文对 Unix 设计者的刻画。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "0am-9T4-sX8": {
   "title": "Informal interface elements",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第4章",
-  "note": "接口的非形式部分，6 回复",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章 4.2；次要：第 13 章（接口注释写什么）",
+  "note": "4.2 节把\"使用上的约束\"（比如某个方法必须先于另一个调用）算作接口的非形式部分；一位读者认为这些应当叫\"契约\"，属于实现而不是接口。作者坚持用\"接口\"统称、用\"形式/非形式\"区分。",
+  "read_messages": 7,
+  "read_at": "2026-10-03"
  },
  "i3opLcNPJXo": {
   "title": "Some thoughts about \"Classitis\"",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第4章",
-  "note": "classitis",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 4 章 4.6（类过多症）；第 9 章 9.7（拆分与合并方法）；专题 clean-code",
+  "note": "读者同意模块要深，但认为深模块的内部仍应拆成短小的方法和子类，改代码时才不必读完几千行；作者表示同意，条件是拆出来的东西各自独立、各自够深。",
+  "read_messages": 3,
+  "read_at": "2026-10-03"
  },
  "sIbE5OlbxaY": {
   "title": "About Japanese translation",
@@ -1873,12 +1873,12 @@
  },
  "b8TI5ioYf1k": {
   "title": "Interface vs. Concrete Type Declaration for a Variable",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第4章",
-  "note": "变量声明用接口还是具体类型",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 18 章 18.2（声明与分配的类型不一致）；次要：第 19 章 19.1（面向对象）、专题 clean-code（SOLID）。**第 18 章目前没有讨论组材料，这一串可以补上。**",
+  "note": "18.2 节反对\"声明为 `List`、实际分配 `ArrayList`\"的写法；读者指出这是面向接口编程的常规做法，有明确好处。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "hvn_-AjYJkg": {
   "title": "Chapter 20: text and code don't match",
@@ -1891,12 +1891,12 @@
  },
  "frHMNxt-3rI": {
   "title": "Chapter 2: A quibble",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第2章",
-  "note": "第 2 章的异议，11 回复，后半段可能跑题",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 2 章 2.1（\"复杂性对读者比对作者更明显\"那一段，第一版第 6 页）；次要：第 18 章（代码应当显而易见，**目前没有讨论组材料**）",
+  "note": "2.1 节说\"别人觉得你的代码复杂，那它就是复杂\"——如果读的人只是不懂某个语言特性呢？进阶语言特性（Tcl 的 uplevel、JavaScript 的 call/apply）算不算复杂性？",
+  "read_messages": 12,
+  "read_at": "2026-10-03"
  },
  "IVMuoS5JaOU": {
   "title": "grammar correction",
@@ -1936,21 +1936,21 @@
  },
  "XF1ApRr0h9Y": {
   "title": "Composable decorators -- does that make sense?",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第7章",
-  "note": "可组合的装饰器",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 7 章 7.3（装饰器）；第 4 章（4.5 浅模块、4.6 类过多症）；训练场",
+  "note": "一篇博客主张\"可组合的装饰器\"——把 String 的 trim、toUpperCase、split 等二十来个方法各改成一个装饰器类，层层嵌套着用；读者问这是不是 7.3 节说的浅类，作者说是，并说明为什么更喜欢现有的 String。",
+  "read_messages": 4,
+  "read_at": "2026-10-03"
  },
  "DofyDeG57yo": {
   "title": "Shallow modules + unit tests = rigid code?",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第19章",
-  "note": "浅模块 + 单元测试是否导致僵化",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 19 章 19.3（单元测试）；第 4 章（4.5 浅模块、4.6 类过多症）；第 2 章 2.3（依赖）；次要：第 16 章（修改已有代码时的阻力）",
+  "note": "读者补充一条书里没写的观察：代码库里满是浅模块、又给每个浅模块认真写了单元测试，结果代码变得僵硬，改什么都会打破一堆测试；深模块让测试自然落在较粗的粒度上。作者表示说得通。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "5OfdGmn5uVo": {
   "title": "7.5 Pass-through variables",
@@ -1972,12 +1972,12 @@
  },
  "myxG1aeXLos": {
   "title": "Deep and shallow modules",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第4章",
-  "note": "深浅模块的例子",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 4 章 4.5（浅模块）；第 19 章 19.6（getter 与 setter）；第 7 章 7.3（包装类什么时候合理）；次要：第 5 章 5.1",
+  "note": "一位用 Clojure 的读者举了三类自己见到的浅模块（只有 getter/setter 的记录类、对 Java 库的薄包装、包着 HTTP 客户端的 Web API SDK）；作者对前两类各回了一段。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "AtmHMHbBNs4": {
   "title": "Ebook edition",
@@ -2008,12 +2008,12 @@
  },
  "8R28OGS1ikE": {
   "title": "Defining errors out of existence - Example 10.4 - File deletion in Windows",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第10章",
-  "note": "10.4 Windows 文件删除例子",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 10 章 10.4；次要：第 4 章（浅接口：使用者必须懂实现）、专题 ostep（unlink 与 inode）",
+  "note": "10.4 节把 Unix \"删除正被打开的文件\"当作把错误定义掉的范例；读者认为那只是 Unix 实现简单带来的副产品，而且给了一个它确实造成麻烦的场景（日志写满磁盘）。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "aXDEhhGlKUg": {
   "title": "Just bought the group I like to join the group",
@@ -2053,21 +2053,21 @@
  },
  "CxbZoE8i_Y0": {
   "title": "Philosophy of test design",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第19章",
-  "note": "测试的设计哲学",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 4 章（4.4～4.5 深与浅）；第 19 章 19.3（单元测试）",
+  "note": "测试有没有一套类似\"最小化复杂性\"的设计哲学；末尾有读者直接问作者——\"深\"和\"可测试\"冲突吗，私有方法也要深吗。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "raZiHfaBRX4": {
   "title": "Another approach to complexity reduction: interface elimination",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第4章",
-  "note": "消除接口来降复杂度",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "A",
+  "target": "第 18 章 18.2（事件驱动让代码不显然）；第 21 章（\"什么重要\"）；第 2 章（认知负荷 ≠ 打字量，2.2/2.3）；第 5 章（已有相近材料）；训练场",
+  "note": "一位读者主张用\"广播消息、不写显式接口\"来降低改结构的成本，并给出一个 C++ 小游戏的两种写法；作者反驳说依赖和接口并没有消失，只是被藏了起来，认知负荷反而更重。",
+  "read_messages": 8,
+  "read_at": "2026-10-03"
  },
  "QHFFec0Ij2w": {
   "title": "Missing period on page 103",
@@ -2089,21 +2089,21 @@
  },
  "CZ-gs8MPqvA": {
   "title": "On unit testing, mocks, and classitis",
-  "status": "已列出",
-  "priority": "B",
-  "target": "第19章",
-  "note": "单元测试、mock 与 classitis",
-  "read_messages": null,
-  "read_at": null
+  "status": "已精读",
+  "priority": "C",
+  "target": "第 19 章 19.3（单元测试）；次要：第 4 章 4.6～4.7（类过多症、Java I/O）、第 9 章",
+  "note": "为了能用 mock 做单元测试而把功能拆成多个类，算不算类过多症；可测试性该不该影响类的划分。",
+  "read_messages": 5,
+  "read_at": "2026-10-03"
  },
  "ouVwAfqZfgo": {
   "title": "Throwing less number of exceptions",
-  "status": "已列出",
+  "status": "已精读",
   "priority": "B",
-  "target": "第10章",
-  "note": "少抛异常",
-  "read_messages": null,
-  "read_at": null
+  "target": "第 10 章 10.2（异常太多）、10.3；次要：第 21 章 21.1～21.2（判断什么重要、让重要的东西尽量少）。**第 10 章和第 21 章目前都没有讨论组材料，这一串两章都能补。**",
+  "note": "\"少抛异常\"与\"调用方需要知道具体出了什么错\"怎么兼顾；反对的到底是异常的数量，还是有的异常没人接。",
+  "read_messages": 2,
+  "read_at": "2026-10-03"
  },
  "78sa8mJI3CA": {
   "title": "Re: A Philosophy of Software Design : ISBN 978-1732102200 : Korean translation rights",

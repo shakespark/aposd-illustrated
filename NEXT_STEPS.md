@@ -39,6 +39,13 @@
 - 2026-10-03：14 个章节页（第 2～9、11～15、19 章中有材料的）在"边界与反方"末尾加了"讨论组 · 作者补充 / 读者质疑"块，
   写法约定见 `AUTHORING.md`"讨论组材料"一节。又有 21 串标为"已采用"。训练题已出 18 道（各 `train/data/chNN.js` 末尾单独一段）
   （现成素材：TVHbMP5ENXo、J3GweRh4VbM、Kb5K3YcjIXw 串尾、iS2GVCApGoo、Java I/O 缓冲分层）。
+- 2026-10-03：B 档 74 串也读完了（读后 A 11 / B 34 / C 26 / 跳过 3），笔记同在 `tools/group/notes/`，**还没写进页面**。
+  能补的空白章节：第 1 章（SJxs5KCxJNE、F-u7U4lbg8s、07rvfWgQkGs）、第 10 章（4LOLZArwQEk、3hgHk9NhZL4、SPVi2Ib3Vhg、
+  jngfdK-tWnk、8zkWyisdVBA、ouVwAfqZfgo、bDj6Jr5N5Sg、8R28OGS1ikE）、第 16/17 章（fO0RtWYZ9ko）、第 18 章（raZiHfaBRX4、
+  b8TI5ioYf1k、XuXnFQSG7Vo、frHMNxt-3rI）、第 20 章（SPVi2Ib3Vhg）、第 21 章（raZiHfaBRX4、ouVwAfqZfgo）、第 22 章（xisvPNmDHM4、FvL6_yfol6c）；
+  OSTEP 专题（zC65L9Hq0B4，fork/exec）。作者说过会改书的四处：19.4 的 TDD 描述（bJ6vmAIz5_0）、第 9 章没提内聚/耦合（Zd7vVeJb1PY）、
+  7.5 没提单例（edN-bAAHGN0）、14.1 加 typedef 解法（WQTyymI0Zx4）。uHWl_gbtmW8 有 7 条正文接口返回为空，要用得回网页补读。
+  C 档 67 串还没读。
 - 取正文到本机：`python3 tools/groups_fetch.py A`（或给串 id），落在不入库的 `source/group/`。
 - 写完笔记后回填：`python3 tools/groups_scan.py --notes`（按笔记头部的"精读 / 对应 / 优先级"更新 `triage.json`）。
 - 再次扫描：`python3 tools/groups_scan.py`，会列出新增的串和有新回复的串，不动 `triage.json` 里已有的结论。
