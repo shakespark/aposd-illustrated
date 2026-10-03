@@ -272,6 +272,8 @@ void Dispatcher::submit(Task t) {
 <h2>练一练</h2>
 <p>下面三道题来自训练场。本章的题大多是"识红旗"：先只凭第一眼读代码，再看自己漏掉了什么。</p>
 <div class="drill-embed" data-ids="ch18-flag-01 ch18-flag-04 ch18-ab-02"></div>
+<p>再加一道，取材于读者讨论组（对应上面"边界与反方"里的"讨论组"一栏）：</p>
+<div class="drill-embed" data-ids="ch18-flag-08"></div>
 
 <h2>动手：项目任务</h2>
 <p>minikv 是一个故意按"战术式"风格写成的迷你键值存储。任务 m08 对应本章和第 20 章：在 minikv 里找出让人第一眼就猜错的代码，例如 <code>bulk(s, true, true)</code> 这种看不出含义的 <code>bool</code> 参数、用 <code>std::pair&lt;bool, std::string&gt;</code> 带回来的返回值、一个"只是查询"却会悄悄改统计数字的方法，把它们改得一目了然；性能相关的部分留到第 20 章再做。改之前先写下你第一眼的猜测，改完请一位没看过这段代码的人读一遍，看对方的第一眼猜测是否正确。</p>

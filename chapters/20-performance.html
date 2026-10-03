@@ -361,6 +361,8 @@ vector&lt;Order&gt;：              1.3 ns / 元素
 <h2>练一练</h2>
 <p>下面三道题来自训练场。先自己判断再看解析，答题记录会进入间隔复习。</p>
 <div class="drill-embed" data-ids="ch20-ab-01 ch20-flag-01 ch20-write-01"></div>
+<p>再加一道，取材于读者讨论组（对应上面"边界与反方"里的"讨论组"一栏）：</p>
+<div class="drill-embed" data-ids="ch20-ab-04"></div>
 
 <h2>动手：项目任务</h2>
 <p>读完本章和第 18 章后，去做 <a href="../project/index.html">minikv</a> 的任务 m08。minikv 的一次 GET 命中要穿过 <code>Server::handleGet</code> → <code>Database::get</code> → <code>Store::get</code> → <code>Index::get</code> 四层。先用 <code>make bench</code> 测出这条路径的时间花在哪儿，再围绕它重新设计：去掉多余的工作（同一个键查两次、值被拷贝两次、昂贵的格式化），同时把带 <code>bool</code> 参数的调用、藏着副作用的方法改成一目了然的代码。提示：测量结果可能和你的直觉不一样，花时间最多的未必是查找，那几层透传在 <code>-O2</code> 下也许根本测不出开销。这正是 20.2 节说的"先测量，别靠猜"。改完再测一次，和基线比。</p>

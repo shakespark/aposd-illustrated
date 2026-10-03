@@ -255,6 +255,8 @@ void list_push_back(struct list *l, struct node *n) {
 <h2>练一练</h2>
 <p>下面三道题来自训练场：一道识别专用接口，一道"看起来通用但其实过头了"，一道消除特殊情况。本章题库共 21 题，<a href="../train/index.html#ch=6">去训练场做完整一组</a>。</p>
 <div class="drill-embed" data-ids="ch06-flag-01 ch06-ab-02 ch06-ab-03"></div>
+<p>再加一道，取材于读者讨论组（对应上面"边界与反方"里的"讨论组"一栏）：</p>
+<div class="drill-embed" data-ids="ch06-ab-05"></div>
 
 <h2>动手：项目任务</h2>
 <p><a href="../project/index.html">minikv</a> 的 <code>Store</code> 为每条命令各写了一个专用方法（<code>set</code>、<code>del</code>、<code>incr</code>、<code>append</code>、<code>getRange</code>），每个都重复一遍"组记录、写日志、记垃圾字节、更新索引"；INCR 的整数解析、GETRANGE 的切片这些命令语义也落在了存储层。结果是加一条命令要同时改 <code>Server</code>、<code>Database</code>、<code>Store</code> 三处。任务 m02 要求你用这一章的三个自问审视 <code>src/store.cpp</code> 和 <code>src/database.cpp</code>，设计一个"有点通用"的存储核心，把命令语义推回上层。动手之前先读第 11 章"设计两次"：至少画出两套截然不同的接口再比较，这是 m02 的设计步骤。</p>
