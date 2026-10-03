@@ -296,6 +296,10 @@ if (!limiter.tryAcquire()) return reject(req);</code></pre>
   <p>2026 年有读者问：遵守"Tell, Don't Ask"（让对象自己做事，别把它的数据取出来替它做）就会写出一个只转交的小方法，这不正是本章的红旗吗？Ousterhout 的回答有三步（<a href="https://groups.google.com/g/software-design-book/c/D8tHfkacHq8">2026-03</a>，不在书里）：这个方法确实又浅又是透传，它唯一的价值是按订单号找到订单；如果这样的调用没几处，干脆不要这个方法，在调用处多写一步；如果很多处都需要，留着它也可以容忍。然后退一步看：为什么到处都有人拿着"客户 + 订单号"却想操作订单？在更高的层次就把它们换成订单对象，这个方法就不需要存在了。<strong>一处别扭，有时最好的修法是改另一处。</strong>顺带一提，Ousterhout 表示总体上赞同"Tell, Don't Ask"，认为它会导向更深的类。</p>
 </div>
 
+<div class="aside" data-title="讨论组 · 作者补充：单例呢？">
+  <p>有读者问 7.5 节为什么没把单例列为办法之一。Ousterhout 回答（<a href="https://groups.google.com/g/software-design-book/c/edN-bAAHGN0">2024-09</a>，不在书里）：单例大体上等同于全局变量；说不清当初为什么没提这一点，已经记下，下次修订时考虑补上。可能的原因是自己本来就不太喜欢单例：坚持"一个类只能有一个实例"是一条不必要的限制；比如单元测试常常要反复创建和销毁对象，单例不喜欢被销毁，测试会因此变复杂。</p>
+</div>
+
 <h2>练一练</h2>
 <p>下面三道题来自训练场：一道识别透传、一道"看起来像透传其实不是"、一道透传变量的取舍。</p>
 <div class="drill-embed" data-ids="ch07-flag-01 ch07-flag-02 ch07-ab-01"></div>

@@ -236,7 +236,7 @@ public:
 </div>
 
 <h2 id="tdd">分歧三：TDD</h2>
-<p>这一节有一个很少见的细节：Martin 指出书中 <a href="../chapters/19-trends.html">19.4 节</a>对 TDD 的描述不准确（书里写的是"先写好一个类的全部测试，再逐个让它们通过"）；Ousterhout 当场认错，说下一版会修正，但表示这不改变自己的担忧。</p>
+<p>这一节有一个很少见的细节：Martin 指出书中 <a href="../chapters/19-trends.html">19.4 节</a>对 TDD 的描述不准确（书里写的是"先写好一个类的全部测试，再逐个让它们通过"）；Ousterhout 当场认错，说下一版会修正，但表示这不改变自己的担忧。（这不是第一次：2023 年 9 月已有读者在讨论组里指出同一处，Ousterhout 当时就道过歉、答应修订，见<a href="https://groups.google.com/g/software-design-book/c/bJ6vmAIz5_0">原帖</a>。）</p>
 <p>Martin 给出的定义是自己的"三条定律"：没有一个失败的测试就不写产品代码；测试只写到足以失败为止（编译不过也算失败）；产品代码只写到足以让当前测试通过为止。再往外一层是"红—绿—重构"循环，每几分钟停下来审视设计。Ousterhout 偏好的替代做法，双方同意叫作<strong>bundling</strong>（打包）：一次写几十到几百行代码（几个方法或一个类），然后为它写全面的单元测试，测试写完之前代码不算"完成"。</p>
 
 <div class="vs">
@@ -347,7 +347,7 @@ std::chrono::seconds parseDuration(std::string_view s) {
 </ul>
 
 <h3>关于单一职责原则（SRP）：书里一个字没提</h3>
-<p>APOSD 全书没有出现 SRP 或 SOLID。讨论组里 Ousterhout 被问过三次，立场有变化，值得按时间看：</p>
+<p>APOSD 全书没有出现 SRP 或 SOLID。讨论组里 Ousterhout 多次被问到，立场有变化，下面按时间列出其中三次：</p>
 <div class="table-wrap"><table>
   <thead><tr><th>时间</th><th>Ousterhout 的说法（转述）</th></tr></thead>
   <tbody>

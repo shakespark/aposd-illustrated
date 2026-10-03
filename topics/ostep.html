@@ -36,6 +36,7 @@
   <li><a href="#crash">崩溃一致性与"直接崩溃"</a></li>
   <li><a href="#lfs">日志结构设计与本站的 minikv</a></li>
   <li><a href="#memory">内存 API 与深模块</a></li>
+  <li><a href="#fork">fork 与 exec：把复杂性往下拉，还是接口凝固了</a></li>
   <li><a href="#summary">小结：从机制读出设计</a></li>
   <li><a href="#practice">练习</a></li>
 </ol></nav>
@@ -261,6 +262,18 @@ parse(cfg);   // 任何路径退出，cfg 都会被析构释放</code></pre>
 <div class="counter" data-title="深模块也有漏不住的地方">
   <p>OSTEP 14.4 节特意提醒：垃圾回收并不能消灭内存泄漏。只要你还持有某块内存的引用，回收器就永远不会释放它。所以"不再需要的对象要及时放掉引用"仍然是使用者要知道的事，只是比"手动 <code>free</code>"轻得多。所以 APOSD 说垃圾回收器"根本没有接口"，本站认为要打个折扣：它仍有一条使用者必须知道的非正式约束；C++ 里对应的问题是 <code>shared_ptr</code> 的循环引用。</p>
 </div>
+
+<h2 id="fork">fork 与 exec：把复杂性往下拉，还是接口凝固了</h2>
+<div class="bridge"><a class="o" href="https://t.miaowuao.cn/ostep/chapters/05-process-api.html">OSTEP 第 5 章</a><a class="a" href="../chapters/08-pull-down.html">APOSD 第 8 章</a></div>
+<p>APOSD 没有讨论进程创建，OSTEP 第 5 章则专门解释过为什么 Unix 把创建进程拆成 <code>fork</code> 和 <code>exec</code> 两步：shell 可以在两步之间布置子进程的环境，重定向和管道因此很容易实现。书的读者讨论组里有一串正好把这个设计放到了 APOSD 的框架下。</p>
+<div class="aside" data-title="讨论组 · 作者补充：这是&quot;把复杂性往下拉&quot;">
+  <p>以下不在书里。有读者问 <code>fork</code> 到底算不算简单。Ousterhout 说自己喜欢 <code>fork</code> 加 <code>exec</code> 的做法（<a href="https://groups.google.com/g/software-design-book/c/zC65L9Hq0B4">2022-08</a>）：两个调用各自都简单，父进程可以在两者之间任意调整子进程的环境。主要缺点是最直接的实现很低效：<code>fork</code> 复制了父进程的全部状态，转眼又被 <code>exec</code> 丢掉；要让它实用，底层系统得承担不少额外的复杂性（写时复制），而且可能仍然慢一些。Ousterhout 表示接受这个取舍，并直接称之为"把复杂性往下拉"：对使用者干净简单，对系统的实现者更费事。</p>
+  <p>相比之下，一步到位的创建进程接口容易高效实现，但对使用者别扭：子进程可能与父进程不同的每一个方面都要有参数；想新增一种定制方式，就得给它再加参数。而在 <code>fork</code> 加 <code>exec</code> 的方式下，可以新增一个独立的系统调用，只有需要的程序才会去调。Ousterhout 最后说，这大概是个会永远争下去的取舍。</p>
+</div>
+<div class="counter" data-title="讨论组 · 读者质疑：简单，直到不再简单">
+  <p>同一串里一位读者给了相当扎实的反方，Ousterhout 没有再回。要点：<code>fork</code> 起初确实简单，但后来和线程、和几乎所有后加的机制都配合得不好，子进程继承来的状态常常需要清理；这位读者的说法是，这类接口在概念上是简单的，直到它不再简单。更重要的一点是"要么 <code>fork</code>、要么一个参数巨多的创建调用"是假二分，还有第三种设计：先创建一个尚不可运行的子进程，父进程用一组普通的调用去布置它（文件描述符、地址空间等），最后再让它开始运行。读者举的例子来自研究系统和学术论文，本站没有逐一核对。</p>
+</div>
+<p>对照着读的收获：Ousterhout 的论证和 OSTEP 的解释是同一件事的两面（接口小、可组合，代价压在内核里）；读者的反方则提醒，<strong>"往下拉"的账要按接口的整个寿命来算</strong>。1970 年代进程里只有一个线程、状态很少时，这笔账很划算；后来进程里的东西越来越多，"复制一切"这个最简单的定义就成了负担。第三种设计其实也符合 APOSD 的思路：把"布置子进程"做成一组各自简单、只在需要时才调用的操作。</p>
 
 <h2 id="summary">小结：从机制读出设计</h2>
 <ul>

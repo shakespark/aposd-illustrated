@@ -146,6 +146,15 @@ Status upload(const std::string&amp; localPath, const ObjectName&amp; dst,
   <p>很多团队把"可配置"当成美德，觉得参数越多越灵活。按这一章的标准，每多一个必须由人决定的参数，就多一件"重要的事"。作者在 21.2 节的建议正相反：能自动算出来的配置，就不要再让管理员去管。<em>本站补充：</em>判断标准不是"有没有人可能想调"，而是"大多数使用者需不需要想这件事"。</p>
 </div>
 
+<div class="aside" data-title="讨论组 · 作者补充：重要的东西要少，但不能藏">
+  <p>以下不在书里，来自书中给出的读者讨论组。本章的两句话，Ousterhout 2018 年就在讨论组里用过，而且各有一个具体的场合：</p>
+  <ul>
+    <li><strong>重要的东西藏起来，是在害人。</strong>有读者主张用广播消息取代对象之间的直接调用，理由是这样"没有依赖"。Ousterhout 回答（<a href="https://groups.google.com/g/software-design-book/c/raZiHfaBRX4">2018-08</a>）：理想的设计让开发者在任一时刻需要知道的东西尽量少；但一件事如果确实重要，就必须把它讲清楚、放在明处。谁依赖谁是重要的，把它藏进消息里，只是让开发者更难受。</li>
+    <li><strong>让重要的东西变少。</strong>有读者担心自己抛的异常种类太多。Ousterhout 回答（<a href="https://groups.google.com/g/software-design-book/c/ouVwAfqZfgo">2018-07</a>）：上层确实要区别对待的情况，就必须如实反映出来，想藏只会出问题；能做的是减少重要的东西，比如把几种情况用同一种方式处理，它们之间的区别就不再重要了。</li>
+  </ul>
+  <p>两处合起来就是本章的做法：先判断什么重要，再让重要的东西尽量少、尽量显眼。</p>
+</div>
+
 <h2>练一练</h2>
 <p>下面三道题来自训练场。先自己判断再看解析，答题记录会进入间隔复习。</p>
 <div class="drill-embed" data-ids="ch21-flag-01 ch21-judge-01 ch21-write-02"></div>

@@ -258,7 +258,8 @@ else return lastError;</code></pre>
   <ul>
     <li><strong>为什么书里几乎不谈测试。</strong>Ousterhout 说自己非常看重测试，尤其是单元测试；书不展开，是有意把范围限定在设计上（<a href="https://groups.google.com/g/software-design-book/c/nV1YJ6d9wRo">2020-02</a>）。当时还说测试"大体上不影响设计"，被读者指出小尺度上会影响之后，表示同意，承认原话说得太简略。</li>
     <li><strong>单元测试会不会把结构冻住。</strong>有读者说单元测试以类为单位，稍大的重构就要改成百上千行测试，等于把原有结构冻住了。Ousterhout 的回答（<a href="https://groups.google.com/g/software-design-book/c/3kCDvG6CV1E">2023-04</a>）：设计得好的单元测试只针对一个类，不太受别的类改动影响；如果你的大多数改动都要跨很多类，这本身就是设计不对的信号；测试真被大面积波及时，改动通常很机械，自己很少要花超过几分钟，而且这往往说明测试对无关的部分过于敏感，可以趁机整理；没有单元测试的代价远高于维护它们的代价。</li>
-    <li><strong>TDD。</strong>2025 年 Ousterhout 给过一个更具体的推演：每个新测试都可能打破为前面的测试写的代码，反复返工几轮后，很多人会开始打补丁；并且认为测试不够可以回头补，设计没做好几乎补不回来。详见<a href="../topics/clean-code.html#group">专题页</a>。</li>
+    <li><strong>19.4 节对 TDD 的描述有误。</strong>2023 年有读者指出书里把 TDD 写成"先写完全部测试再写实现"并不准确。Ousterhout 道歉，说已记下、下次修订时改正（<a href="https://groups.google.com/g/software-design-book/c/bJ6vmAIz5_0">2023-09</a>）；2021 年的第 2 版里还是原来的写法。对"先把接口整个定下来，再用 TDD 填实现"这个折中，Ousterhout 认为有帮助，但每个模块的实现仍是战术式地长出来的。同一帖里描述了自己的次序：先写够一块实现，直到对模块内部的结构有把握（常常要返工），再给这一块写测试；理由是测试很重要，而把结构做对更重要。修 bug 时例外，总是先写一个能复现它的测试。</li>
+    <li><strong>TDD 的推演。</strong>2025 年 Ousterhout 给过一个更具体的推演：每个新测试都可能打破为前面的测试写的代码，反复返工几轮后，很多人会开始打补丁；并且认为测试不够可以回头补，设计没做好几乎补不回来。详见<a href="../topics/clean-code.html#group">专题页</a>。</li>
     <li><strong>工厂。</strong>书里谈设计模式时没有单独讨论工厂（19.5 节）。2021 年 Ousterhout 在讨论组里主动发问：读某个开源库的代码时见到层层工厂，它们到底有什么用？对读者给的理由，Ousterhout 否定了两条：构造函数抛异常时没有人能拿到半成品对象，所以这不是用工厂的理由；想防止对象在初始化完成后再被改，可以在类里设一个内部标志，或者干脆把选项设计成随时可改，类的实现复杂一点，使用者简单一点，好过引入一个工厂类（<a href="https://groups.google.com/g/software-design-book/c/46heiunvGug">2021-12</a>）。接受了一条：要创建的对象的<strong>具体类型</strong>得在运行时根据数据决定时，构造函数做不到，工厂方法是唯一可行的办法（2022-06）。这和 19.5 节的态度一致：模式在它解决的那个问题真的出现时才用。</li>
   </ul>
   <p>关于单一职责原则（书里没有提），Ousterhout 的三次表态也在<a href="../topics/clean-code.html#group">专题页</a>。</p>

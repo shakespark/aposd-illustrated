@@ -46,6 +46,10 @@
   OSTEP 专题（zC65L9Hq0B4，fork/exec）。作者说过会改书的四处：19.4 的 TDD 描述（bJ6vmAIz5_0）、第 9 章没提内聚/耦合（Zd7vVeJb1PY）、
   7.5 没提单例（edN-bAAHGN0）、14.1 加 typedef 解法（WQTyymI0Zx4）。uHWl_gbtmW8 有 7 条正文接口返回为空，要用得回网页补读。
   C 档 67 串还没读。
+- 2026-10-03：B 档材料已写进页面：第 1、10、16、17、18、20、21、22 章各自有了"讨论组"块（至此 22 个章节页都有），
+  第 7、9、14、19 章补了作者答应改书的四处，OSTEP 专题新增 fork/exec 一节，Clean Code 专题更正了 TDD 认错的时间。又有 20 串标为"已采用"。
+  B 档里还没用上的（约 25 串 A/B）多是对已有章节的次要补充，见清单里状态为"已精读"的条目；可出题的素材：4LOLZArwQEk（超时）、
+  XF1ApRr0h9Y（装饰器）、wdYR4VpnCM8（三层小类）、RFJ7q9wdke4（撤销）、jngfdK-tWnk（前置条件）。
 - 取正文到本机：`python3 tools/groups_fetch.py A`（或给串 id），落在不入库的 `source/group/`。
 - 写完笔记后回填：`python3 tools/groups_scan.py --notes`（按笔记头部的"精读 / 对应 / 优先级"更新 `triage.json`）。
 - 再次扫描：`python3 tools/groups_scan.py`，会列出新增的串和有新回复的串，不动 `triage.json` 里已有的结论。

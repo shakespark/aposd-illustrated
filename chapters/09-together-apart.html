@@ -346,6 +346,10 @@ std::optional&lt;Session&gt; SessionStore::lookup(std::string_view id) {
   <p>有读者觉得 9.2（Java 把缓冲和文件输入流分开是错的，该合并）和 9.4（通用代码与专用代码该分开）互相打架。Ousterhout 的解法是：通用的缓冲机制完全可以是一个独立的模块，但它应当被文件流<strong>在内部使用</strong>，而不是作为一层交给使用者去套（<a href="https://groups.google.com/g/software-design-book/c/AlSb_DOIpeg">2022-10</a>，不在书里）。也就是说，分开的是实现，合起来的是使用者看到的接口。详见<a href="04-deep-modules.html">第 4 章</a>"边界与反方"里的同一个例子。</p>
 </div>
 
+<div class="aside" data-title="讨论组 · 作者补充：本章为什么没提&quot;内聚&quot;和&quot;耦合&quot;">
+  <p>有读者问：本章讲的不就是"高内聚、低耦合"吗，为什么全章不提这两个词？Ousterhout 回答说只是疏漏：两者足够相近，本该在这一章里提到，已经记下，下次修订时补上（<a href="https://groups.google.com/g/software-design-book/c/Zd7vVeJb1PY">2022-11</a>）。2021 年的第 2 版里没有。所以读这一章时可以放心地把它和你已经知道的"内聚／耦合"对上：本章的贡献是给出了<strong>怎么判断</strong>两段代码相关的具体迹象。</p>
+</div>
+
 <h2>练一练</h2>
 <p>下面三道题来自训练场：一道连体方法、一道"看起来重复其实没问题"、一道拆成浅方法的接口对比。</p>
 <div class="drill-embed" data-ids="ch09-flag-02 ch09-flag-05 ch09-ab-04"></div>
