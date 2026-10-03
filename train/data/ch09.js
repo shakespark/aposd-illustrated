@@ -380,3 +380,86 @@ void sendEmailLater(JobQueue&amp; q, const Email&amp; m) {
   front: "什么时候<b>拆分</b>一个方法是合理的？什么时候该<b>合并</b>方法？",
   back: "<p>拆分：① 抽出一个能干净分开的子任务（最好的方式）：父、子各自能独立读懂，子方法往往比较通用。② 原方法做了几件不太相关的事、接口过于复杂，拆成调用者可见的几个方法，每个接口都更简单，且多数调用者只需其一（不常见）。</p><p>合并：把两个浅方法变成一个深方法；消除重复；消除方法之间的依赖或中间数据结构；把分散的知识收到一处；得到更简单的接口。</p>" },
 );
+
+// —— 以下题目取材于书中给出的读者讨论组（2026-10）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch09-ab-06", ch: 9, type: "ab", flags: ["conjoined"], title: "给大纲标题自动编号",
+  prompt: "<p>输入是一份文本，以若干个 <code>#</code> 开头的行是标题（<code>#</code> 的个数是层级）。任务：给每个标题加上 <code>1.</code>、<code>1.1.</code>、<code>1.2.</code>、<code>2.</code> 这样的编号。两种实现，哪个更容易确认是对的？</p>",
+  a: { label: "两个类加一个循环", code: `struct Heading {
+    int level; std::string text;
+    static std::optional<Heading> parse(const std::string& line);
+};
+class Numbering {
+public:
+    void number(Heading& h) {
+        counters_.resize(h.level);
+        if (h.level > (int)seen_) counters_.back() = 0;
+        seen_ = h.level;
+        ++counters_.back();
+        h.text = prefix() + " " + h.text;
+    }
+private:
+    std::string prefix() const;
+    std::vector<int> counters_; size_t seen_ = 0;
+};
+
+std::string numberHeadings(const std::string& doc) {
+    Numbering n; std::string out;
+    for (const std::string& line : splitLines(doc)) {
+        if (auto h = Heading::parse(line)) { n.number(*h); out += render(*h); }
+        else out += line;
+        out += '\\n';
+    }
+    return out;
+}` },
+  b: { label: "一个函数", code: `// 给 doc 中的标题行加上层级编号（"1."、"1.1."……），其余行原样保留。
+// 标题行是以一个或多个 '#' 开头、后跟空格的行；'#' 的个数是层级。
+std::string numberHeadings(const std::string& doc) {
+    std::vector<int> counters;      // counters[i]：第 i+1 级当前编到几
+    std::string out;
+    for (const std::string& line : splitLines(doc)) {
+        size_t level = line.find_first_not_of('#');
+        bool isHeading = level != std::string::npos && level > 0 && line[level] == ' ';
+        if (!isHeading) { out += line + '\\n'; continue; }
+
+        counters.resize(level);     // 回到上层时丢掉更深的计数；新的一层从 0 开始
+        ++counters.back();
+        std::string number;
+        for (int c : counters) number += std::to_string(c) + ".";
+        out += line.substr(0, level) + " " + number + line.substr(level) + '\\n';
+    }
+    return out;
+}` },
+  answer: "b",
+  explain: `<p>A 的 <code>number()</code> 名字说的是"给一个标题编号"，实际上它还在悄悄累积计数状态，所以只有<strong>对每个标题、按文档顺序、恰好调用一次</strong>才正确；它还伸手改了 <code>Heading</code> 的字段。要确认 A 是对的，必须把循环、<code>Numbering</code>、<code>Heading</code> 三处一起装进脑子，这就是连体。B 的全部状态是一个局部变量，推理都在一屏之内。</p>
+<p>读者讨论组里评过一个同类的小例子，Ousterhout 用的正是这三条判据：调用处看不懂就得读方法体，那抽出去图什么；名字里看不出的副作用会把方法和调用者绑在一起；必须同时读完才懂，就是没有抽象（<a href="https://groups.google.com/g/software-design-book/c/TVHbMP5ENXo">2026-03</a>，不在书里）。</p>
+<p>A 什么时候会变得合理？如果以后真的出现第二个需要"层级计数"的地方（比如生成目录），把计数抽成一个接口说清楚的小类型（"进入第 n 级，返回当前编号"）就有了独立价值。那场讨论里有读者用这个理由反驳，没有得到回应。先用简单的版本，需求来了再抽。</p>`,
+},
+{
+  id: "ch09-judge-04", ch: 9, type: "judge", title: "复制一份，依赖就没了吗",
+  prompt: "<p>代码里有一个常量 <code>kSeniorAge = 75</code>，被二十多处引用。工单说：某个页面应当对 72 岁以上的用户显示长者提示。你查了一下，说不清其余各处的 75 到底是不是同一个意思。最稳妥的做法和最该记下的教训分别是什么？</p>",
+  options: [
+    "把 <code>kSeniorAge</code> 改成 72，再逐一回归测试二十多处；教训是公共常量必须集中管理，任何一处都不该私自另起一个值",
+    "在这一处另起一个含义写清楚的常量；教训是原来的常量从没说清它代表什么，各处才会各有各的假设",
+    "在这一处直接写字面量 72；教训是少量复制好过少量依赖，公共常量被引用得越多，就越没有人敢改",
+    "把二十多处都改成各自的字面量 75，这一处写 72；教训是只有彻底不共用，才能保证以后每处都能独立修改",
+  ],
+  answer: 1,
+  explain: `<p>在说不清其余各处含义的情况下，改公共常量的风险太大，分开是害处较小的选择；但新常量要把含义写清楚（比如"显示长者提示的最低年龄"），否则只是把同样的问题再造一份。</p>
+<p>判断"该不该共用"的问题是：其中一处要改时，另一处是不是也得跟着改？是，就是同一个概念，必须共用；不是，它们只是碰巧相等。Ousterhout 在读者讨论组里讨论 Go 社区那句"少量复制好过少量依赖"时就是这么说的，并且不同意由这个例子得出"复制更好"：复制只是一个没写清含义的代码库里的权宜之计（<a href="https://groups.google.com/g/software-design-book/c/J3GweRh4VbM">2024-02</a>，不在书里）。把各处都改成字面量是把依赖藏了起来，并没有消除它：真正同义的那几处以后还是得一起改，只是再也搜不到了。</p>`,
+},
+{
+  id: "ch09-judge-05", ch: 9, type: "judge", title: "\"违反了单一职责\"",
+  prompt: "<p>评审里有人说：\"<code>SessionCache</code> 既管缓存又管过期又管统计，违反单一职责原则，应该拆成三个类。\"要判断这次拆分好不好，最该补问的是什么？</p>",
+  options: [
+    "拆开后使用者要面对几个接口；三个类能否各自独立读懂；原来藏在一个类里的知识会不会变成三个类共享",
+    "这个类一共有几个\"变化的理由\"：缓存策略、过期规则、统计口径各由不同的人提需求，数出来是三个，就应当拆成三个类",
+    "拆开后每个类的行数和公开方法数是否都明显少于原来的类，以及每个类的名字能否不用\"和\"字就描述清楚它的职责",
+    "三部分逻辑能否分别写单元测试而互不依赖：能分别测试，说明职责本来就是分开的，拆成三个类只是把事实写出来",
+  ],
+  answer: 0,
+  explain: `<p>"单一职责"只往一个方向推：拆。它没有说拆到什么程度算过头，"职责"可以小到一个判断，也可以大到一整个子系统。书里没有提这条原则；Ousterhout 在读者讨论组里的说法是，合理使用没有问题（内聚是好事），毛病在于它是单向的，而"深"把取舍写进了定义：接口要简单，功能要多，哪一头做过了都该回头（<a href="https://groups.google.com/g/software-design-book/c/NibdflTQTy8">2023-03</a>）。</p>
+<p>所以补问的是本章那几条：拆开后是否多出接口、是否连体、是否泄漏。过期和统计如果都要直接读写缓存条目的内部结构，拆成三个类只会得到三个互相知道底细的浅类。行数和命名回答不了这些。</p>`,
+},
+);

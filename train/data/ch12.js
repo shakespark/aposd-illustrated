@@ -149,3 +149,23 @@ Status replicate(const Batch& batch, int quorum);`,
   front: "为什么说注释是<b>抽象</b>的基础？",
   back: "<p>抽象是保留关键信息、省略可忽略细节的简化视图。没有注释，一个方法唯一的抽象就是声明（名字、参数和返回类型），它缺少太多关键信息（比如区间端点含不含、非法参数怎么处理）。如果使用者必须读实现才能用，就等于没有抽象。注释补全了声明，使\"只看接口就能用\"成为可能。</p>" },
 );
+
+// —— 以下题目取材于书中给出的读者讨论组（2026-10）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch12-judge-03", ch: 12, type: "judge", title: "\"测试就是文档\"",
+  prompt: "<p>同事说：\"<code>substr(pos, len)</code> 不用写接口注释。越界怎么处理、<code>len</code> 超出末尾怎么办，测试里都有例子，而且测试不会过时。\"哪种回应最公允？</p>",
+  code: `TEST(Substr, ClampsLenToEnd)      { EXPECT_EQ(substr("apple", 3, 10), "le"); }
+TEST(Substr, PosAtEndGivesEmpty)  { EXPECT_EQ(substr("apple", 5, 2), ""); }
+TEST(Substr, PosPastEndThrows)    { EXPECT_THROW(substr("apple", 6, 1), std::out_of_range); }`,
+  options: [
+    "同事是对的：这三个测试已经覆盖了全部边界情况，注释只会重复它们，而且注释迟早会和实现脱节，测试不会",
+    "同事是错的：测试验证的是实现，不是接口；从测试里读不出任何关于接口的可靠信息，接口只能用注释来描述",
+    "应当改用形式化的前置、后置条件来描述接口：它和测试一样精确、不会过时，又比一组测试用例更完整、更好读",
+    "测试刻画边界可能比文字更精确，也不会悄悄过时；但使用者得自己从例子里归纳规则。注释写规则，测试列例子",
+  ],
+  answer: 3,
+  explain: `<p>这是对本章"接口的非形式部分只能靠注释"最强的一个反驳。Ousterhout 在读者讨论组里被问到时让了两步：也许有注释以外的方式，但它必须完整、好找、好懂；好的单元测试对接口的刻画可能比注释更精确。坚持的是另一半：测试难读得多，使用者从一段文字里拿到所需信息通常更快；并把形式化规约归为同一类，精确但难用（<a href="https://groups.google.com/g/software-design-book/c/iS2GVCApGoo">2023-12</a>，不在书里）。</p>
+<p>上面三个测试能告诉你三个点上的行为，却没有说出规则："<code>pos</code> 等于长度时返回空串，大于长度时抛异常；<code>len</code> 超出末尾时截到末尾。"这句话就是接口注释该写的，而测试保证它不说谎。</p>`,
+},
+);

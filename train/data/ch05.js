@@ -393,3 +393,35 @@ Mailer::instance().send({.to = {user.email}, .subject = "订单已发货", .body
   front: "发现信息泄漏后，书中建议的两种修法是什么？第二种有什么前提？",
   back: "<p>① 如果受影响的类都小、又和泄漏的知识紧密相关，把它们<b>合并</b>成一个类。② 把这份知识<b>抽出来</b>放进一个新类。前提：新类能给出一个远比知识本身简单的接口；否则只是把后门泄漏换成了接口泄漏。</p>" },
 );
+
+// —— 以下题目取材于书中给出的读者讨论组（2026-10）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch05-flag-09", ch: 5, type: "flag", title: "\"零耦合\"的事件处理器",
+  prompt: "<p>团队的架构约定：处理器之间不许互相调用，只能读写一份共享的事件记录，据说这样\"各处理器完全独立，没有接口，也就没有耦合\"。下面是其中两个处理器。</p>",
+  code: `// order_handlers.cpp
+void onOrderPlaced(EventLog& log, const Event& e) {
+    Json rec;
+    rec["order"] = e.get("id");
+    rec["amt_cents"] = e.get("amount") * 100;
+    rec["st"] = 1;                        // 1 = 待支付
+    log.append("order_state", rec);
+}
+
+// billing_handlers.cpp
+void onPaymentReceived(EventLog& log, const Event& e) {
+    for (const Json& rec : log.scan("order_state")) {
+        if (rec["order"] == e.get("order_id") && rec["st"] == 1) {
+            if (rec["amt_cents"] == e.get("paid_cents")) {
+                Json done = rec;
+                done["st"] = 2;           // 2 = 已支付
+                log.append("order_state", done);
+            }
+        }
+    }
+}`,
+  choices: ["leakage", "shallow", "overexposure", "none"], answer: ["leakage"], mark: [4, 5, 6, 7, 12, 13, 14, 16],
+  explain: `<p>两个处理器确实没有互相调用，但它们共享着同一份知识：记录的类别名、三个字段的名字、金额以分为单位、状态码 1 和 2 的含义。这些只存在于两个文件各自的代码里，改一边不改另一边，要到运行时才出错。这是<strong>信息泄漏</strong>，而且是最难发现的那种，因为没有任何签名把它写出来。</p>
+<p>Ousterhout 在读者讨论组里评价过同一类做法：处理器通过共享记录通信，后者必然期待在里面找到特定内容，这就是契约；没有接口和接口不明显是两回事（<a href="https://groups.google.com/g/software-design-book/c/-3R1G0sU3zI">2023-06</a>，不在书里）。改法是让这份知识只住在一处：一个 <code>OrderState</code> 类型，带"读出当前状态""标记已支付"两个操作，两个处理器都通过它读写。</p>`,
+},
+);

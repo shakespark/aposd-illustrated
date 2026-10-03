@@ -292,3 +292,52 @@ public:
   front: "消除<b>透传变量</b>有哪几种办法？各自的代价是什么？",
   back: "<p>① 放进上下两端都能拿到的<b>共享对象</b>：但这个对象自己可能就是透传变量。② <b>全局变量</b>：同一进程里不能有两个独立实例（测试时常需要）。③ <b>context 对象</b>（作者最常用）：每个实例一个，引用存在主要对象里，只在构造函数中传递；但它仍有全局变量的大部分缺点，可能变成杂物袋，还要注意线程安全（字段最好不可变）。</p>" },
 );
+
+// —— 以下题目取材于书中给出的读者讨论组（2026-10）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch07-ab-04", ch: 7, type: "ab", title: "一个只管转交的折扣方法",
+  prompt: "<p>代码里很多地方手上拿着\"客户 + 订单号\"，却想对订单做操作，于是有人加了一批辅助方法。评审时有人指出它们是透传方法。两种改法：</p>",
+  a: { label: "保留辅助方法，补上注释", code: `class OrderService {
+public:
+    // 给 customer 名下编号为 orderId 的订单打折。
+    void applyDiscount(Customer& customer, OrderId orderId, Percent d) {
+        customer.findOrder(orderId).applyDiscount(d);
+    }
+    // 取消 customer 名下编号为 orderId 的订单。
+    void cancel(Customer& customer, OrderId orderId) {
+        customer.findOrder(orderId).cancel();
+    }
+    // …… 还有七八个同样形状的方法
+};` },
+  b: { label: "在入口处就换成订单对象", code: `// 请求处理的最外层：把"客户 + 订单号"解析成订单，只做一次
+Order& resolveOrder(const Request& req) {
+    Customer& c = customers_.get(req.customerId());
+    return c.findOrder(req.orderId());      // 找不到时抛 NotFound
+}
+
+void handleDiscount(const Request& req) {
+    Order& order = resolveOrder(req);
+    order.applyDiscount(req.percent());
+}
+void handleCancel(const Request& req) {
+    resolveOrder(req).cancel();
+}` },
+  answer: "b",
+  explain: `<p>A 里每个方法做的事只有"按订单号找到订单，再转交"，签名和 <code>Order</code> 上的方法几乎一样，是一排透传方法；注释改变不了这一点。B 没有去修这些方法，而是问：为什么到处都有人拿着两个值却想操作一个订单？在入口处换成 <code>Order</code> 之后，这些方法就没有存在的理由了。</p>
+<p>这个思路来自 Ousterhout 在读者讨论组里对一个类似例子的回答：一处别扭，有时最好的修法是改另一处，把整个问题消掉（<a href="https://groups.google.com/g/software-design-book/c/D8tHfkacHq8">2026-03</a>，不在书里）。同一帖里也说，如果这样的调用确实很多、又没法在上层统一转换，留一个浅的辅助方法是可以容忍的。所以 A 不是"错"，只是先该试试 B。</p>`,
+},
+{
+  id: "ch07-judge-03", ch: 7, type: "judge", title: "消除透传变量的代价由谁付",
+  prompt: "<p>TLS 证书在 <code>main</code> 里读入，只有调用链最底层的 <code>Transport</code> 用得到，中间隔着 <code>Server</code>、<code>Session</code> 两层。有人提议：不要一层层传参数，改成在 <code>main</code> 里先构造 <code>Transport(cert)</code>，再把它传给 <code>Session</code> 的构造函数，再把 <code>Session</code> 传给 <code>Server</code> 的构造函数。这个方案的主要代价是什么？</p>",
+  options: [
+    "<code>main</code> 现在必须知道整条调用链谁用谁；哪一层的内部结构变了，<code>main</code> 都得跟着改",
+    "三个对象都在 <code>main</code> 里构造，生命周期被拉长到整个进程；证书因此常驻内存，比按需逐层传参更不安全",
+    "构造函数参数变多之后，<code>Session</code> 和 <code>Server</code> 的单元测试都必须先造出真实的 <code>Transport</code>，测试因此变慢",
+    "没有明显代价：每个类只拿到自己直接用到的对象，证书不再穿过中间层，这是消除透传变量的标准做法",
+  ],
+  answer: 0,
+  explain: `<p>透传参数的毛病是中间层被迫知道一个它们不关心的值。这个方案让中间层解脱了，却把"整条调用链长什么样"这份知识搬到了入口：<code>Server</code> 内部改成先经过一个新的 <code>Router</code>，<code>main</code> 就要改。链越深，入口要知道的越多。Ousterhout 在读者讨论组里就是用这个理由否定它的（<a href="https://groups.google.com/g/software-design-book/c/6Vs1trmcq9k">2022-09</a>，不在书里），并说这个问题大概没有完美解，每种办法都有缺点。</p>
+<p>这不等于永远不能这样写。对象图很小、很稳定，或者本来就有一处专门负责装配时，代价可以接受。重点是看清代价落在谁身上，再和 context 等办法比。</p>`,
+},
+);

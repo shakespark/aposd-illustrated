@@ -315,3 +315,33 @@ std::optional<Profile> ???(UserId key, bool createIfMissing);`,
   front: "什么时候短而泛的名字（如 <code>i</code>、<code>n</code>）是可以接受的？",
   back: "<p>① 变量的全部用法一眼就能看完（如几行的循环）；② 声明和使用离得很近：距离越远，名字应该越长；③ 短名字在全系统里一贯只表示一种东西。最终标准是读者是否觉得清楚，而不是作者自己觉得清楚。</p>" },
 );
+
+// —— 以下题目取材于书中给出的读者讨论组（2026-10）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch14-judge-04", ch: 14, type: "judge", flags: ["vague-name"], title: "一个\"更像领域语言\"的名字",
+  prompt: "<p>配置对象原来这样清空一个属性：<code>attrs.put(key, nullptr)</code>。有人为了\"让代码读起来像领域语言\"，加了一个函数 <code>addNull(key)</code> 来代替。从命名的角度看，这个新名字的主要问题是什么？</p>",
+  options: [
+    "名字太泛：应当把被清空的东西写进名字，改成 <code>addNullAttributeValue(key)</code>，读者才知道它作用在什么上面",
+    "\"add\"会让读者产生原来没有的疑问：这个键已经存在时，是覆盖、再加一个，还是报错？它比原来的写法更不精确，却多了一个要学的词",
+    "问题在一致性：项目里别的函数都以 <code>set</code> 开头，这里应当叫 <code>setNull(key)</code>；只要和已有的词汇保持一致，新增一个词没有坏处",
+    "没有问题：<code>put(key, nullptr)</code> 暴露了\"用空指针表示清空\"这个实现细节，新名字把它藏了起来，这正是引入领域词汇的好处",
+  ],
+  answer: 1,
+  explain: `<p>好名字让读者不看实现也能猜对行为；<code>addNull</code> 做不到，"添加"在键已存在时的含义不明。原来的 <code>put</code> 至少是容器的通用说法，读者有现成的预期。</p>
+<p>这个例子出自读者讨论组。Ousterhout 的评价是两种写法都浅，新名字更浅、还更含糊；至于"造词汇"，每个接口都在引入词汇，词汇多不等于好，好学又能干净表达大量任务的才算好（<a href="https://groups.google.com/g/software-design-book/c/CEIpGjyswfg">2026-01</a>，不在书里）。如果确实想要一个专门的操作，名字要说出语义，例如 <code>clear(key)</code>，并在注释里写明键不存在时的行为。</p>`,
+},
+{
+  id: "ch14-judge-05", ch: 14, type: "judge", title: "要不要给每种整数一个类型",
+  prompt: "<p>14.1 节的 bug 源于同一个名字在一处指文件内的块号、在另一处指磁盘上的块号。读完后你决定在自己的存储引擎里把所有整数都包成独立类型：<code>FileBlockNo</code>、<code>DiskBlockNo</code>、<code>RetryCount</code>、<code>LoopIndex</code>、<code>ByteCount</code>……哪种判断最合理？</p>",
+  options: [
+    "全部包起来：类型不占运行时开销，多一种类型就多一类编译期能拦住的错误；工作量可以靠一个通用的强类型模板摊平",
+    "都不要包：那个 bug 的病根是名字含糊，把两个变量分别叫 <code>fileBlock</code> 和 <code>diskBlock</code> 就解决了，类型只是增加转换的噪音",
+    "给<strong>容易互相混淆、混了后果严重</strong>的那几种（两种块号、不同单位的长度）单独的类型，其余靠名字区分；类型本身也是要学的接口",
+    "只给公开接口里出现的整数包类型，模块内部一律用裸整数；因为类型的作用是约束调用者，内部代码由同一个人维护，不会混",
+  ],
+  answer: 2,
+  explain: `<p>两种块号会出现在同一段代码里、取值范围重叠、混用不会立刻崩溃，正是类型最值钱的地方：编译器替你拦住。循环下标和重试次数几乎不可能和别的东西混，包起来只是多出一批要学的名字和转换。</p>
+<p>Ousterhout 在读者讨论组里对"用类型区分"表示同意，同时有保留：担心造出一大堆本质上都是整数的类型，而且很难事先判断哪些值得单独成类型（<a href="https://groups.google.com/g/software-design-book/c/YHNMr_FgnRY">2023-08</a>，不在书里）。可用的判据是出过错或差点出错的地方优先，不必一次到位。</p>`,
+},
+);

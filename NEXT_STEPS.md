@@ -4,7 +4,7 @@
 
 ## 内容
 - 22 章章节页（读前问题、核心观点、图解与交互、原创 C/C++ 例子、边界与反方、练习、自测、项目任务）。
-- 训练场：310 道原创题 + 14 张自动生成的红旗记忆卡，Leitner 间隔复习（localStorage 键 `aposd-srs`）。
+- 训练场：328 道原创题（其中 18 道取材于读者讨论组，2026-10-03 新增，分布在第 2、3、4、5、7、8、9、11、12、14、19 章） + 14 张自动生成的红旗记忆卡，Leitner 间隔复习（localStorage 键 `aposd-srs`）。
   每个红旗至少 3 道专练题（`flags` 标签 + flag 题答案）。
 - minikv：故意写成"战术式"的 C++17 键值存储（src 1418 行），8 个重构任务，参考解答各自独立、零警告、测试全绿；
   问题地图在 `project/solutions/MAP.md`（27 处有意埋下的问题 + 几处"看起来像但不是问题"）。
@@ -37,7 +37,7 @@
 - 2026-10-03：两个专题页已补上讨论组材料（`topics/clean-code.html#group`；`topics/ai-era.html` 的 `#said` 第二处和 `#readers`），
   用到的 10 串在清单里标为"已采用"（部分采用也算；Kb5K、yHsx 等串里还有训练题素材没用）。章节页和训练场还没动。
 - 2026-10-03：14 个章节页（第 2～9、11～15、19 章中有材料的）在"边界与反方"末尾加了"讨论组 · 作者补充 / 读者质疑"块，
-  写法约定见 `AUTHORING.md`"讨论组材料"一节。又有 21 串标为"已采用"。训练场还没动
+  写法约定见 `AUTHORING.md`"讨论组材料"一节。又有 21 串标为"已采用"。训练题已出 18 道（各 `train/data/chNN.js` 末尾单独一段）
   （现成素材：TVHbMP5ENXo、J3GweRh4VbM、Kb5K3YcjIXw 串尾、iS2GVCApGoo、Java I/O 缓冲分层）。
 - 取正文到本机：`python3 tools/groups_fetch.py A`（或给串 id），落在不入库的 `source/group/`。
 - 写完笔记后回填：`python3 tools/groups_scan.py --notes`（按笔记头部的"精读 / 对应 / 优先级"更新 `triage.json`）。

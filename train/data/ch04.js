@@ -202,3 +202,57 @@ auto resp = client.postJson("https://orders.internal/v1/orders?dryRun=1", body);
   front: "什么是<b>类炎</b>（classitis）？它为什么有害？",
   back: "<p>认为\"类是好东西，所以越多越好\"，于是尽量让每个类只做很少的事。单个类简单了，但类的数量和接口总量暴增，系统整体反而更复杂，代码也更啰嗦。</p>" },
 );
+
+// —— 以下题目取材于书中给出的读者讨论组（2026-10）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch04-ab-03", ch: 4, type: "ab", title: "缓冲放在哪一层",
+  prompt: "<p>一个字节来源库，支持文件、管道、内存三种来源。逐字节读文件很慢，需要缓冲。两种设计，哪个让使用者更省心？</p>",
+  a: { label: "缓冲垫在来源下面", code: `// detail::ReadBuffer：内部使用的缓冲部件（定义在 read_buffer.h），
+// 三种来源各自持有一个；使用者看不到它
+
+class FileSource {
+public:
+    // 打开文件用于顺序读取，读取带缓冲。
+    // 需要逐次直达内核的读取（极少见）时传 Buffering::Off。
+    explicit FileSource(const std::string& path,
+                        Buffering mode = Buffering::On);
+    size_t read(std::span<std::byte> out);
+private:
+    detail::ReadBuffer buf_;
+};
+
+// 使用
+FileSource src("data.bin");` },
+  b: { label: "缓冲叠在来源上面", code: `class ByteSource {             // 所有来源的公共接口
+public:
+    virtual size_t read(std::span<std::byte> out) = 0;
+};
+class FileSource     : public ByteSource { ... };  // 不带缓冲
+class BufferedSource : public ByteSource {         // 给任意来源加缓冲
+public:
+    explicit BufferedSource(ByteSource& inner, size_t cap = 64 * 1024);
+    ...
+};
+
+// 使用
+FileSource file("data.bin");
+BufferedSource src(file);      // 忘了这一行也能跑，只是很慢` },
+  answer: "a",
+  explain: `<p>两种设计里缓冲的实现都只有一份，也都和来源正交。区别在于<strong>谁来组装</strong>：B 让每个使用者自己套，要多认识一个类、多写一行，而且忘了套不会报错，只会变慢；A 把组装做在模块内部，常见用法一行就对。这是书中 4.7 节 Java I/O 例子的教训，"垫在下面"这个设计则是 Ousterhout 后来在读者讨论组里补充的（<a href="https://groups.google.com/g/software-design-book/c/rin4ykU9plo">2022-11</a>）。</p>
+<p>B 并非一无是处：如果"要不要缓冲、用哪种缓冲"在你的系统里真的经常因场合而异（交互式终端输入、依赖背压的流），把选择权交给使用者是合理的。A 也留了出口（<code>Buffering::Off</code>），并在接口注释里写明了默认行为。判断标准是常见情况是什么。</p>`,
+},
+{
+  id: "ch04-judge-03", ch: 4, type: "judge", title: "这个接口对谁是深的",
+  prompt: "<p>书中用 Unix 文件 I/O 的五个基本调用说明深模块。你在写一个存储引擎，几乎每次写入之后都要调用 <code>fsync</code>，还要处理短写和 <code>EINTR</code>。关于\"文件 I/O 接口有多深\"，哪种说法最准确？</p>",
+  options: [
+    "书里的例子不成立：一个完整的文件接口必须包含 <code>fsync</code>，把它算进去之后调用数和语义都翻倍，这个接口其实是浅的",
+    "深度是接口自身的固定属性：五个调用背后有几十万行实现，这个比值不因使用者是谁而改变，所以对你和对别人一样深",
+    "对只用那五个调用的大多数程序，它很深；对你，<code>fsync</code> 等也是必须知道的东西，要算进成本，所以没那么深",
+    "对你反而更深：你用到的功能比普通程序多，同样的五个调用替你藏起了更多实现，所以收益与成本之比更高",
+  ],
+  answer: 2,
+  explain: `<p>接口的成本是"使用者必须知道的东西"。使用者不同，必须知道的东西就不同。Ousterhout 在读者讨论组里回答"为什么没列 <code>fsync</code>"时说得很直接：它很少被需要，所以不给大多数人增加负担；但如果你的代码大多都要用它，那它对你就是 I/O 接口的基本组成部分，评估复杂度时应当算进去（<a href="https://groups.google.com/g/software-design-book/c/OCSMlVYmQTE">2025-03</a>，不在书里）。</p>
+<p>这对自己设计接口也有用：一个选项只有极少数使用者需要时，把它放在常用路径之外，多数人就不必为它付出学习成本。至于"背后实现有几十万行所以一定深"，Ousterhout 明确反对过把实现的大小当成深度：实现大也可能只是实现得差（<a href="https://groups.google.com/g/software-design-book/c/DvnQ1Bvqy30">2024-05</a>）。</p>`,
+},
+);
