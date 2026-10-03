@@ -297,3 +297,55 @@ void BlobStore::collectGarbage();</code></pre>`,
   front: "18.2 节列出了哪几种让代码<b>不明显</b>的写法？它们引出了哪条设计原则？",
   back: "<p>事件驱动（控制流难追踪）、通用容器（<code>std::pair</code> 的元素名不带含义）、声明类型与实际类型不一致、违反读者预期的代码（如构造函数有意外的副作用）。原则 14：软件应该为易读而设计，而不是为易写而设计。</p>" },
 );
+
+// —— 取材于读者讨论组的第二批题目（2026-10，B 档讨论串）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch18-flag-08", ch: 18, type: "flag", title: "\"零依赖\"的消息总线",
+  prompt: "<p>游戏里各个对象之间不直接调用，全部通过一条消息总线广播。作者的说法是：<code>Game</code> 不认识任何别的类，所以\"没有依赖\"。</p>",
+  code: `void Game::onKey(Key k) {
+    if (k == Key::Left)  bus_.post({"move",  {{"who", "player"}, {"dx", -1}}});
+    if (k == Key::Space) bus_.post({"shoot", {{"who", "player"}}});
+}
+
+// sprite.cpp
+void Sprite::onMessage(const Message& m) {
+    if (m.type == "move" && m.str("who") == name_) x_ += m.num("dx");
+}
+
+// audio.cpp
+void Audio::onMessage(const Message& m) {
+    if (m.type == "shoot") play("laser.wav");
+    if (m.type == "move")  play("step.wav");
+}
+
+// weapon.cpp
+void Weapon::onMessage(const Message& m) {
+    if (m.type == "shoot" && m.str("who") == owner_) spawnBullet();
+}`,
+  choices: ["nonobvious", "shallow", "comment-repeats", "none"], answer: ["nonobvious"], mark: [2, 3, 8, 13, 14, 19],
+  explain: `<p>读 <code>Game::onKey</code> 的人看不出按下左键之后会发生什么：要知道谁处理 <code>"move"</code>，只能去搜所有的 <code>onMessage</code>；找到 <code>Sprite</code> 还不能停，因为 <code>Audio</code> 也在处理，而且都会执行。这是 18.2 节说的事件驱动让控制流难以跟踪，属于<strong>代码不明显</strong>。</p>
+<p>"没有依赖"也不成立：<code>Game</code> 必须确切知道消息的名字、字段名、<code>dx</code> 的含义，对方改了它也得改；只是这层依赖在代码里看不见了，也没有地方给这个接口写文档。Ousterhout 在读者讨论组里评过同样的写法，结论是复杂性主要不在于要打多少字，而在于要知道多少事（<a href="https://groups.google.com/g/software-design-book/c/raZiHfaBRX4">2018-08</a>，不在书里）。</p>
+<p>这不等于消息总线一无是处。音效、成就、统计这类"谁关心谁来听、发出者不在乎有没有人听"的旁路很适合它。问题出在用它来传递<strong>发出者指望一定发生</strong>的主流程：移动玩家应当是对 <code>player</code> 的一次直接调用。</p>`,
+},
+{
+  id: "ch18-judge-03", ch: 18, type: "judge", title: "声明成基类指针，还是具体类型",
+  prompt: "<p>18.2 节说\"声明的类型和实际分配的类型不一致\"会误导读者。下面的成员该声明成哪种？后面的代码依赖 <code>MmapStorage</code> 的两个性质：随机读很便宜；写入不会立即落盘，需要显式 <code>sync()</code>。</p>",
+  code: `class Index {
+    std::unique_ptr<Storage> storage_;        // 写法一
+    // std::unique_ptr<MmapStorage> storage_; // 写法二
+public:
+    Index() : storage_(std::make_unique<MmapStorage>("index.dat")) {}
+    ...
+};`,
+  options: [
+    "写法一：面向接口编程是通用的好习惯，成员一律声明成最抽象的类型，以后要换实现时只需要改构造函数里的那一行",
+    "写法二：声明的类型永远应当和分配的类型完全一致，这是 18.2 节的规则，不需要再考虑别的因素",
+    "写法二：这段代码依赖具体类型的性质，读者需要知道它是什么；若对任何 <code>Storage</code> 都成立，写法一才合适",
+    "两种都可以：C++ 的读者可以用 IDE 跳到构造函数看实际类型，所以声明成什么对理解代码没有影响",
+  ],
+  answer: 2,
+  explain: `<p>判据是<strong>具体类型要不要紧</strong>。这里要紧：读 <code>Index</code> 其余代码的人如果以为它只是个普通的 <code>Storage</code>，就看不懂为什么到处是随机读、为什么写完要 <code>sync()</code>。把类型藏起来，等于藏掉了读者需要的信息。</p>
+<p>书里这一条写的是无条件的"声明应当与分配一致"。有读者在讨论组里反对，Ousterhout 后来把立场改成了有条件的：不在乎是哪一种，就声明成抽象类型；具体类型要紧，就让声明反映出来（<a href="https://groups.google.com/g/software-design-book/c/b8TI5ioYf1k">2019-02</a>；2021 年的第 2 版里仍是原来的写法）。所以"永远一致"和"一律最抽象"都过头了。"IDE 能跳过去"说明信息找得到，不说明它明显：读者得先想到要去找。</p>`,
+},
+);

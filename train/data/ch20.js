@@ -262,3 +262,46 @@ private:
   front: "<b>围绕关键路径重新设计</b>的步骤是什么？它在什么时候用？",
   back: "<p>① 无视现有结构，想象常见情况下最少要执行的代码（理想代码），数据结构怎么方便怎么来；② 找一个尽量接近理想、结构又干净的设计；③ 把特殊情况移出关键路径：开头一次判断检测全部特殊情况，命中就去路径之外处理。这是最后手段：先测量，先找根本性修复（缓存、换算法），都不行才这样改。</p>" },
 );
+
+// —— 取材于读者讨论组的第二批题目（2026-10，B 档讨论串）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch20-ab-04", ch: 20, type: "ab", title: "逐个取结果太慢？",
+  prompt: "<p>客户端库要从远端的索引服务取回一次范围查询的全部结果，可能有几十万条。评审时有人担心\"一次取一条，每条一次网络往返\"，要求把批量暴露出来。哪种接口更好？</p>",
+  a: { label: "逐个取，内部成批", code: `// 一次范围查询的结果，按键的顺序逐个返回。
+// 内部按批从服务端预取（并可同时向多台服务器发请求），
+// 所以绝大多数 next() 调用不涉及网络。
+class RangeQuery {
+public:
+    RangeQuery(Client& c, Key first, Key last);
+    // 返回下一个对象；全部取完后返回 std::nullopt。
+    std::optional<Object> next();
+};
+
+// 使用
+RangeQuery q(client, lo, hi);
+while (auto obj = q.next()) process(*obj);` },
+  b: { label: "把批量交给调用者", code: `class RangeQuery {
+public:
+    RangeQuery(Client& c, Key first, Key last);
+    // 取回至多 maxCount 个对象，追加到 out；返回是否还有更多。
+    // maxCount 建议取 500～2000，过小会增加往返次数，
+    // 过大会让单次调用阻塞过久并占用较多内存。
+    bool nextBatch(size_t maxCount, std::vector<Object>& out);
+};
+
+// 使用
+RangeQuery q(client, lo, hi);
+std::vector<Object> batch;
+bool more = true;
+while (more) {
+    batch.clear();
+    more = q.nextBatch(1000, batch);
+    for (auto& obj : batch) process(obj);
+}` },
+  answer: "a",
+  explain: `<p>担心的是"每条一次往返"，但那是实现的事，不必长在接口上。A 的接口和逐个取一样简单，批量、预取、并发都藏在里面，批的大小由最清楚网络和服务端情况的库自己决定。B 把一个调用者并不比库更清楚的数（<code>maxCount</code>）推了上去，每个使用者还要多写一层循环，这是第 8 章说的把复杂性往上推。</p>
+<p>书里 13.5 节有一个逐个取结果的接口例子。有读者在讨论组里提出同样的担心，Ousterhout 回答说那个接口在实际系统里正是这样实现的：一次远程调用尽量取回多个对象，并向多台服务器并发请求，对使用者完全不可见；并拿带缓冲的输入作比，逐字符读也很少真的每次进内核（<a href="https://groups.google.com/g/software-design-book/c/SPVi2Ib3Vhg">2021-06</a>，不在书里）。同一串里还提到逐个取的另一个好处：取完返回空的单个方法天然可以被多个线程同时调用，"先问有没有、再取"的一对方法做不到。</p>
+<p>B 合理的情形：调用者自己就要成批处理（比如整批写进另一个系统），而且有理由控制批的大小。那时可以在 A 之外再加一个批量入口，而不是让所有人都面对它。</p>`,
+},
+);

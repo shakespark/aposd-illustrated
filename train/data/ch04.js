@@ -256,3 +256,64 @@ BufferedSource src(file);      // 忘了这一行也能跑，只是很慢` },
 <p>这对自己设计接口也有用：一个选项只有极少数使用者需要时，把它放在常用路径之外，多数人就不必为它付出学习成本。至于"背后实现有几十万行所以一定深"，Ousterhout 明确反对过把实现的大小当成深度：实现大也可能只是实现得差（<a href="https://groups.google.com/g/software-design-book/c/DvnQ1Bvqy30">2024-05</a>）。</p>`,
 },
 );
+
+// —— 取材于读者讨论组的第二批题目（2026-10，B 档讨论串）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch04-ab-04", ch: 4, type: "ab", title: "把一个 60 行的类拆成三层",
+  prompt: "<p>一个把用户设置存成文件的小类，约 60 行。有人觉得它\"做了三件事\"，按\"每个类只做一件事\"拆成了三个类。哪个版本对使用者和读者更友好？</p>",
+  a: { label: "拆成三个类", code: `class SettingsPath {            // 只负责算出文件路径
+public:
+    explicit SettingsPath(std::string dir);
+    std::string forUser(UserId id) const;
+};
+class SettingsCodec {           // 只负责编码、解码
+public:
+    std::string encode(const Settings& s) const;
+    Settings decode(std::string_view text) const;
+};
+class SettingsStore {           // 只负责读写文件
+public:
+    SettingsStore(SettingsPath path, SettingsCodec codec);
+    Settings load(UserId id);
+    void save(UserId id, const Settings& s);
+};
+
+// 使用
+SettingsStore store(SettingsPath("/var/app"), SettingsCodec());` },
+  b: { label: "一个类", code: `// 按用户保存和读取设置。每个用户一个文件，放在 dir 下。
+// 文件不存在时 load 返回默认设置；save 先写临时文件再改名，
+// 所以读到的要么是旧的完整内容，要么是新的完整内容。
+class SettingsStore {
+public:
+    explicit SettingsStore(std::string dir);
+    Settings load(UserId id);
+    void save(UserId id, const Settings& s);
+private:
+    std::string pathFor(UserId id) const;
+    static std::string encode(const Settings& s);
+    static Settings decode(std::string_view text);
+    std::string dir_;
+};
+
+// 使用
+SettingsStore store("/var/app");` },
+  answer: "b",
+  explain: `<p>A 没有改动任何一个方法，只是把它们分发到了三个类里，所以每个方法并不比原来好懂；多出来的是两个新类型、两个要学的接口，以及"先造两个零件才能得到一个可用对象"的装配步骤。路径规则和编码格式也没有别的使用者，拆出去并没有谁受益。B 对外只有 <code>load</code> 和 <code>save</code>，路径和格式是藏起来的实现细节。</p>
+<p>读者讨论组里评过一个几乎一样的重构，Ousterhout 问了几个值得照抄的问题：拆开之后得到了什么？每个新类是不是一个有分量的抽象，会不会被单独使用？读其中一个时能不能不读另外两个？并指出"要构造三个对象才得到一个有用的东西"本身是个信号（<a href="https://groups.google.com/g/software-design-book/c/wdYR4VpnCM8">2019-04</a>，不在书里）。</p>
+<p>A 什么时候合理：编码格式真的要被别处复用（比如导出功能也用它），或者存储位置要能替换成数据库。那时再把对应的部分抽出来，抽出的东西就有了自己的使用者。</p>`,
+},
+{
+  id: "ch04-judge-04", ch: 4, type: "judge", title: "深模块会不会更难测",
+  prompt: "<p>同事反对把三个浅类合并成一个深类：\"功能都藏到接口后面去了，单元测试够不着，只能测到表面。而且私有方法反正外面看不见，浅一点也无所谓。\"哪种回应最合理？</p>",
+  options: [
+    "同意：可测试性比深度重要，凡是需要单独测试的逻辑都应当拆成独立的公开类，深度可以放在其次",
+    "藏在接口后面的功能总得能通过接口触发，所以测得到；私有方法浅一点害处较小，但深的仍然更好",
+    "不同意：深模块只需要测公开接口上最常用的那条路径，内部的分支属于实现细节，不必也不应该去覆盖",
+    "部分同意：公开方法必须深，私有方法则越小越好，因为它们不增加任何接口，拆得再碎也不会增加复杂性",
+  ],
+  answer: 1,
+  explain: `<p>这两点都是 Ousterhout 在读者讨论组里的原意（<a href="https://groups.google.com/g/software-design-book/c/CxbZoE8i_Y0">2018-08</a>，不在书里）：没有发现"深"和"可测"有冲突，因为接口后面的功能都得能从接口到达；私有方法也应当尽量深，浅的私有方法因为不那么显眼，害处比浅的公开方法小，但不是没有。</p>
+<p>本站补充一个限定："能到达"不等于"容易触发"。错误路径和并发时序往往很难只靠公开接口制造出来，这时给底层依赖留一个可替换的口子（比如把系统调用包在一个可替换的接口后面）是合理的小让步，不必为此拆散整个类。私有方法同样有接口（参数、返回值、对成员状态的假设），所以"拆得再碎也不增加复杂性"不成立。</p>`,
+},
+);

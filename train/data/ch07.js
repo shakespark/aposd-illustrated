@@ -341,3 +341,54 @@ void handleCancel(const Request& req) {
 <p>这不等于永远不能这样写。对象图很小、很稳定，或者本来就有一处专门负责装配时，代价可以接受。重点是看清代价落在谁身上，再和 context 等办法比。</p>`,
 },
 );
+
+// —— 取材于读者讨论组的第二批题目（2026-10，B 档讨论串）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch07-flag-06", ch: 7, type: "flag", title: "每个操作一个装饰器",
+  prompt: "<p>一位同事读了一篇推崇\"可组合装饰器\"的文章，把字符串工具改成了下面的样子，理由是\"比一堆工具函数更灵活、更可复用\"。</p>",
+  code: `class Text {                          // 所有"文本"的公共接口
+public:
+    virtual std::string str() const = 0;
+};
+class RawText : public Text {
+public:
+    explicit RawText(std::string s);
+    std::string str() const override;
+};
+class Trimmed : public Text {         // 去掉首尾空白
+public:
+    explicit Trimmed(const Text& inner);
+    std::string str() const override;
+};
+class Lowered : public Text {         // 转成小写
+public:
+    explicit Lowered(const Text& inner);
+    std::string str() const override;
+};
+// …… 还有 Reversed、Truncated、Padded 等十几个
+
+// 使用
+RawText raw(input);
+Trimmed trimmed(raw);
+Lowered key(trimmed);
+lookup(key.str());`,
+  choices: ["shallow", "passthrough", "leakage", "none"], answer: ["shallow"], mark: [10, 15, 20, 23, 24, 25],
+  explain: `<p>每个装饰器类只包了一个几行的操作，却各自带来一个新类型、一个构造函数和一层间接：接口的成本和它藏起来的东西差不多大，是<strong>浅模块</strong>。使用者要做一次"去空白再转小写"，得认识三个类、造三个对象；想知道一共有哪些操作，得去翻十几个类。</p>
+<p>对照 <code>toLower(trim(input))</code> 或者字符串类上的两个方法：功能集中在一处，容易发现；从头到尾只有一种类型；调用一个已有的方法也比新建一个对象简单。这三条正是 Ousterhout 在读者讨论组里反对同一种写法时给的理由（<a href="https://groups.google.com/g/software-design-book/c/XF1ApRr0h9Y">2019-01</a>，不在书里）。</p>
+<p>为什么不选"透传方法"：这些类的 <code>str()</code> 并不是原样转交，每个都做了一点事。问题不在转交，而在每个类做的事太少。装饰器在 7.3 节有它合理的用途，前提是被包的接口改不了，或者包装确实提供了一个不同的抽象。</p>`,
+},
+{
+  id: "ch07-judge-04", ch: 7, type: "judge", title: "用单例代替透传",
+  prompt: "<p>为了不让配置对象一层层往下传，有人把它改成了单例：<code>Config::instance()</code>，任何地方都能取。和 7.5 节讨论的几种办法相比，这个做法最接近哪一种，主要的代价是什么？</p>",
+  options: [
+    "最接近 context 对象：每个系统实例各有一份，所以同一个进程里可以同时存在两套不同的配置，代价只是多一次函数调用",
+    "最接近共享对象：只有显式拿到引用的模块才能访问它，所以谁在用配置一目了然，代价是初始化顺序需要小心",
+    "和书里的办法都不同：单例是一种设计模式，有线程安全的延迟初始化，书里批评全局变量的那些理由对它并不适用",
+    "最接近全局变量：同一进程里只能有一份，没法同时存在两个配置不同的系统实例；测试里也很难反复创建和销毁",
+  ],
+  answer: 3,
+  explain: `<p>单例换了个写法，访问方式和限制都和全局变量一样：到处可取、全进程唯一。书中 7.5 节说全局变量的问题正是"无法在同一个进程里创建两个互相独立的系统实例"。Ousterhout 在读者讨论组里被问到时确认了这个对应，并承认书里漏了这一句；还说自己本来就不太喜欢单例，"只能有一个实例"是不必要的限制，单元测试常常要反复创建和销毁对象，单例会让测试变复杂（<a href="https://groups.google.com/g/software-design-book/c/edN-bAAHGN0">2024-09</a>，不在书里）。</p>
+<p>context 对象和它的区别就在"每个系统实例一份"：测试里可以各建各的，互不影响。线程安全的初始化解决的是另一个问题，不改变"全进程唯一"这件事。</p>`,
+},
+);

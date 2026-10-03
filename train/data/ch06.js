@@ -328,3 +328,35 @@ comp.beginStage();  /* webhook 登记 */</code></pre>`,
   front: "书中撤销机制的例子把功能拆成了哪<b>三部分</b>？分开的单位是什么？",
   back: "<p>① 通用机制：管理动作列表、分组、调用撤销/重做（History 类）；② 具体细节：每种动作怎么撤销，由各自最相关的模块实现；③ 组合策略：哪些动作归为一组，由上层界面代码决定。分开是针对<b>同一个机制</b>说的：撤销文本插入的专用代码可以放在通用的文本类里，因为它和文本操作关系紧密。</p>" },
 );
+
+// —— 取材于读者讨论组的第二批题目（2026-10，B 档讨论串）。场景和代码均为本站原创。——
+window.APOSD_DRILLS.push(
+{
+  id: "ch06-ab-05", ch: 6, type: "ab", title: "撤销信息由谁交给历史记录",
+  prompt: "<p>文本类要支持撤销。通用的历史记录类 <code>History</code> 已经有了（保存一串可撤销的动作）。有人觉得让 <code>Text</code> 依赖 <code>History</code> 不好，提议让 <code>erase</code> 把\"怎么撤销\"作为返回值交出来，由调用者去登记。哪种设计里，<code>History</code> 的接口变化影响的代码更少？</p>",
+  a: { label: "Text 自己登记", code: `class Text {
+public:
+    explicit Text(History& history);
+    // 删除 [from, to)。这次删除会作为一个可撤销的动作记入历史。
+    void erase(Position from, Position to);
+    ...
+};
+
+// 调用处（全应用几十处）
+text.erase(sel.begin, sel.end);` },
+  b: { label: "调用者登记", code: `class Text {
+public:
+    // 删除 [from, to)，返回一个能恢复被删内容的动作。
+    // 调用者负责把它交给历史记录，否则这次删除无法撤销。
+    UndoAction erase(Position from, Position to);
+    ...
+};
+
+// 调用处（全应用几十处）
+history.add(text.erase(sel.begin, sel.end));` },
+  answer: "a",
+  explain: `<p>B 看起来让 <code>Text</code> 更"独立"，但依赖并没有消失：<code>erase</code> 返回的动作类型就是和历史记录约定的接口，重做怎么表示、被删的文本存在哪里，迟早都得进这个类型。变化的是<strong>知道这份约定的地方</strong>：A 只有 <code>Text</code> 一处；B 是每一个调用 <code>erase</code> 的地方，而且漏掉一处不会报错，只是那次删除悄悄变得不能撤销。</p>
+<p>书中 6.7 节的撤销例子用的是 A 这种结构。有读者在讨论组里提过 B，Ousterhout 承认 A 确实把每个可撤销的类绑到了历史记录的接口上，这是代价；但评估一个去不掉的依赖要问两件事：这个接口最简能有多简，有多少方必须知道它。B 在第二问上更差，受影响的是所有调用点（<a href="https://groups.google.com/g/software-design-book/c/RFJ7q9wdke4">2020-06</a>，不在书里）。</p>
+<p>B 合理的情形：<code>Text</code> 是一个要给许多互不相干的应用用的库，其中大多数根本不需要撤销。那时可以考虑让历史记录成为可选的协作者，而不是把登记的责任推给每个调用点。</p>`,
+},
+);
