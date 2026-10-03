@@ -91,7 +91,7 @@
  },
  "50lEgky-jqw": {
   "title": "the ideal world",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 2 章（2.3 复杂性的两个成因：依赖与隐晦）；第 4 章 4.1；第 9 章（拆分是否增加依赖）；次要：第 5 章（数据格式/schema 作为接口）",
   "note": "从 4.1 节\"理想世界里模块彼此完全独立\"这句话出发，争论依赖本身是不是坏东西——读者认为依赖是模块化的本质，坏的只是隐晦的依赖；作者坚持不存在\"好的依赖\"。",
@@ -172,7 +172,7 @@
  },
  "TVHbMP5ENXo": {
   "title": "a small worked example",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 4 章（4.4 深模块、4.5 浅模块）/ 第 9 章 9.7（方法的拆与合）/ 第 5 章（信息泄漏、时序耦合）/ 第 6 章（通用模块，仅读者提到）/ 第 13 章 13.5（接口注释）/ 训练场 / 专题 clean-code",
   "note": "同一个小程序（给 Markdown 标题行加章节编号）的\"一个函数写完\"与\"拆成两个类\"两种实现，哪个更简单；作者逐条点评了拆类版本的毛病。",
@@ -190,7 +190,7 @@
  },
  "D8tHfkacHq8": {
   "title": "Tell, Don't Ask principle",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 7 章 7.1（透传方法）/ 第 4 章（4.5 浅模块）/ 第 5 章（信息泄漏，读者 [8]）/ 第 19 章 19.6（getter/setter，间接相关）/ 训练场",
   "note": "《程序员修炼之道》按 \"Tell, Don't Ask\" 修掉链式调用（train wreck）的办法，看起来会制造 APOSD 第 7 章反对的透传方法——两条原则冲突吗，谁优先。",
@@ -217,7 +217,7 @@
  },
  "CEIpGjyswfg": {
   "title": "Function names as a language",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 4 章（4.4～4.5 深与浅）/ 第 9 章 9.7（拆方法）/ 第 14 章（名字的精确性，14.3）/ 第 7 章（读者最后提问，无人回答）/ 专题 clean-code",
   "note": "浅函数如果能\"给代码造词汇\"（如 `add_null(attribute)`、`triangle_perimeter(a, b, c)`），算不算有价值；作者把\"词汇\"问题归回到深/浅模块。",
@@ -451,7 +451,7 @@
  },
  "OCSMlVYmQTE": {
   "title": "Omission of fsync in APoSD and RAMCloud",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 4 章（4.4 深模块的 Unix I/O 例子，4.7 Java 与 Unix I/O 的默认行为）；第 2 章（2.1 复杂性按\"开发者花在上面的时间\"加权）；专题 ostep（文件系统持久性、fsync、崩溃一致性）",
   "note": "书里把 Unix 文件 I/O 的五个调用当作深模块的典范，却没提 fsync；读者问：算上持久性之后这个接口还\"简单\"吗？后半串转到 RAMCloud 不调用 fsync 是否安全。",
@@ -505,7 +505,7 @@
  },
  "DvnQ1Bvqy30": {
   "title": "Book Review: A Philosophy of Software Design",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 4 章（4.2 接口的形式/非形式部分、4.4 深模块、4.5 浅模块、4.6 classitis、4.7 Unix I/O）；次要：第 7 章（透传方法）、第 1 章（瀑布模型一段）、第 3 章 3.4（Facebook 一段）、第 10 章 10.5（substring）",
   "note": "前半（2018）是 James Koppel 发书评前与作者的公开往来——\"接口简单\"能不能等同于\"规约（specification）简单\"、Unix I/O 到底算不算简单；后半（2024）换了话题——\"深度\"里的\"功能\"算不算委托给别的模块的部分、薄包装方法算不算深、不看实现能不能判断深度。",
@@ -532,7 +532,7 @@
  },
  "kIq42jPTR7U": {
   "title": "About Comments",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 15 章 15.3（注释是设计工具）/ 第 12 章（12.1、12.4）/ 第 13 章（13.5 接口注释、13.6 实现注释）/ 专题 clean-code",
   "note": "一位 Clean Code 背景的读者觉得大量注释\"难看、分心\"，并问\"把注释当设计工具\"有没有别的资料；作者说明自己的注释实际长什么样。",
@@ -559,7 +559,7 @@
  },
  "MtQQkeuUD2s": {
   "title": "Process to arrive a good design that separates general & special purpose code",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 11 章（设计两次）；第 6 章（6.1 适度通用、6.6 把专用代码往上推）与第 9 章 9.4；第 3 章（持续的小投资）；次要涉及第 15 章（先写注释 / 先写用法）、第 16 章；中途跑题到 DSL、代码生成、GUI 工具箱历史",
   "note": "怎样的过程才能把通用代码和专用代码分对——先设计还是先写乱再重划边界；作者答\"先想、别卡住、做两个差别很大的方案、准备好迭代两三轮\"，提问者一年半后回来写了实践心得。",
@@ -721,7 +721,7 @@
  },
  "iS2GVCApGoo": {
   "title": "Comments: I agree with the problem, not with the solution",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 12 章 12.1（\"好代码自文档化\"）/ 第 4 章 4.2（同一句话也出现在这里）/ 第 13 章 13.5（接口注释）/ 第 19 章 19.3（单元测试）/ 第 10 章 10.5（substring 例子）/ 训练场 / 专题 ai-era（末两条）",
   "note": "书里说接口的非形式部分\"只能用注释描述\"，读者认为单元测试也能、甚至更好；作者承认测试更精确，但坚持注释更好找、更好读。",
@@ -766,7 +766,7 @@
  },
  "YHNMr_FgnRY": {
   "title": "Choosing Names",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 14 章 14.1（坏名字导致 bug）/ 第 10 章 10.3（把错误定义掉）/ 第 13 章（注释 vs 类型 vs 名字里带单位）/ 训练场",
   "note": "第 14 章的 `block` 变量 bug，如果物理块号和逻辑块号是两个不同的类型就不会发生——那么什么时候该给\"其实就是个整数\"的东西单独建类型；后半串转到 \"Parse, Don't Validate\" 和带单位的名字。",
@@ -820,7 +820,7 @@
  },
  "J3GweRh4VbM": {
   "title": "A little copying is better than a little dependency",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 9 章（9.3 合并以消除重复、红旗\"重复\"）；第 2 章（依赖与\"不明显\"是复杂性的来源）；第 13 章（注释要写清变量的含义）；第 14 章（名字含糊）；次要涉及第 16 章（改已有代码时的战术性做法）",
   "note": "Go 谚语\"少量复制好过少量依赖\"对不对；作者的判据是\"复制之后依赖真的消失了吗\"，并把读者举的反例归因于变量含义没写清楚。",
@@ -928,7 +928,7 @@
  },
  "-3R1G0sU3zI": {
   "title": "Mountains to Molehills",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 5 章（信息隐藏与泄漏）；第 4 章（4.2 接口的非正式部分）；第 2 章（依赖与模糊性，2.3）；次要涉及第 18 章（事件驱动让代码不显然，18.2）",
   "note": "一位读者推销自己的 \"Eventz\" 方法（所有函数由事件触发、只读写一个共享的事件记录归档，自称\"没有契约、函数彼此独立\"）；作者用信息隐藏的观点指出它为什么站不住。",
@@ -964,7 +964,7 @@
  },
  "3kCDvG6CV1E": {
   "title": "Criticism for several ideas from the book",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 7 章（§7.5 context 对象）/ 第 19 章（§19.3 单元测试、§19.4 TDD）/ 第 3 章与第 16 章（攒着再重构 = 战术式编程的变体）/ 第 6 章（§6.1 \"接口通用、功能不超前\"）/ 第 8 章（§8.2 配置参数）/ 第 13 章（接口注释的篇幅）/ 第 14 章（名字长短）/ 第 9 章（§9.7 连体方法）/ 第 18 章（§18.2 事件驱动）/ 训练场",
   "note": "一位做电话网关（嵌入式、事件驱动）的读者一口气对书提了十条异议（context 对象、接口注释太长、长名字、断言、单元测试、\"攒几次再重构\"、多线程、事件驱动、通用代码慢、配置参数），作者在第 15 条逐条作答；其余是读者之间关于\"加功能该不该动多个类\"和\"重构的定义\"的争论。",
@@ -1117,7 +1117,7 @@
  },
  "rin4ykU9plo": {
   "title": "4.7 Examples: Java and Unix I/O (p. 26) feedback.",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 4 章 4.7；次要：第 7 章（装饰器，7.3）、第 6 章（通用性）、第 20 章（性能）",
   "note": "4.7 节 Java I/O 的例子（打开文件读序列化对象要建三个对象）批评得对不对——缓冲该不该默认、ObjectInputStream 独立成类有没有道理、装饰器分层的替代方案是什么。",
@@ -1126,7 +1126,7 @@
  },
  "46heiunvGug": {
   "title": "What purpose do factories serve?",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 4 章（浅模块、classitis、接口数量本身是成本）；第 8 章（把复杂性往下拉：宁可类的实现复杂些，也别让使用者复杂）；第 7 章（多一层要多一份抽象；7.5 的透传在 [2][6] 被顺带提到）；专题 clean-code（仅因设计模式文化，关系较远）",
   "note": "这一串是作者自己发问——重回 Java 后在 gRPC 代码里看到大量工厂、builder，不明白比构造函数好在哪；读者给出若干理由，作者接受了其中一个（运行时才能确定具体类型），否定了两个。",
@@ -1135,7 +1135,7 @@
  },
  "AlSb_DOIpeg": {
   "title": "Question about 9.4 and 9.2",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 9 章（9.2、9.4）；第 4 章（Java I/O 例子的出处，\"让常见用法尽可能简单\"）；第 2 章（复杂性是一点点累积的）；次要涉及第 7 章（装饰器式的分层）",
   "note": "9.2 说 FileInputStream 和 BufferedInputStream 应该合并，9.4 又说通用机制要单独成模块，两条是否矛盾；作者给出了书里没有写明的解法——缓冲做成内部复用的模块，而不是暴露给用户的一层。",
@@ -1153,7 +1153,7 @@
  },
  "6Vs1trmcq9k": {
   "title": "Eliminating pass-through variables by creating objects up front",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 7 章（7.5 透传变量、图 7.2）；次要涉及第 5 章（信息隐藏：main 不该知道调用链）、第 2 章（不明显的依赖）",
   "note": "7.5 的透传变量除了 context 对象还有没有更好的解法：一位读者提出\"在 main 里预先把对象一层层构造好\"，被作者否定；另一位读者提出\"绑定在调用栈上的作用域式 context\"，作者称之为接近最优。",
@@ -1369,7 +1369,7 @@
  },
  "H-3sC61ZN9E": {
   "title": "First Edition on Amazon",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 4 章（深模块、接口成本，4.4～4.6）；第 2 章（2.1 复杂性的定义：开发者某一时刻面对的复杂性）；第 9 章（拆还是合）；专题 clean-code；前半串对应\"关于本书 / 版本说明\"",
   "note": "前半串是亚马逊上第一版/第二版混淆的出版事务；从第 10 条起换了话题——\"模块成本 vs 集成成本\"、整体复杂还是局部复杂、架构有没有必要，作者在最后一条给了一段很有分量的回答。",
@@ -1603,7 +1603,7 @@
  },
  "i8I9gOcQKII": {
   "title": "Top-down vs Bottom-up",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "A",
   "target": "第 4 章（深/浅模块）；第 6 章（通用模块、把应用的特殊需求挡在接口外）；第 5 章（5.3 时间分解）；第 7 章（分层）；次要涉及第 11 章",
   "note": "书里没谈\"自顶向下还是自底向上\"；读者主张自底向上更能适应变化，作者则刚得出相反的初步看法（自顶向下更容易得到深模块），几轮之后双方收敛到\"各有各的风险\"。",
@@ -1990,7 +1990,7 @@
  },
  "xYzAzHcB630": {
   "title": "Dependency injection for eliminating pass-through variables",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 7 章（7.5 透传变量与 context 对象；第 1 版第 50～53 页）；第 2 章（依赖、不明显）；次要涉及第 14 章（\"context\"这个名字是否含糊）、专题 clean-code（依赖倒置 / SOLID 只是顺带提到）",
   "note": "读者认为依赖注入（DI）框架已经解决了透传变量问题；作者坦言不懂 DI，追问\"显式写出这类依赖到底有什么价值\"，最后没弄明白、搁置；读者之间对 DI 是什么也没有共识。",
@@ -1999,7 +1999,7 @@
  },
  "JSgeGrY6NBU": {
   "title": "Definition of complexity",
-  "status": "已精读",
+  "status": "已采用",
   "priority": "B",
   "target": "第 2 章 2.1（复杂性的定义与公式）；次要：第 9 章（拆分）、第 6 章（让常见情况简单）、第 11 章（比较两个设计）",
   "note": "2.1 节那条复杂性公式（各部分复杂度按开发者花在其上的时间加权求和）有没有漏洞——读者认为它不惩罚\"大量小函数\"，提议改成按\"变更类型\"求和。",

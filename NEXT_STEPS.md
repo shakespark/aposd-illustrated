@@ -36,6 +36,9 @@
   B 档其余约 75 串、C 档都还没读。
 - 2026-10-03：两个专题页已补上讨论组材料（`topics/clean-code.html#group`；`topics/ai-era.html` 的 `#said` 第二处和 `#readers`），
   用到的 10 串在清单里标为"已采用"（部分采用也算；Kb5K、yHsx 等串里还有训练题素材没用）。章节页和训练场还没动。
+- 2026-10-03：14 个章节页（第 2～9、11～15、19 章中有材料的）在"边界与反方"末尾加了"讨论组 · 作者补充 / 读者质疑"块，
+  写法约定见 `AUTHORING.md`"讨论组材料"一节。又有 21 串标为"已采用"。训练场还没动
+  （现成素材：TVHbMP5ENXo、J3GweRh4VbM、Kb5K3YcjIXw 串尾、iS2GVCApGoo、Java I/O 缓冲分层）。
 - 取正文到本机：`python3 tools/groups_fetch.py A`（或给串 id），落在不入库的 `source/group/`。
 - 写完笔记后回填：`python3 tools/groups_scan.py --notes`（按笔记头部的"精读 / 对应 / 优先级"更新 `triage.json`）。
 - 再次扫描：`python3 tools/groups_scan.py`，会列出新增的串和有新回复的串，不动 `triage.json` 里已有的结论。

@@ -246,6 +246,12 @@ void list_push_back(struct list *l, struct node *n) {
   <p>应用的顶层功能天生就是专用的，没必要、也不可能"通用化"一切。这一章的要求是把专用代码<strong>往上或往下推</strong>，让它和通用代码分开（6.6 节）。如果你发现自己在给一个只有一处调用的业务流程抽象"可扩展框架"，那是走到了另一个极端。第 9 章会把"通用与专用混杂"正式列为一个红旗。</p>
 </div>
 
+<div class="aside" data-title="讨论组 · 作者补充：通用的是接口，不是功能；难处在于&quot;知道得太多&quot;">
+  <p>以下不在书里，来自书中给出的读者讨论组，是 Ousterhout 对本章的两处补充。</p>
+  <p><strong>通用会不会更慢？</strong>有读者说通用的算法和数据结构往往比专用的慢。Ousterhout 的回答（<a href="https://groups.google.com/g/software-design-book/c/3kCDvG6CV1E">2023-04</a>）：这种情况有，但不常见；关键是"做成通用"指的是接口，而不是功能。功能只实现今天需要的（把功能做过头才会明显拖慢性能），然后给它配一个通用的接口；性能要求可以照常考虑进去，在满足功能和性能的前提下取最通用的接口，结果几乎总是相当通用。</p>
+  <p><strong>为什么容易做成专用的？</strong>2020 年讨论"自顶向下还是自底向上"时，Ousterhout 说学生项目里常见这样的毛病：做一个模块时，把接口设计得只贴合马上要用它的那个应用，结果信息泄漏、系统变脆。原因是<strong>知道得太多</strong>：脑子里一直想着最终的应用，很难不让那些具体需求渗进接口（<a href="https://groups.google.com/g/software-design-book/c/i8I9gOcQKII">2020-03</a>）。Ousterhout 由此说，好设计的关键之一是知道什么时候<strong>不该</strong>用上自己脑子里已有的信息。这正是 6.2 节那个文本编辑器例子里发生的事，只是换了个角度讲：不是设计者不懂通用，而是太清楚眼前的需求。</p>
+</div>
+
 <h2>练一练</h2>
 <p>下面三道题来自训练场：一道识别专用接口，一道"看起来通用但其实过头了"，一道消除特殊情况。本章题库共 20 题，<a href="../train/index.html#ch=6">去训练场做完整一组</a>。</p>
 <div class="drill-embed" data-ids="ch06-flag-01 ch06-ab-02 ch06-ab-03"></div>

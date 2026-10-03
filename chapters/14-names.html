@@ -179,6 +179,15 @@ class Segment { size_t segmentSize_; };   // → size_  ：重复类名
   <p>遇到"名字难起"，最常见的反应是继续琢磨词汇，最后用一个又长又拗口的名字凑合。作者的建议是换个方向：<strong>怀疑被命名的东西</strong>。它是不是同时代表了两件事？是不是一个函数做了几件不相干的事？拆开以后，名字往往自己就出来了。当然，也有确实是词汇量问题的时候（领域术语不熟），这时去问懂业务的人，比自己硬造一个词更好。</p>
 </div>
 
+<div class="aside" data-title="讨论组 · 作者补充：三条关于名字的回帖">
+  <p>以下不在书里，来自书中给出的读者讨论组。</p>
+  <ul>
+    <li><strong>用类型区分，但别泛滥。</strong>针对 14.1 节那个因为同一个名字指两种东西而出的 bug，有读者说给两种块号各定义一个类型，编译器就能拦住。Ousterhout 同意那样 bug 会好找得多，同时有保留：担心造出一大堆本质上都只是整数的类型，而且很难事先判断哪些整数值得单独成为类型（<a href="https://groups.google.com/g/software-design-book/c/YHNMr_FgnRY">2023-08</a>）。</li>
+    <li><strong>名字会引出它没回答的问题。</strong>有读者主张用一组小函数为领域"造词汇"，例子是把"把某个属性设为空"包成一个叫"添加空值"的函数。Ousterhout 认为这个名字并不比原来的写法更清楚，反而让人疑惑：如果这个属性已经存在，"添加"是什么意思，会多出一个，还是报错？至于"造词汇"本身，每个接口都在引入词汇，词汇多不等于好；量它的尺子和深浅模块是同一把：好学、又能干净地表达大量任务的词汇才是好词汇（<a href="https://groups.google.com/g/software-design-book/c/CEIpGjyswfg">2026-01</a>）。</li>
+    <li><strong>尽量短，但不能再短。</strong>有读者嫌长名字让代码行折行、难读。Ousterhout 的回答是：不损失清晰度时就用短的，一两个词的名字几乎总是够用；但不值得为了避免折行而用一个会引出 bug 的含糊名字（<a href="https://groups.google.com/g/software-design-book/c/3kCDvG6CV1E">2023-04</a>）。</li>
+  </ul>
+</div>
+
 <h2>练一练</h2>
 <p>下面三道题来自训练场。本章题库里有 4 道"先写后对照"的改名题，建议都做一遍：起名字这件事，只有动手写才练得出来。</p>
 <div class="drill-embed" data-ids="ch14-flag-01 ch14-ab-03 ch14-write-01"></div>

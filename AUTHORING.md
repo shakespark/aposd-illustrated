@@ -81,6 +81,18 @@
 - 对照 OSTEP：读者读过 OSTEP，适当处可以用 `.aside data-title="对照 OSTEP"` 建立联系（只在确实有联系时）。OSTEP 学习站章节链接形如 `https://t.miaowuao.cn/ostep/chapters/43-lfs.html`（slug 见 /home/lee/operating_systems_three_easy_pieces/assets/chapters.js）。
 - 站内其他页面（由其他作者同时编写，链接可以直接写）：速查页 `../cheatsheet.html#flag-<id>` / `#p-<k>`；训练场 `../train/index.html#ch=N`；专题 `../topics/clean-code.html`（APOSD 与 Clean Code 的分歧）、`../topics/ostep.html`（与 OSTEP 对照）、`../topics/ai-era.html`（AI 时代读这本书）；项目 `../project/index.html`、`../project/m0X.html`。
 
+## 讨论组材料（2026-10 起）
+书中给出的读者讨论组（groups.google.com/g/software-design-book）里有作者在书外的补充和读者的质疑。写进页面时：
+- **位置和标记固定**：章节页放在"边界与反方"一节的末尾。作者的话用 `<div class="aside" data-title="讨论组 · 作者补充：…">`，
+  读者的质疑或没有结论的争论用 `<div class="counter" data-title="讨论组 · 读者质疑：…">`（或"讨论组 · 未了结的分歧：…"）。
+  专题页可以单独成节（见 `topics/clean-code.html#group`）。
+- **第三种声音要分清**：每块第一句写明"以下不在书里，来自书中给出的读者讨论组"；每个说法后面带原帖链接和年月。
+  不能写成读者会去书里某一节找、却找不到的样子。"本站补充""本站看法"照旧另行标明。
+- **只转述，不引用**：帖子版权属于各发帖人，`tools/overlap.py` 查不出与帖子的重合，要自己把关。不新增 `blockquote`。读者不点名，写"一位读者"。
+- **写之前对照原帖**：作者说的每一句都要在 `source/group/<id>.txt`（逐段回复看 `<id>.full.txt`）里找到依据；笔记只用来定位。
+  读者提出的事实性说法（某段代码有 bug、某个数字）不当作已证实；作者没有回应的反驳，要写明"没有回应"。
+- 与专题页重复的内容只写一两句并链接过去。用过的串在 `tools/group/triage.json` 里把 `status` 改成"已采用"。
+
 ## 题库（train/data/chNN.js）——本站的重心
 格式见 `assets/drill.js` 文件头注释和样板 `train/data/ch04.js`。每章题量：
 - 重章（5、6、9、10、13、14）：14-20 题；中章：10-14 题；轻章（8、11、21、22 等）：6-10 题。

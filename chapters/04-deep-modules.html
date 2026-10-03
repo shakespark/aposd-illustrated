@@ -179,6 +179,27 @@ private:
   <p>书中批评 Java 多年来打开文件都要叠三层对象、缓冲还得自己加（4.7 节），重点不是"选项不好"，而是<strong>罕用的选项不该挡在常用路径上</strong>。好的做法是：默认就是大多数人想要的行为，罕见需求通过可选参数或单独的入口提供，大多数人根本不需要知道它们存在。</p>
 </div>
 
+<div class="aside" data-title="讨论组 · 作者补充：Java I/O 的例子其实是两条批评">
+  <p>以下不在书里，来自书中给出的读者讨论组。4.7 节对 Java I/O 提了两条意见：缓冲不是默认的；读序列化对象还要再套一个类。2019 年有读者指出，后一个类可以叠在任何输入流上（压缩流、内存流、网络流），本身就是"较通用"的模块。Ousterhout 回帖承认，对这个类的批评<strong>更有争议</strong>，并说自己在意的主要不是执行效率，而是使用者要面对的复杂性（<a href="https://groups.google.com/g/software-design-book/c/rin4ykU9plo">2019-06</a>）。读这个例子时，只取"缓冲应当默认"那一条就够了。</p>
+  <p>2022 年又有两位读者替分层辩护：缓冲和数据来源是正交的，分成三层，每层都可以单独替换。Ousterhout 同意"正交"这个前提，给出的设计是把通用的缓冲模块<strong>垫在各种来源的下面</strong>、供它们内部使用，而不是叠在上面、让使用者自己套：通用机制仍然只有一份，但绝大多数使用者不必知道它存在（<a href="https://groups.google.com/g/software-design-book/c/AlSb_DOIpeg">2022-10</a>、<a href="https://groups.google.com/g/software-design-book/c/rin4ykU9plo">2022-11</a>）。对"只是少打几个字"的说法，Ousterhout 的回答是：复杂性正是由一大堆"看起来没那么糟"的决定堆出来的；而且忘了套缓冲时程序照样能跑，只是很慢。</p>
+</div>
+<div class="counter" data-title="讨论组 · 读者质疑：没人回答的两个反例">
+  <p>同一批讨论里有两点 Ousterhout 没有回应。一是交互式输入（逐字符、按行读终端）恰恰不想要标准缓冲；二是管道和依赖背压的自定义流，默认缓冲会改变它们的行为。它们不推翻"常见情况应当默认做对"，但提醒你：<strong>"默认"替使用者做的决定越多，就越要留一个看得见的出口</strong>，并在接口注释里写明默认行为是什么。</p>
+</div>
+<div class="aside" data-title="讨论组 · 作者补充：深度是用来讨论的，不是用来测量的">
+  <p>有读者追问"深度到底怎么量"。Ousterhout 在讨论组里的回答有三层（均不在书里）：</p>
+  <ul>
+    <li>深度是用来讨论和比较的<strong>定性</strong>说法，不值得纠结精确定义，更不该去量化（<a href="https://groups.google.com/g/software-design-book/c/DvnQ1Bvqy30">2024-05</a>）。本页的"深度计"只是帮你建立直觉，别把那个比值当指标用。</li>
+    <li>判断深度看的是模块提供的功能，这应当从接口文档上看得出来；实现更长不等于更深，也可能只是实现得差。</li>
+    <li>有用的抽象不一定深。栈很有用，但很浅，远不如 Unix 文件 I/O 那样的接口；Ousterhout 猜测它的价值更多在于提供了一个心智模型，让别的代码得以组织得干净，而不是藏起了多少实现复杂性（<a href="https://groups.google.com/g/software-design-book/c/DvnQ1Bvqy30">2018-10</a>）。这和上面"浅模块有时无法避免"是同一个意思，只是把"为什么仍然值得用"说出来了。</li>
+  </ul>
+  <p>还有一个 Ousterhout 自己承认没有答案的问题：一个只是先做一点登记、再转调深方法的包装方法，它的接口和那个深方法一样"深"，可它本身对控制复杂性没什么贡献。Ousterhout 提出也许该把深度看成<strong>一组接口</strong>的属性而不是单个方法的属性，但这样一来怎么判断单个方法好不好，目前没有简单的答案。</p>
+</div>
+<div class="aside" data-title="讨论组 · 作者补充：五个调用里为什么没有 fsync">
+  <p>书中用"五个基本调用"说明 Unix 文件 I/O 很深（4.4 节）。2025 年有读者问：要保证数据落盘还得用 <code>fsync</code>，漏掉它是不是低估了接口的复杂度？Ousterhout 的回答把第 2 章的定义用到了接口上（<a href="https://groups.google.com/g/software-design-book/c/OCSMlVYmQTE">2025-03</a>，不在书里）：接口的复杂度要按<strong>多少人、多经常需要知道</strong>来算。<code>fsync</code> 多数程序用不到，所以不给多数人增加负担；但如果你写的代码大多都要用它，那对你来说它就是 I/O 接口的基本组成部分，评估复杂度时应当算进去。Ousterhout 自述写过上千个程序，只有很少几个需要它；这是个人经验，不是统计。</p>
+  <p>读过 OSTEP 的读者可以把这段和<a href="../topics/ostep.html">对照专题</a>连起来看：同一个接口，对写普通工具的人是深的，对写存储引擎的人要浅得多。"深"不是模块自身的常数，而是相对于使用者而言的。</p>
+</div>
+
 <h2>练一练</h2>
 <p>下面三道题来自训练场。先自己判断再看解析，答题记录会进入间隔复习。</p>
 <div class="drill-embed" data-ids="ch04-flag-02 ch04-ab-01 ch04-write-01"></div>
