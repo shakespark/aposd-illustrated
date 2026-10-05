@@ -188,6 +188,9 @@ class Segment { size_t segmentSize_; };   // → size_  ：重复类名
     <li><strong>尽量短，但不能再短。</strong>有读者嫌长名字让代码行折行、难读。Ousterhout 的回答是：不损失清晰度时就用短的，一两个词的名字几乎总是够用；但不值得为了避免折行而用一个会引出 bug 的含糊名字（<a href="https://groups.google.com/g/software-design-book/c/3kCDvG6CV1E">2023-04</a>）。</li>
   </ul>
 </div>
+<div class="aside" data-title="X · 作者补充：只改名字，复杂度就变了">
+  <p>以下不在书里，来自 Ousterhout 在 X（原 Twitter）上的回帖。2024 年一位开发者讲了自己的经历：拿一段难懂的代码，结构和操作一点不动，只把几个变量改了名，别人就说它"简单多了"；这位开发者由此认为，人们说的"复杂"其实只是"不清楚"。Ousterhout 从同一件事里读出相反的结论（<a href="https://x.com/JohnOusterhout/status/1748052129242349992">2024-01</a>）：这说明名字的选择对代码的复杂度有显著影响。按<a href="02-complexity.html">第 2 章</a>的定义，复杂度就是让代码难懂、难改的东西，名字当然算在里面。整场争论见<a href="02-complexity.html#x-unfamiliar">第 2 章"是复杂，还是只是不熟悉"</a>。</p>
+</div>
 
 <h2>练一练</h2>
 <p>下面三道题来自训练场。本章题库里有 4 道"先写后对照"的改名题，建议都做一遍：起名字这件事，只有动手写才练得出来。</p>

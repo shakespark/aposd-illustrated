@@ -181,6 +181,10 @@ auto c = connect(host, 443, {.useTls = true, .retries = 2, .keepAlive = true});<
   <p>Ousterhout 的回答是有条件地承认、但不推荐（<a href="https://groups.google.com/g/software-design-book/c/3kCDvG6CV1E">2023-04</a>）：如果你真有纪律把这些尾巴都记着，并且回头收拾，这样做行得通；可是自认为有这种纪律的人里，只有一小部分真的有。而且这是一个滑坡：按这个逻辑，收拾的最佳时机永远在将来，因为将来总会知道得更多，也总会有更多补丁可以合并处理。这是对本章"以后再重构"那个循环的又一种说法。</p>
   <p>另外，"如果以后和代码长期相处的是 AI，战略式编程还值得吗"这个问题，Ousterhout 2026 年在讨论组里回答过，见<a href="../topics/ai-era.html#said">专题：在 AI 写代码的时代读这本书</a>。</p>
 </div>
+<div class="aside" data-title="X · 作者补充：这个想法，Fowler 早十年说过">
+  <p>以下不在书里，来自 Ousterhout 在 X（原 Twitter）上的回帖。2019 年有人看完 Ousterhout 的一场演讲后指出：战术式与战略式的对比，和 Martin Fowler 的"设计耐力假说"（<a href="https://martinfowler.com/bliki/DesignStaminaHypothesis.html">Design Stamina Hypothesis</a>，2007 年 6 月）太像了。Ousterhout 回答说此前没见过这篇文章，但对方说得对：两者基本是同一个意思，而且 Fowler 早了十年；并说会在书的下一版里加一条说明（<a href="https://x.com/JohnOusterhout/status/1103700528335216640">2019-03</a>）。本站在 2021 年的第 2 版全文里没有检索到 Fowler 的名字。</p>
+  <p>Fowler 那篇短文值得对照着读：不做设计的项目起步更快，过了一条"设计回报线"之后被做设计的项目超过，和本章那张图是同一个形状。更有意思的是两个人对证据的态度也一样：Fowler 特意把它叫作"假说"，说明这是推测，没有客观数据，而且很难检验；本章 3.3 节里 Ousterhout 也说那些数字只是个人看法。两位互不知情的作者得到同一个结论，算不上证明，但比一个人的经验多了一份旁证。</p>
+</div>
 
 <h2>练一练</h2>
 <p>本章的题目大多是"上线压力下怎么选"。没有标准答案的地方，解析会说明另一种选择在什么条件下合理。</p>

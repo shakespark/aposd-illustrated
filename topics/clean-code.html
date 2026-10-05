@@ -335,7 +335,7 @@ std::chrono::seconds parseDuration(std::string_view s) {
 </div>
 
 <h2 id="group">讨论组里的补充：辩论之外，Ousterhout 还说过什么</h2>
-<p>这一节的材料来自书中给出的读者讨论组，时间从 2019 年到 2026 年。帖子是公开的，每条都附了原帖链接；下面全部是转述。请注意两点：讨论组里的话是<strong>即兴的回帖</strong>，不如书和那份对话文档斟酌；读者一方的说法只代表发帖人自己。</p>
+<p>这一节的材料来自书中给出的读者讨论组，时间从 2019 年到 2026 年（只有<a href="#x-tests">"关于测试"</a>一小节例外，来自 Ousterhout 在 X 上的回帖）。帖子是公开的，每条都附了原帖链接；下面全部是转述。请注意两点：讨论组里的话是<strong>即兴的回帖</strong>，不如书和那份对话文档斟酌；读者一方的说法只代表发帖人自己。</p>
 
 <h3>关于方法长度：比书里说得更直白的几句</h3>
 <ul>
@@ -366,6 +366,15 @@ std::chrono::seconds parseDuration(std::string_view s) {
   <li>两种担心并不对称：测试不够，随时可以回头补；设计没做好，几乎补不回来。</li>
 </ul>
 <p>这比<a href="#tdd">分歧三</a>里"压制设计"的说法多了一步机制，也正是上面 <code>parseDuration</code> 左侧面板演示的那种中间状态。它仍然是推演而不是数据；Ousterhout 没有实践过 TDD 这一点，对话里已经承认。另外，在那份对话的评论帖里有读者提醒：要批评 TDD，应当对照 Kent Beck 自己写的 <a href="https://tidyfirst.substack.com/p/canon-tdd">Canon TDD</a>，其中第一步是先列出要测的场景清单，这一步在两人的对话里没被提到。</p>
+
+<h3 id="x-tests">关于测试：对话发表后，在 X 上回答的三个追问</h3>
+<p>这一小节的材料不来自讨论组，来自 Ousterhout 在 X（原 Twitter）上的回帖。2025 年 2 月 Ousterhout 发帖公布了那份对话文档（<a href="https://x.com/JohnOusterhout/status/1893571261990871102">2025-02-23</a>），随后几天有 TDD 的支持者在帖子下追问。三条回答都很短，但补上了对话里没说的一件事：Ousterhout 自己平时到底怎么写测试。</p>
+<ul>
+  <li><strong>测试是白盒的。</strong>一位读者说，只有 TDD 能让测试不依赖实现；后补测试时，人总会偷看实现，然后只验证"某些方法被调用了"。Ousterhout 没有否认"看实现"，反而直接说自己的测试就是白盒的：写测试时看着代码，按代码的结构来组织测试，为的是确认每一条路径都测到了（<a href="https://x.com/JohnOusterhout/status/1894475509230440458">2025-02</a>）。</li>
+  <li><strong>每个测试都要先失败一次。</strong>同一位读者追问：后补测试时，会不会故意把代码弄坏，亲眼看到测试在该失败时失败？Ousterhout 的做法不是改坏代码，而是改测试：通常先在测试里断言一个明显错误的预期结果，看它失败，再改成正确的。理由是这逼着自己想清楚到底期望什么行为（<a href="https://x.com/JohnOusterhout/status/1894475981953667255">2025-02</a>）。</li>
+  <li><strong>为了可测而重构，并不常见。</strong>对话里 Ousterhout 说没有体会过"TDD 带来更解耦的设计"。另一位读者表示难以相信：难道从没遇到过不重构、不解耦就没法测的情况？Ousterhout 回答：也许有过，但不记得这是常见问题；更常见的是需要多写一些 mock 代码，而这通常不要求改动被测代码的结构（<a href="https://x.com/JohnOusterhout/status/1894886059957461498">2025-02</a>）。</li>
+</ul>
+<p>本站补充两点。第二条和 TDD 的"红"是同一个动作，只是发生在实现写完之后；两人在"没见过它失败的测试不可信"上并无分歧。第一条则是真正的分歧所在：按代码结构组织的白盒测试覆盖得全，代价是测试和实现绑在一起，实现一重构，测试往往要跟着改；TDD 一方看重的正是测试只认行为。Ousterhout 在这几条回帖里没有回应这个代价。读者可以自己拿<a href="#tdd">分歧三</a>里双方都同意的那一项收益来衡量：测试的主要价值是让人放心重构，那么你的测试在重构之后还能不能原样跑？</p>
 
 <h3>关于注释：一句容易被忽略的让步</h3>
 <p>2020 年回应一篇书评时，Ousterhout 的表述是两段式的：如果能通过重构让代码不再需要注释，完全赞成；需要海量注释的代码多半是坏代码。但总有一些东西无论怎么重构都无法用代码表达，注释就是为它们准备的。（<a href="https://groups.google.com/g/software-design-book/c/nV1YJ6d9wRo">原帖</a>）读这页前半部分时，别把 Ousterhout 读成"注释越多越好"。</p>
@@ -438,7 +447,7 @@ std::chrono::seconds parseDuration(std::string_view s) {
   <div class="opts"><button>A. Martin 承认 TDD 会压制设计，但认为可以靠纪律弥补</button><button>B. Ousterhout 坦承自己没有亲身实践过 TDD</button><button>C. Ousterhout 承认书中对 TDD 的描述不准确，并表示会在后续版本修正</button><button>D. 双方都认为单元测试必不可少</button></div>
   <div class="explain">Martin 从未承认 TDD 压制设计，并明确表示不同意这一判断，认为不重视设计的人用什么方法都不会设计。Martin 同意的是 Ousterhout 给 TDD 使用者的那些建议（持续重构、提前规划），但不同意"TDD 可能导致坏代码"的归因。</div></div>
 
-<p class="src">本页前七节对两位作者观点的转述基于 <a href="https://github.com/johnousterhout/aposd-vs-clean-code">aposd-vs-clean-code</a> 原文（2025 年版本）与 APOSD 第 2 版；两处直接引用均来自该 GitHub 文档。"讨论组里的补充"一节转述自 <a href="https://groups.google.com/g/software-design-book">software-design-book 讨论组</a>的公开帖子（本站查阅于 2026-10-03），帖子内容归各发帖人所有，该节全部为转述。所有代码为本站原创。</p>
+<p class="src">本页前七节对两位作者观点的转述基于 <a href="https://github.com/johnousterhout/aposd-vs-clean-code">aposd-vs-clean-code</a> 原文（2025 年版本）与 APOSD 第 2 版；两处直接引用均来自该 GitHub 文档。"讨论组里的补充"一节转述自 <a href="https://groups.google.com/g/software-design-book">software-design-book 讨论组</a>的公开帖子（本站查阅于 2026-10-03），帖子内容归各发帖人所有，该节全部为转述；其中"关于测试"一小节转述自 Ousterhout 在 X 上的公开回帖（本站查阅于 2026-10-04）。所有代码为本站原创。</p>
 
 </main>
 </body>
