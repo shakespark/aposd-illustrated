@@ -464,7 +464,7 @@ void TtlCache::put(const std::string& key, std::string value) {
       ? h("div", { class: "xr-fb muted" }, "这条注释主要在做什么？")
       : h("div", { class: "xr-fb" }, h("p", {}, h("strong", {}, mine === it.cat ? "判断正确。" : `参考答案：${CAT_NAME[it.cat]}。`)), h("p", { html: it.why }));
     const next = h("button", { class: "primary", style: { marginTop: "10px" }, onclick: () => { const k = ITEMS.findIndex((o, i) => picks[i] === undefined); cur = k >= 0 ? k : (cur + 1) % ITEMS.length; draw(); } }, "下一条");
-    panel.replaceChildren(h("h4", {}, `注释 ${it.tag}（第 ${it.lines[0]}${it.lines.length > 1 ? "～" + it.lines[it.lines.length - 1] : ""} 行）`), h("div", { class: "xr-quote" }, it.text), h("div", { class: "xr-cats" }, btns), fb, mine === undefined ? null : next);
+    panel.replaceChildren(h("h4", {}, `注释 ${it.tag}（第 ${it.lines[0]}${it.lines.length > 1 ? "～" + it.lines[it.lines.length - 1] : ""} 行）`), h("div", { class: "xr-quote" }, it.text), h("div", { class: "xr-cats" }, btns), fb, ...(mine === undefined ? [] : [next]));
     const done = Object.keys(picks).length, right = ITEMS.filter((o, i) => picks[i] === o.cat).length;
     const keep = ITEMS.filter((o, i) => picks[i] !== undefined && (o.cat === "precision" || o.cat === "intuition")).length;
     document.getElementById("xr-done").textContent = `${done} / ${ITEMS.length}`;
